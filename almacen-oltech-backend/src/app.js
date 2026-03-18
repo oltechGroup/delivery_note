@@ -17,7 +17,6 @@ app.use(morgan('dev'));
 
 
 // --- RUTAS BASE (Endpoint de prueba) ---
-// Este pequeño endpoint nos servirá para verificar que el servidor está vivo
 app.get('/api/status', (req, res) => {
     res.json({
         ok: true,
@@ -25,9 +24,10 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Nota: Aquí más adelante conectaremos las rutas reales de tus módulos
-// Ejemplo futuro: app.use('/api/remisiones', require('./routes/remisionRoutes'));
-
+// --- RUTAS DE LA APLICACIÓN ---
+// Conectamos las rutas de autenticación. 
+// Todas las rutas dentro de authRoutes tendrán el prefijo /api/auth
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;
