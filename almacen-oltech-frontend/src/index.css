@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta Corporativa OLTECH extraída de tu logo */
+  --color-oltech-black: #050505;   /* Fondo negro del logo */
+  --color-oltech-pink: #FF3B5C;    /* Color del pulso médico y la palabra GRUPO */
+  --color-oltech-purple: #9b5de5;  /* Color de la letra 'g' */
+  --color-oltech-blue: #a0c4ff;    /* Color de la letra 'P' */
+  --color-oltech-gray: #6B7280;    /* Color de la palabra OLTECH */
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f9fafb;
+}

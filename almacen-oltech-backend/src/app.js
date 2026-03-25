@@ -1,3 +1,4 @@
+// almacen-oltech-backend/src/app.js
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -28,6 +29,22 @@ app.get('/api/status', (req, res) => {
 // Conectamos las rutas de autenticación. 
 // Todas las rutas dentro de authRoutes tendrán el prefijo /api/auth
 app.use('/api/auth', require('./routes/authRoutes'));
+
+// Conectamos las rutas de gestión de usuarios.
+// Todas las rutas dentro de usuariosRoutes tendrán el prefijo /api/usuarios
+app.use('/api/usuarios', require('./routes/usuariosRoutes'));
+
+// Conectamos las rutas de catálogos médicos (Unidades Médicas y Médicos).
+// Todas las rutas dentro de catalogosRoutes tendrán el prefijo /api/catalogos
+app.use('/api/catalogos', require('./routes/catalogosRoutes'));
+
+// Conectamos las rutas del almacén base (Categorías, Piezas y Sets).
+// Todas las rutas dentro de almacenRoutes tendrán el prefijo /api/almacen
+app.use('/api/almacen', require('./routes/almacenRoutes'));
+
+// Conectamos las rutas de remisiones y procedimientos (El núcleo de la operación).
+// Todas las rutas dentro de remisionRoutes tendrán el prefijo /api/remisiones
+app.use('/api/remisiones', require('./routes/remisionRoutes'));
 
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;

@@ -1,3 +1,4 @@
+//almacen-oltech-backend/src/controllers/authController.js
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/encrypter');
 const usuarioModel = require('../models/usuarioModel');
