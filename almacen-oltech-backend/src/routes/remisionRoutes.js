@@ -6,7 +6,7 @@ const remisionController = require('../controllers/remisionController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
-const rolesOperativos = ['Sistemas', 'Operaciones', 'Almacen'];
+const rolesOperativos = ['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén'];
 
 // ==========================================
 // RUTAS: CATÁLOGOS BASE PARA REMISIONES

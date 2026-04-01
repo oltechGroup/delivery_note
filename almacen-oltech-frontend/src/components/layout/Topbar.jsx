@@ -1,57 +1,96 @@
 //almacen-oltech-frontend/src/components/layout/Topbar.jsx
+import { useState } from 'react'; // NUEVO: Importamos useState
 import { useAuth } from '../../hooks/useAuth';
+import ModalCambiarContrasena from '../usuarios/ModalCambiarContrasena'; 
 
 function Topbar() {
-  // Extraemos la información del usuario y la función para salir directamente de nuestro hook
   const { usuario, logout } = useAuth();
+  
+  // NUEVO: Estado para controlar si el modal está abierto o cerrado
+  const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(false);
+
+  const limpiarTexto = (texto) => {
+    if (!texto) return '';
+    return texto.replace(/‚/g, 'é');
+  };
+
+  const obtenerColorRol = (rolName) => {
+    const rolLimpio = limpiarTexto(rolName);
+    switch (rolLimpio) {
+      case 'Sistemas':
+        return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'Operaciones':
+        return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Encargado de almacén':
+        return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'Biomédicos':
+        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'Almacén':
+        return 'bg-gray-100 text-gray-700 border-gray-200';
+      default:
+        return 'bg-oltech-pink/10 text-oltech-pink border-oltech-pink/20'; 
+    }
+  };
+
+  const rolMostrado = limpiarTexto(usuario?.rol || 'Sistemas');
+  const badgeClasses = obtenerColorRol(usuario?.rol);
 
   return (
-    <header className="bg-white h-20 px-8 flex items-center justify-between shadow-sm border-b border-gray-200 z-10 w-full">
-      
-      {/* Lado izquierdo: Título (por ahora un texto genérico, luego podemos hacerlo dinámico) */}
-      <div className="text-gray-500 font-medium tracking-wide">
-        Panel de Administración
-      </div>
-
-      {/* Lado derecho: Perfil de usuario y botón de salir */}
-      <div className="flex items-center space-x-6">
+    <>
+      <header className="bg-white h-20 px-8 flex items-center justify-between shadow-sm border-b border-gray-200 z-10 w-full relative">
         
-        {/* Info del Usuario */}
-        <div className="flex items-center space-x-3 text-right">
-          <div className="hidden sm:block"> {/* Se oculta en pantallas muy pequeñas */}
-            <p className="text-sm font-bold text-gray-800">
-              {usuario?.nombre} {usuario?.apellido_p}
-            </p>
-            <p className="text-xs font-bold text-oltech-pink uppercase tracking-widest">
-              {usuario?.rol || 'Sistemas'}
-            </p>
-          </div>
-          
-          {/* Avatar genérico (Un circulito gris con un ícono de persona) */}
-          <div className="h-10 w-10 rounded-full bg-gray-100 flex justify-center items-center border-2 border-oltech-blue shadow-sm">
-            <svg className="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-            </svg>
-          </div>
+        <div className="text-gray-500 font-medium tracking-wide">
+          Panel de Administración
         </div>
 
-        {/* Separador vertical */}
-        <div className="h-8 w-px bg-gray-300"></div>
+        <div className="flex items-center space-x-6">
+          
+          <div className="flex items-center space-x-3 text-right">
+            <div className="hidden sm:block">
+              <p className="text-sm font-bold text-gray-800">
+                {usuario?.nombre} {usuario?.apellido_p}
+              </p>
+              <div className="mt-1 flex justify-end">
+                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide border shadow-sm ${badgeClasses}`}>
+                  {rolMostrado}
+                </span>
+              </div>
+            </div>
+            
+            {/* NUEVO: Le agregamos el onClick al Avatar para abrir el modal */}
+            <div 
+              onClick={() => setModalContrasenaAbierto(true)}
+              className="h-10 w-10 rounded-full bg-gray-50 flex justify-center items-center border-2 border-gray-200 shadow-sm transition-transform hover:scale-105 cursor-pointer hover:border-oltech-pink"
+              title="Cambiar Mi Contraseña"
+            >
+              <svg className="w-5 h-5 text-gray-400 hover:text-oltech-pink transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+            </div>
+          </div>
 
-        {/* Botón Cerrar Sesión */}
-        <button 
-          onClick={logout}
-          className="flex items-center space-x-2 text-gray-500 hover:text-oltech-pink transition-colors duration-200"
-          title="Cerrar Sesión"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
-          </svg>
-          <span className="font-medium hidden sm:block">Salir</span>
-        </button>
+          <div className="h-8 w-px bg-gray-200"></div>
 
-      </div>
-    </header>
+          <button 
+            onClick={logout}
+            className="flex items-center space-x-2 text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition-all duration-200 group"
+            title="Cerrar Sesión"
+          >
+            <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+            </svg>
+            <span className="font-medium hidden sm:block">Salir</span>
+          </button>
+
+        </div>
+      </header>
+
+      {/* NUEVO: Colocamos el Modal aquí abajo. Se mostrará cuando modalContrasenaAbierto sea true */}
+      <ModalCambiarContrasena 
+        isOpen={modalContrasenaAbierto} 
+        onClose={() => setModalContrasenaAbierto(false)} 
+      />
+    </>
   );
 }
 

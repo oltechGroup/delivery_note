@@ -1,16 +1,14 @@
-//almacen-oltech-frontendsrc/src/context/AuthContext.jsx
+//almacen-oltech-frontend/src/context/AuthContext.jsx
 import { createContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Creamos el contexto (la caja donde guardaremos la info)
 export const AuthContext = createContext();
 
-// Creamos el proveedor (el que va a envolver a toda la app para compartir la info)
 export const AuthProvider = ({ children }) => {
   const [usuario, setUsuario] = useState(null);
   const [token, setToken] = useState(null);
   const [cargando, setCargando] = useState(true);
 
-  // Cuando la app arranca, revisamos si ya había una sesión guardada en la memoria del navegador
   useEffect(() => {
     const tokenGuardado = localStorage.getItem('oltech_token');
     const usuarioGuardado = localStorage.getItem('oltech_usuario');
@@ -22,7 +20,14 @@ export const AuthProvider = ({ children }) => {
     setCargando(false);
   }, []);
 
-  // Función para guardar los datos cuando el login es exitoso
+  const logout = () => {
+    setUsuario(null);
+    setToken(null);
+    localStorage.removeItem('oltech_token');
+    localStorage.removeItem('oltech_usuario');
+    window.location.href = '/login'; 
+  };
+
   const login = (datosUsuario, tokenRecibido) => {
     setUsuario(datosUsuario);
     setToken(tokenRecibido);
@@ -30,17 +35,37 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('oltech_usuario', JSON.stringify(datosUsuario));
   };
 
-  // Función para cerrar sesión y borrar todo
-  const logout = () => {
-    setUsuario(null);
-    setToken(null);
-    localStorage.removeItem('oltech_token');
-    localStorage.removeItem('oltech_usuario');
-  };
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => {
+        return response;
+      },
+      (error) => {
+        // Obtenemos la URL de la petición original
+        const originalRequestUrl = error.config ? error.config.url : '';
+
+        // CORRECCIÓN: Ahora SOLO cierra sesión si es 401 (Token inválido/caducado).
+        // Le quitamos el 403, porque un 403 solo significa "No tienes permiso para ESTA acción", no que tu sesión no sirva.
+        if (
+            error.response && 
+            error.response.status === 401 &&
+            !originalRequestUrl.includes('/api/auth/login')
+        ) {
+            console.warn('El token ha caducado. Cerrando sesión por seguridad.');
+            logout(); 
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []); 
 
   return (
     <AuthContext.Provider value={{ usuario, token, login, logout, estaAutenticado: !!token }}>
-      {/* Mientras revisa si hay sesión guardada, no mostramos nada para evitar parpadeos */}
       {!cargando && children}
     </AuthContext.Provider>
   );

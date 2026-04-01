@@ -30,8 +30,57 @@ const createCategoria = async (nombre) => {
 };
 
 // ==========================================
+// MÓDULO: CATEGORÍAS DE CONSUMIBLES
+// ==========================================
+const getAllCategoriasConsumibles = async () => {
+    const query = `
+        SELECT 
+            cc.id, 
+            cc.nombre, 
+            COUNT(c.id)::int AS total_consumibles
+        FROM categoria_consumible cc
+        LEFT JOIN consumible c ON cc.id = c.categoria_id
+        GROUP BY cc.id
+        ORDER BY cc.nombre ASC
+    `;
+    const { rows } = await pool.query(query);
+    return rows;
+};
+
+const createCategoriaConsumible = async (nombre) => {
+    const query = `
+        INSERT INTO categoria_consumible (nombre) 
+        VALUES ($1) 
+        RETURNING id, nombre;
+    `;
+    const { rows } = await pool.query(query, [nombre]);
+    return rows[0];
+};
+
+// ==========================================
 // MÓDULO: CONSUMIBLES (Inventario a Granel)
 // ==========================================
+const getConsumiblesByCategoria = async (categoria_id) => {
+    const query = `
+        SELECT 
+            c.id, 
+            c.codigo_referencia, 
+            c.nombre, 
+            c.cantidad,
+            c.unidad_medida,
+            c.lote,
+            c.fecha_caducidad,
+            c.categoria_id,
+            cc.nombre AS categoria_nombre
+        FROM consumible c
+        LEFT JOIN categoria_consumible cc ON c.categoria_id = cc.id
+        WHERE c.categoria_id = $1
+        ORDER BY c.nombre ASC
+    `;
+    const { rows } = await pool.query(query, [categoria_id]);
+    return rows;
+};
+
 const getAllConsumibles = async () => {
     const query = `
         SELECT 
@@ -39,8 +88,13 @@ const getAllConsumibles = async () => {
             c.codigo_referencia, 
             c.nombre, 
             c.cantidad,
-            c.unidad_medida
+            c.unidad_medida,
+            c.lote,
+            c.fecha_caducidad,
+            c.categoria_id,
+            cc.nombre AS categoria_nombre
         FROM consumible c
+        LEFT JOIN categoria_consumible cc ON c.categoria_id = cc.id
         ORDER BY c.nombre ASC
     `;
     const { rows } = await pool.query(query);
@@ -48,17 +102,26 @@ const getAllConsumibles = async () => {
 };
 
 const createConsumible = async (data) => {
-    const { codigo_referencia, nombre, unidad_medida, cantidad } = data;
+    const { codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id } = data;
     const query = `
-        INSERT INTO consumible (codigo_referencia, nombre, unidad_medida, cantidad) 
-        VALUES ($1, $2, $3, $4) 
+        INSERT INTO consumible (codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7) 
         RETURNING *;
     `;
-    const { rows } = await pool.query(query, [codigo_referencia, nombre, unidad_medida || null, cantidad || 0]);
+    const values = [
+        codigo_referencia, 
+        nombre, 
+        unidad_medida || null, 
+        cantidad || 0,
+        lote || null,
+        fecha_caducidad || null,
+        categoria_id || null
+    ];
+
+    const { rows } = await pool.query(query, values);
     return rows[0];
 };
 
-// Función para sumar (+) o restar (-) stock manualmente al consumible
 const updateStockConsumible = async (id, cantidad_a_sumar) => {
     const query = `
         UPDATE consumible 
@@ -68,6 +131,74 @@ const updateStockConsumible = async (id, cantidad_a_sumar) => {
     `;
     const { rows } = await pool.query(query, [cantidad_a_sumar, id]);
     return rows[0];
+};
+
+// =========================================================================
+// MÓDULO NUEVO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
+// =========================================================================
+const registrarEntradaMasiva = async (datosEntrada, detallesArray, usuarioId) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN'); // Iniciamos la transacción
+
+        // 1. Obtener y formatear el siguiente Folio de la secuencia
+        const resFolio = await client.query("SELECT nextval('entrada_folio_seq') AS num");
+        const numeroSecuencia = resFolio.rows[0].num;
+        const folioEntrada = `ENT-${numeroSecuencia.toString().padStart(5, '0')}`; // Ej: ENT-00001
+
+        // 2. Guardar la Cabecera (El Ticket)
+        const insertCabeceraQuery = `
+            INSERT INTO entrada_almacen (folio, usuario_id, observaciones)
+            VALUES ($1, $2, $3)
+            RETURNING id, folio, fecha_entrada;
+        `;
+        const resCabecera = await client.query(insertCabeceraQuery, [
+            folioEntrada, 
+            usuarioId, 
+            datosEntrada.observaciones || null
+        ]);
+        const nuevaEntrada = resCabecera.rows[0];
+
+        // 3. Guardar el Detalle y Sumar Stock (El carrito)
+        for (let item of detallesArray) {
+            // a) Guardar el registro en el historial de entradas
+            const insertDetalleQuery = `
+                INSERT INTO entrada_detalle (entrada_id, consumible_id, cantidad_ingresada, lote_ingresado, fecha_caducidad_ingresada)
+                VALUES ($1, $2, $3, $4, $5);
+            `;
+            await client.query(insertDetalleQuery, [
+                nuevaEntrada.id,
+                item.consumible_id,
+                item.cantidad,
+                item.lote || null,
+                item.fecha_caducidad || null
+            ]);
+
+            // b) Sumar el stock en la tabla principal de consumibles y actualizar Lote/Caducidad si vienen nuevos
+            const updateStockQuery = `
+                UPDATE consumible
+                SET cantidad = cantidad + $1,
+                    lote = COALESCE($2, lote), 
+                    fecha_caducidad = COALESCE($3, fecha_caducidad)
+                WHERE id = $4;
+            `;
+            await client.query(updateStockQuery, [
+                item.cantidad,
+                item.lote || null,
+                item.fecha_caducidad || null,
+                item.consumible_id
+            ]);
+        }
+
+        await client.query('COMMIT'); // Todo salió bien, guardamos cambios
+        return nuevaEntrada;
+
+    } catch (error) {
+        await client.query('ROLLBACK'); // Algo falló, cancelamos todo
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 // ==========================================
@@ -161,13 +292,11 @@ const createSet = async (setData) => {
     return rows[0];
 };
 
-// MEJORA PREMIUM: Crear Set y registrar las Piezas "Al Vuelo"
 const createSetConComposicion = async (setData, composicionArray) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN'); 
         
-        // 1. Guardar el encabezado del Set
         const { codigo, descripcion, estado_id, categoria_id } = setData;
         const insertSetQuery = `
             INSERT INTO sets (codigo, descripcion, estado_id, categoria_id) 
@@ -176,10 +305,8 @@ const createSetConComposicion = async (setData, composicionArray) => {
         const resSet = await client.query(insertSetQuery, [codigo, descripcion, estado_id || null, categoria_id || null]);
         const nuevoSet = resSet.rows[0];
 
-        // 2. Guardar/Asignar las piezas escritas a mano
         if (composicionArray && composicionArray.length > 0) {
             for (let item of composicionArray) {
-                // Upsert: Si el código ya existe, lo actualiza con el nuevo texto libre de unidad
                 const upsertPiezaQuery = `
                     INSERT INTO piezas (codigo, descripcion, unidad_medida)
                     VALUES ($1, $2, $3)
@@ -191,7 +318,6 @@ const createSetConComposicion = async (setData, composicionArray) => {
                 const resPieza = await client.query(upsertPiezaQuery, [item.codigo, item.descripcion, item.unidad_medida || null]);
                 const piezaId = resPieza.rows[0].id;
 
-                // Relacionar la pieza con el Set
                 const insertCompQuery = `
                     INSERT INTO set_composicion (set_id, pieza_id, cantidad_pieza, cantidad_consumo) 
                     VALUES ($1, $2, $3, $4);
@@ -262,13 +388,11 @@ const removePiezaFromSet = async (composicion_id) => {
     return rows[0];
 };
 
-// MEJORA PREMIUM: Transacción para Surtir un Set desde Consumibles
 const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         
-        // 1. Restar del inventario de consumibles (Solo si hay suficiente stock)
         const updateConsumibleQuery = `
             UPDATE consumible 
             SET cantidad = cantidad - $1 
@@ -281,7 +405,6 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
             throw new Error('Stock insuficiente en consumibles o el consumible no existe.');
         }
 
-        // 2. Sumarle la cantidad a la pieza dentro del Set
         const updateSetCompQuery = `
             UPDATE set_composicion
             SET cantidad_pieza = cantidad_pieza + $1
@@ -300,9 +423,11 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
     }
 };
 
+// NUEVA EXPORTACIÓN AÑADIDA: registrarEntradaMasiva
 module.exports = {
     getAllCategorias, createCategoria,
-    getAllConsumibles, createConsumible, updateStockConsumible,
+    getAllCategoriasConsumibles, createCategoriaConsumible, 
+    getAllConsumibles, getConsumiblesByCategoria, createConsumible, updateStockConsumible, registrarEntradaMasiva,
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
     getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet

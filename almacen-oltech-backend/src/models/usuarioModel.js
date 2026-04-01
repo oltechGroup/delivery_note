@@ -2,6 +2,18 @@
 const pool = require('../config/database');
 
 /**
+ * Función de limpieza interna para corregir errores de codificación
+ * que vienen desde la base de datos de PostgreSQL en Windows.
+ */
+const limpiarRol = (nombreRol) => {
+    if (!nombreRol) return '';
+    return nombreRol
+        .replace(/‚/g, 'é') // Corrige Biom‚dicos -> Biomédicos
+        .replace(/ß/g, 'á') // Corrige AlmacÚn o similares si aparecen
+        .trim(); // Quita espacios vacíos al principio o al final por si acaso
+};
+
+/**
  * Busca un usuario por su nombre de usuario (user_name)
  * Hace un JOIN con roles y estado_usuario para traer la información completa
  */
@@ -24,9 +36,16 @@ const findByUserName = async (userName) => {
         WHERE u.user_name = $1
     `;
     
-    // El $1 se reemplaza de forma segura por userName para evitar inyecciones SQL
     const { rows } = await pool.query(query, [userName]);
-    return rows[0]; // Retorna el usuario si lo encuentra, o undefined si no existe
+    
+    const usuario = rows[0];
+    
+    // Si encontramos al usuario, le limpiamos el nombre del rol ANTES de mandarlo al Controller
+    if (usuario) {
+        usuario.rol_nombre = limpiarRol(usuario.rol_nombre);
+    }
+    
+    return usuario;
 };
 
 /**
@@ -69,7 +88,16 @@ const getAllUsers = async () => {
     `;
     
     const { rows } = await pool.query(query);
-    return rows;
+
+    // Limpiamos el rol de todos los usuarios de la lista antes de mandarlos al Frontend
+    const usuariosLimpios = rows.map(user => {
+        return {
+            ...user,
+            rol_nombre: limpiarRol(user.rol_nombre)
+        };
+    });
+
+    return usuariosLimpios;
 };
 
 /**

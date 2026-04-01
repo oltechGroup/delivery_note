@@ -1,20 +1,27 @@
 // almacen-oltech-frontend/src/components/remisiones/VistaRemisiones.jsx
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // <-- NUEVO: Para navegar a la página completa
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import Buscador from '../almacen/Buscador';
-import ModalNuevaRemision from './ModalNuevaRemision';
 import ModalContestarRemision from './ModalContestarRemision';
+import PDFRemisionSoloLectura from './PDFRemisionSoloLectura'; 
 
 function VistaRemisiones() {
-  const { token, usuario } = useAuth();
+  const { token } = useAuth();
+  const navigate = useNavigate(); // <-- NUEVO
+  
   const [remisiones, setRemisiones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [busqueda, setBusqueda] = useState('');
-  const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
+  
   const [modalConciliarAbierto, setModalConciliarAbierto] = useState(false);
-const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
+  const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
+
+  // NUEVO: Estados para la reimpresión
+  const [pdfAbierto, setPdfAbierto] = useState(false);
+  const [remisionParaImprimir, setRemisionParaImprimir] = useState(null);
 
   // Cargar todas las remisiones desde el backend
   const cargarRemisiones = async () => {
@@ -50,13 +57,13 @@ const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
     if (!nombreEstado) return 'bg-gray-100 text-gray-700 border-gray-200';
     const estado = nombreEstado.toLowerCase();
     if (estado.includes('proceso') || estado.includes('calle') || estado.includes('pendiente')) {
-      return 'bg-amber-50 text-amber-700 border-amber-200'; // Amarillo/Naranja para las que no han regresado
+      return 'bg-amber-50 text-amber-700 border-amber-200'; 
     }
     if (estado.includes('completad') || estado.includes('cerrad')) {
-      return 'bg-green-50 text-green-700 border-green-200'; // Verde para las ya conciliadas
+      return 'bg-green-50 text-green-700 border-green-200'; 
     }
     if (estado.includes('cancelad')) {
-      return 'bg-red-50 text-red-700 border-red-200'; // Rojo para las canceladas
+      return 'bg-red-50 text-red-700 border-red-200'; 
     }
     return 'bg-blue-50 text-oltech-blue border-blue-200';
   };
@@ -66,6 +73,12 @@ const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
     if (!fechaString) return 'Sin fecha';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric' };
     return new Date(fechaString).toLocaleDateString('es-MX', opciones).toUpperCase();
+  };
+
+  // NUEVO: Función para preparar la impresión
+  const handleAbrirImpresion = (remision) => {
+    setRemisionParaImprimir(remision);
+    setPdfAbierto(true);
   };
 
   return (
@@ -90,7 +103,8 @@ const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
             placeholder="Buscar solicitud, paciente, hospital..." 
           />
           <button 
-            onClick={() => setModalNuevoAbierto(true)}
+            // NUEVO: Ahora navegamos a la página completa en lugar de abrir el modal
+            onClick={() => navigate('/nueva-remision')}
             className="w-full sm:w-auto bg-oltech-pink text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-pink-700 transition-colors shadow-md flex items-center justify-center space-x-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -118,83 +132,106 @@ const [remisionAConciliarId, setRemisionAConciliarId] = useState(null);
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {remisionesFiltradas.map((rem) => (
-            <div key={rem.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
-              
-              {/* Cabecera de la Tarjeta */}
-              <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
-                <div>
-                  <span className="inline-block px-2.5 py-1 bg-oltech-black text-white text-xs font-bold rounded shadow-sm tracking-wide">
-                    {rem.no_solicitud || `PENDIENTE-${rem.id}`}
-                  </span>
-                  <div className="text-xs text-gray-500 mt-2 font-medium flex items-center">
-                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    CX: <span className="ml-1 text-gray-700 font-bold">{formatearFecha(rem.fecha_cirugia)}</span>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${getColorEstado(rem.estado_nombre)} text-center text-wrap w-24 leading-tight`}>
-                  {rem.estado_nombre || 'Desconocido'}
-                </span>
-              </div>
-
-              {/* Cuerpo de la Tarjeta */}
-              <div className="p-5 flex-1 space-y-4">
+          {remisionesFiltradas.map((rem) => {
+            // Evaluamos el estado para los botones
+            const estaCompletada = rem.estado_nombre?.toLowerCase().includes('completad') || rem.estado_nombre?.toLowerCase().includes('cerrad');
+            
+            return (
+              <div key={rem.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
                 
-                {/* Paciente y Procedimiento */}
-                <div>
-                  <p className="text-xs font-bold text-gray-400 uppercase mb-0.5">Paciente</p>
-                  <p className="text-sm font-bold text-gray-800 line-clamp-1">{rem.paciente || 'Sin registro'}</p>
-                  <p className="text-xs font-medium text-oltech-pink mt-1 line-clamp-1">{rem.procedimiento_nombre || 'Procedimiento no especificado'}</p>
+                {/* Cabecera de la Tarjeta */}
+                <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
+                  <div>
+                    <span className="inline-block px-2.5 py-1 bg-oltech-black text-white text-xs font-bold rounded shadow-sm tracking-wide">
+                      {rem.no_solicitud || `PENDIENTE-${rem.id}`}
+                    </span>
+                    <div className="text-xs text-gray-500 mt-2 font-medium flex items-center">
+                      <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                      CX: <span className="ml-1 text-gray-700 font-bold">{formatearFecha(rem.fecha_cirugia)}</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${getColorEstado(rem.estado_nombre)} text-center text-wrap w-24 leading-tight`}>
+                    {rem.estado_nombre || 'Desconocido'}
+                  </span>
                 </div>
 
-                {/* Hospital y Médico */}
-                <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                {/* Cuerpo de la Tarjeta */}
+                <div className="p-5 flex-1 space-y-4">
                   <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Hospital</p>
-                    <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.unidad_medica_nombre || 'N/A'}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase mb-0.5">Paciente</p>
+                    <p className="text-sm font-bold text-gray-800 line-clamp-1">{rem.paciente || 'Sin registro'}</p>
+                    <p className="text-xs font-medium text-oltech-pink mt-1 line-clamp-1">{rem.procedimiento_nombre || 'Procedimiento no especificado'}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Médico</p>
-                    <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.medico_nombre || 'N/A'}</p>
+
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Hospital</p>
+                      <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.unidad_medica_nombre || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Médico</p>
+                      <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.medico_nombre || 'N/A'}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Pie de la Tarjeta (Botón de Acción) */}
-              <div className="p-4 bg-gray-50 border-t border-gray-100 shrink-0">
-              <button 
-               onClick={() => {
-                 setRemisionAConciliarId(rem.id);
-                 setModalConciliarAbierto(true);
-               }}
-               className="w-full py-2 bg-white border border-gray-200 text-oltech-blue font-bold text-sm rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors flex justify-center items-center space-x-2"
-             >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                  <span>Ver / Conciliar</span>
-                </button>
-              </div>
+                {/* Pie de la Tarjeta (Botones de Acción Modificados) */}
+                <div className="p-4 bg-gray-50 border-t border-gray-100 shrink-0 flex space-x-2">
+                  
+                  {/* Botón Principal: Ver / Conciliar */}
+                  <button 
+                    onClick={() => {
+                      setRemisionAConciliarId(rem.id);
+                      setModalConciliarAbierto(true);
+                    }}
+                    className="flex-1 py-2 bg-white border border-gray-200 text-oltech-blue font-bold text-sm rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors flex justify-center items-center space-x-1.5 shadow-sm"
+                  >
+                    {estaCompletada ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                    )}
+                    <span>{estaCompletada ? 'Ver Resumen' : 'Conciliar'}</span>
+                  </button>
 
-            </div>
-          ))}
+                  {/* NUEVO: Botón Secundario: Imprimir */}
+                  <button 
+                    onClick={() => handleAbrirImpresion(rem)}
+                    className="px-3 py-2 bg-white border border-gray-200 text-gray-500 hover:text-oltech-black rounded-lg hover:bg-gray-100 transition-colors flex justify-center items-center shadow-sm"
+                    title={estaCompletada ? "Imprimir Formato con Consumos" : "Reimprimir Formato de Salida"}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                  </button>
+
+                </div>
+
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* MODAL PARA CREAR REMISIÓN */}
-      <ModalNuevaRemision 
-        isOpen={modalNuevoAbierto} 
-        onClose={() => setModalNuevoAbierto(false)} 
-        onGuardado={cargarRemisiones} 
+      {/* MODAL DE CONCILIACIÓN */}
+      <ModalContestarRemision 
+        isOpen={modalConciliarAbierto}
+        onClose={() => {
+          setModalConciliarAbierto(false);
+          setRemisionAConciliarId(null);
+        }}
+        remisionId={remisionAConciliarId}
+        onGuardado={cargarRemisiones}
       />
 
-      <ModalContestarRemision 
-     isOpen={modalConciliarAbierto}
-     onClose={() => {
-       setModalConciliarAbierto(false);
-       setRemisionAConciliarId(null);
-     }}
-     remisionId={remisionAConciliarId}
-     onGuardado={cargarRemisiones}
-   />
+      {/* NUEVO: MODAL DE REIMPRESIÓN */}
+      {pdfAbierto && remisionParaImprimir && (
+        <PDFRemisionSoloLectura
+          remisionMaestra={remisionParaImprimir}
+          onClose={() => {
+            setPdfAbierto(false);
+            setRemisionParaImprimir(null);
+          }}
+        />
+      )}
 
     </div>
   );

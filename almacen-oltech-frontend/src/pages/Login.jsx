@@ -88,7 +88,7 @@ function Login() {
               <input
                 type="text" required disabled={cargando}
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink focus:border-oltech-pink outline-none transition-all disabled:bg-gray-100"
-                placeholder="Ej. Aaron-Sistemas"
+                placeholder="   "
                 value={userName} onChange={(e) => setUserName(e.target.value)}
               />
             </div>

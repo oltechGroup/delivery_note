@@ -1,6 +1,6 @@
 // almacen-oltech-backend/src/controllers/usuariosController.js
 const usuarioModel = require('../models/usuarioModel');
-const { hashPassword } = require('../utils/encrypter');
+const { hashPassword, comparePassword } = require('../utils/encrypter'); // NUEVO: Importamos comparePassword
 
 /**
  * Obtiene la lista de todos los usuarios para llenar la tabla en React
@@ -20,32 +20,26 @@ const obtenerUsuarios = async (req, res) => {
  */
 const crearUsuario = async (req, res) => {
     try {
-        // Recibimos los datos que React nos mandará desde el formulario
         const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id } = req.body;
 
-        // 1. Validar que no nos manden campos vacíos
         if (!nombre || !apellido_p || !user_name || !contrasena || !rol_id || !estado_usuario_id) {
             return res.status(400).json({ mensaje: 'Todos los campos obligatorios deben estar llenos.' });
         }
 
-        // 2. Encriptar la contraseña que escribiste en el formulario ANTES de guardarla
         const contrasenaHash = await hashPassword(contrasena);
 
-        // 3. Preparar el paquete de datos
         const nuevoUsuarioData = {
             nombre,
             apellido_p,
-            apellido_m, // Puede venir vacío si no tiene segundo apellido
+            apellido_m,
             user_name,
             contrasena: contrasenaHash,
             rol_id,
             estado_usuario_id
         };
 
-        // 4. Mandar a guardar a PostgreSQL
         const usuarioCreado = await usuarioModel.createUser(nuevoUsuarioData);
 
-        // 5. Avisarle a React que todo salió bien
         res.status(201).json({
             mensaje: 'Usuario creado exitosamente',
             usuario: usuarioCreado
@@ -53,12 +47,9 @@ const crearUsuario = async (req, res) => {
 
     } catch (error) {
         console.error('Error al crear usuario:', error);
-        
-        // Código 23505 en Postgres significa "Violación de llave única" (El user_name ya existe)
         if (error.code === '23505') {
             return res.status(400).json({ mensaje: 'El nombre de usuario ya existe. Por favor elige otro.' });
         }
-        
         res.status(500).json({ mensaje: 'Error interno al crear el usuario.' });
     }
 };
@@ -68,7 +59,7 @@ const crearUsuario = async (req, res) => {
  */
 const actualizarUsuario = async (req, res) => {
     try {
-        const { id } = req.params; // El ID vendrá en la URL (ej. /api/usuarios/5)
+        const { id } = req.params;
         const { nombre, apellido_p, apellido_m, user_name, rol_id } = req.body;
 
         if (!nombre || !apellido_p || !user_name || !rol_id) {
@@ -124,7 +115,7 @@ const cambiarEstado = async (req, res) => {
 };
 
 /**
- * Restablece la contraseña de un usuario por una nueva
+ * Restablece la contraseña de un usuario por una nueva (Usado por Sistemas)
  */
 const restablecerContrasena = async (req, res) => {
     try {
@@ -135,9 +126,7 @@ const restablecerContrasena = async (req, res) => {
             return res.status(400).json({ mensaje: 'La nueva contraseña es requerida.' });
         }
 
-        // Encriptamos la nueva contraseña antes de guardarla
         const contrasenaHash = await hashPassword(nueva_contrasena);
-
         const usuarioActualizado = await usuarioModel.updatePassword(id, contrasenaHash);
 
         if (!usuarioActualizado) {
@@ -154,10 +143,59 @@ const restablecerContrasena = async (req, res) => {
     }
 };
 
+/**
+ * NUEVO: Permite a un usuario cambiar su propia contraseña verificando la actual
+ */
+const cambiarMiContrasena = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { contrasena_actual, nueva_contrasena } = req.body;
+
+        // 1. Validar que vengan ambos datos
+        if (!contrasena_actual || !nueva_contrasena) {
+            return res.status(400).json({ mensaje: 'Debes enviar la contraseña actual y la nueva.' });
+        }
+
+        // Seguridad: Asegurarse de que el usuario logueado solo cambie SU propia contraseña
+        if (req.usuario.id !== parseInt(id)) {
+            return res.status(403).json({ mensaje: 'No tienes permiso para cambiar la contraseña de otro usuario.' });
+        }
+
+        // 2. Buscar al usuario en la BD para obtener su contraseña encriptada actual
+        // Reutilizamos el user_name que viene en el token (req.usuario.user_name)
+        const usuarioBd = await usuarioModel.findByUserName(req.usuario.user_name);
+        
+        if (!usuarioBd) {
+            return res.status(404).json({ mensaje: 'Usuario no encontrado en la base de datos.' });
+        }
+
+        // 3. Comparar la contraseña actual ingresada con la guardada
+        const isMatch = await comparePassword(contrasena_actual, usuarioBd.contrasena);
+        if (!isMatch) {
+            return res.status(401).json({ mensaje: 'La contraseña actual es incorrecta.' });
+        }
+
+        // 4. Si todo está bien, encriptar la nueva y guardarla
+        const nuevaContrasenaHash = await hashPassword(nueva_contrasena);
+        const usuarioActualizado = await usuarioModel.updatePassword(id, nuevaContrasenaHash);
+
+        res.json({
+            mensaje: 'Contraseña actualizada exitosamente.',
+            usuario: usuarioActualizado
+        });
+
+    } catch (error) {
+        console.error('Error al cambiar la propia contraseña:', error);
+        res.status(500).json({ mensaje: 'Error interno al procesar el cambio de contraseña.' });
+    }
+};
+
+
 module.exports = {
     obtenerUsuarios,
     crearUsuario,
     actualizarUsuario,
     cambiarEstado,
-    restablecerContrasena
+    restablecerContrasena,
+    cambiarMiContrasena // Exportamos la nueva función
 };

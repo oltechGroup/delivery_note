@@ -9,24 +9,40 @@ const almacenController = require('../controllers/almacenController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
-// MEJORA: Agregamos el nuevo rol 'Encargado de almacén' a los permisos
-const rolesLectura = ['Sistemas', 'Almacen', 'Operaciones', 'Encargado de almacén'];
-const rolesEscritura = ['Sistemas', 'Almacen', 'Operaciones','Encargado de almacén'];
+// MEJORA Y CORRECCIÓN: Agregamos 'Biomédicos' (con acento, como está en la BD)
+// para que puedan acceder al inventario y a la lógica de surtido
+const rolesLectura = ['Sistemas', 'Almacén', 'Operaciones', 'Encargado de almacén', 'Biomédicos'];
+const rolesEscritura = ['Sistemas', 'Almacén', 'Operaciones', 'Encargado de almacén', 'Biomédicos'];
 
 // ==========================================
-// RUTAS: CATEGORÍAS
+// RUTAS: CATEGORÍAS (Para Sets)
 // ==========================================
 router.get('/categorias', verificarToken, checkRole(rolesLectura), almacenController.obtenerCategorias);
 router.post('/categorias', verificarToken, checkRole(rolesEscritura), almacenController.crearCategoria);
 router.get('/categorias/:categoria_id/sets', verificarToken, checkRole(rolesLectura), almacenController.obtenerSetsPorCategoria);
 
 // ==========================================
+// RUTAS: CATEGORÍAS DE CONSUMIBLES (NUEVO)
+// ==========================================
+router.get('/categorias-consumibles', verificarToken, checkRole(rolesLectura), almacenController.obtenerCategoriasConsumibles);
+router.post('/categorias-consumibles', verificarToken, checkRole(rolesEscritura), almacenController.crearCategoriaConsumible);
+
+// ==========================================
 // RUTAS: CONSUMIBLES (Inventario de Insumos)
 // ==========================================
+// Esta ruta ahora soporta filtrado dinámico mediante query param: ?categoria_id=X
 router.get('/consumibles', verificarToken, checkRole(rolesLectura), almacenController.obtenerConsumibles);
 router.post('/consumibles', verificarToken, checkRole(rolesEscritura), almacenController.crearConsumible);
 // Usamos PATCH porque solo actualizamos el número de stock (+ o -), no todo el registro
 router.patch('/consumibles/:id/stock', verificarToken, checkRole(rolesEscritura), almacenController.modificarStockConsumible);
+
+// =========================================================================
+// MÓDULO NUEVO: ENTRADAS MASIVAS DE ALMACÉN (INBOUND)
+// =========================================================================
+// Ruta para registrar una entrada masiva de mercancía (El carrito)
+router.post('/entradas', verificarToken, checkRole(rolesEscritura), almacenController.registrarEntrada);
+// Ruta para consultar el historial de folios ingresados (Auditoría)
+router.get('/entradas/historial', verificarToken, checkRole(rolesLectura), almacenController.obtenerHistorialEntradas);
 
 // ==========================================
 // RUTAS: PIEZAS

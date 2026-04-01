@@ -9,45 +9,45 @@ const catalogosController = require('../controllers/catalogosController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
-// Definimos los roles que tienen permiso para gestionar catálogos
-const rolesPermitidos = ['Sistemas', 'Operaciones'];
+// SEPARAMOS LOS PERMISOS PARA EVITAR QUE SE ROMPAN LOS SELECTORES DE REMISIONES
+// Los que pueden ver las listas (Lectura)
+const rolesLectura = ['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén'];
+// Los que pueden modificar los catálogos (Escritura)
+const rolesEscritura = ['Sistemas', 'Operaciones'];
 
 // ==========================================
 // RUTAS: UNIDADES MÉDICAS
 // ==========================================
 
-// Obtener todas las unidades médicas
-router.get('/unidades', verificarToken, checkRole(rolesPermitidos), catalogosController.obtenerUnidades);
+// Obtener todas las unidades médicas (LECTURA)
+router.get('/unidades', verificarToken, checkRole(rolesLectura), catalogosController.obtenerUnidades);
 
-// Crear una nueva unidad médica
-router.post('/unidades', verificarToken, checkRole(rolesPermitidos), catalogosController.crearUnidad);
-
-// Actualizar una unidad médica existente
-router.put('/unidades/:id', verificarToken, checkRole(rolesPermitidos), catalogosController.actualizarUnidad);
+// Crear o actualizar una unidad médica (ESCRITURA)
+router.post('/unidades', verificarToken, checkRole(rolesEscritura), catalogosController.crearUnidad);
+router.put('/unidades/:id', verificarToken, checkRole(rolesEscritura), catalogosController.actualizarUnidad);
 
 
 // ==========================================
 // RUTAS: MÉDICOS
 // ==========================================
 
-// Obtener todos los médicos
-router.get('/medicos', verificarToken, checkRole(rolesPermitidos), catalogosController.obtenerMedicos);
+// Obtener todos los médicos y filtrados (LECTURA)
+router.get('/medicos', verificarToken, checkRole(rolesLectura), catalogosController.obtenerMedicos);
+router.get('/medicos/unidad/:unidad_medica_id', verificarToken, checkRole(rolesLectura), catalogosController.obtenerMedicosPorUnidad);
 
-// Obtener médicos filtrados por una unidad médica específica (¡Clave para los selectores de React!)
-router.get('/medicos/unidad/:unidad_medica_id', verificarToken, checkRole(rolesPermitidos), catalogosController.obtenerMedicosPorUnidad);
-
-// Crear un nuevo médico
-router.post('/medicos', verificarToken, checkRole(rolesPermitidos), catalogosController.crearMedico);
-
-// Actualizar un médico existente
-router.put('/medicos/:id', verificarToken, checkRole(rolesPermitidos), catalogosController.actualizarMedico);
+// Crear o actualizar un médico (ESCRITURA)
+router.post('/medicos', verificarToken, checkRole(rolesEscritura), catalogosController.crearMedico);
+router.put('/medicos/:id', verificarToken, checkRole(rolesEscritura), catalogosController.actualizarMedico);
 
 // ==========================================
 // RUTAS: PROCEDIMIENTOS
 // ==========================================
 
-router.get('/procedimientos', verificarToken, checkRole(rolesPermitidos), catalogosController.obtenerProcedimientos);
-router.post('/procedimientos', verificarToken, checkRole(rolesPermitidos), catalogosController.crearProcedimiento);
-router.put('/procedimientos/:id', verificarToken, checkRole(rolesPermitidos), catalogosController.actualizarProcedimiento);
+// Obtener procedimientos (LECTURA)
+router.get('/procedimientos', verificarToken, checkRole(rolesLectura), catalogosController.obtenerProcedimientos);
+
+// Crear o actualizar procedimientos (ESCRITURA)
+router.post('/procedimientos', verificarToken, checkRole(rolesEscritura), catalogosController.crearProcedimiento);
+router.put('/procedimientos/:id', verificarToken, checkRole(rolesEscritura), catalogosController.actualizarProcedimiento);
 
 module.exports = router;

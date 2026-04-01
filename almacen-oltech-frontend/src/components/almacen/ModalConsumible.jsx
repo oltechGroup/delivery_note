@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
-function ModalConsumible({ isOpen, onClose, onGuardado }) {
+function ModalConsumible({ isOpen, onClose, onGuardado, categoriaId }) { 
   const { token } = useAuth();
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
@@ -11,18 +11,33 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
   // Lista de sugerencias para la unidad de medida (Texto Libre)
   const sugerenciasUnidad = ['PIEZA', 'HOLE', 'MM', 'Ф', 'PAR', 'CAJA'];
 
-  // Estado del formulario (Ahora usamos unidad_medida como texto)
+  // NUEVO: Estados independientes para Lote y Caducidad
+  const [incluirLote, setIncluirLote] = useState(false);
+  const [incluirCaducidad, setIncluirCaducidad] = useState(false);
+
+  // Estado del formulario ampliado
   const [formData, setFormData] = useState({
     codigo_referencia: '',
     nombre: '',
-    unidad_medida: 'PIEZA', // Valor por defecto
-    cantidad: 0
+    unidad_medida: 'PIEZA', 
+    cantidad: 0,
+    lote: '',
+    fecha_caducidad: ''
   });
 
   useEffect(() => {
     if (isOpen) {
-      // Limpiamos el formulario al abrir
-      setFormData({ codigo_referencia: '', nombre: '', unidad_medida: 'PIEZA', cantidad: 0 });
+      // Limpiamos todo al abrir
+      setFormData({ 
+        codigo_referencia: '', 
+        nombre: '', 
+        unidad_medida: 'PIEZA', 
+        cantidad: 0,
+        lote: '',
+        fecha_caducidad: ''
+      });
+      setIncluirLote(false);
+      setIncluirCaducidad(false);
       setError('');
     }
   }, [isOpen]);
@@ -40,6 +55,18 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
       return;
     }
 
+    // Validar Lote si está activado
+    if (incluirLote && !formData.lote.trim()) {
+      setError('Debes ingresar el Lote.');
+      return;
+    }
+
+    // Validar Caducidad si está activada
+    if (incluirCaducidad && !formData.fecha_caducidad) {
+      setError('Debes ingresar la Fecha de Caducidad.');
+      return;
+    }
+
     setError('');
     setCargando(true);
 
@@ -47,12 +74,16 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
       await axios.post('http://localhost:4000/api/almacen/consumibles', {
         codigo_referencia: formData.codigo_referencia.toUpperCase(),
         nombre: formData.nombre.toUpperCase(),
-        unidad_medida: formData.unidad_medida.toUpperCase(), // Se manda como texto puro
-        cantidad: parseInt(formData.cantidad)
+        unidad_medida: formData.unidad_medida.toUpperCase(),
+        cantidad: parseInt(formData.cantidad),
+        // Mandamos los valores condicionalmente
+        lote: incluirLote ? formData.lote.toUpperCase() : null,
+        fecha_caducidad: incluirCaducidad ? formData.fecha_caducidad : null,
+        categoria_id: categoriaId 
       }, { headers: { Authorization: `Bearer ${token}` } });
       
-      onGuardado(); // Le avisa a la tabla que recargue
-      onClose();    // Cierra el modal
+      onGuardado(); 
+      onClose();    
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al registrar el insumo.');
     } finally {
@@ -61,13 +92,13 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 my-auto">
         
         {/* Encabezado */}
         <div className="bg-oltech-black px-6 py-4 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-bold text-white">Nuevo Insumo / Consumible</h2>
+            <h2 className="text-xl font-bold text-white">Nuevo Insumo</h2>
             <p className="text-oltech-pink text-sm font-medium">Registro de stock a granel</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
@@ -107,7 +138,6 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-1">Unidad de Medida *</label>
-              {/* INPUT CON DATALIST (Magia del Texto Libre + Sugerencias) */}
               <input 
                 type="text" 
                 name="unidad_medida" 
@@ -133,6 +163,59 @@ function ModalConsumible({ isOpen, onClose, onGuardado }) {
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-center font-bold text-lg" 
               />
             </div>
+          </div>
+
+          {/* SECCIÓN CHECKBOXES INDEPENDIENTES */}
+          <div className="border-t border-gray-200 pt-4 mt-2">
+            <div className="flex flex-col space-y-2">
+              <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200">
+                <input 
+                  type="checkbox" 
+                  checked={incluirLote}
+                  onChange={(e) => setIncluirLote(e.target.checked)}
+                  className="w-5 h-5 text-oltech-pink bg-gray-100 border-gray-300 rounded focus:ring-oltech-pink"
+                />
+                <span className="text-sm font-bold text-gray-700">¿Requiere Lote?</span>
+              </label>
+
+              <label className="flex items-center space-x-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200">
+                <input 
+                  type="checkbox" 
+                  checked={incluirCaducidad}
+                  onChange={(e) => setIncluirCaducidad(e.target.checked)}
+                  className="w-5 h-5 text-oltech-pink bg-gray-100 border-gray-300 rounded focus:ring-oltech-pink"
+                />
+                <span className="text-sm font-bold text-gray-700">¿Requiere Fecha de Caducidad?</span>
+              </label>
+            </div>
+
+            {/* Campos condicionales */}
+            {(incluirLote || incluirCaducidad) && (
+              <div className="grid grid-cols-2 gap-4 mt-4 bg-pink-50/50 p-4 rounded-lg border border-pink-100 animate-in fade-in slide-in-from-top-2">
+                {incluirLote && (
+                  <div className={!incluirCaducidad ? "col-span-2" : ""}>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Lote *</label>
+                    <input 
+                      type="text" name="lote" required={incluirLote}
+                      value={formData.lote} onChange={handleChange}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none uppercase font-mono text-sm" 
+                      placeholder="Ej. L-102938" 
+                    />
+                  </div>
+                )}
+                
+                {incluirCaducidad && (
+                  <div className={!incluirLote ? "col-span-2" : ""}>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Fecha de Caducidad *</label>
+                    <input 
+                      type="date" name="fecha_caducidad" required={incluirCaducidad}
+                      value={formData.fecha_caducidad} onChange={handleChange}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-sm text-gray-700" 
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Botones */}

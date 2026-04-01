@@ -26,8 +26,6 @@ const createProcedimiento = async (nombre) => {
 // ==========================================
 
 const getAllRemisiones = async () => {
-    // Hacemos JOIN con todas las tablas relacionadas para que el frontend 
-    // reciba nombres y no solo números de ID
     const query = `
         SELECT 
             r.id, 
@@ -35,6 +33,7 @@ const getAllRemisiones = async () => {
             r.fecha_creacion, 
             r.fecha_cirugia, 
             r.paciente, 
+            r.cliente, -- NUEVO: Campo cliente
             r.procedimiento_id,
             p.nombre AS procedimiento_nombre,
             r.medico_id,
@@ -42,14 +41,18 @@ const getAllRemisiones = async () => {
             r.unidad_medica_id,
             um.nombre AS unidad_medica_nombre,
             r.usuario_creador_id,
-            u.nombre AS creador_nombre,
+            CONCAT_WS(' ', u.nombre, u.apellido_p, u.apellido_m) AS creador_nombre,
             r.estado_remision_id,
-            er.nombre AS estado_nombre
+            er.nombre AS estado_nombre,
+            r.usuario_conciliador_id,
+            CONCAT_WS(' ', uc.nombre, uc.apellido_p, uc.apellido_m) AS conciliador_nombre,
+            r.fecha_conciliacion
         FROM remision r
         LEFT JOIN procedimiento p ON r.procedimiento_id = p.id
         LEFT JOIN medicos m ON r.medico_id = m.id
         LEFT JOIN unidad_medica um ON r.unidad_medica_id = um.id
         LEFT JOIN usuarios u ON r.usuario_creador_id = u.id
+        LEFT JOIN usuarios uc ON r.usuario_conciliador_id = uc.id
         LEFT JOIN estado_remision er ON r.estado_remision_id = er.id
         ORDER BY r.fecha_creacion DESC
     `;
@@ -64,13 +67,15 @@ const getRemisionById = async (id) => {
             p.nombre AS procedimiento_nombre,
             m.nombre_completo AS medico_nombre,
             um.nombre AS unidad_medica_nombre,
-            u.nombre AS creador_nombre,
+            CONCAT_WS(' ', u.nombre, u.apellido_p, u.apellido_m) AS creador_nombre,
+            CONCAT_WS(' ', uc.nombre, uc.apellido_p, uc.apellido_m) AS conciliador_nombre,
             er.nombre AS estado_nombre
         FROM remision r
         LEFT JOIN procedimiento p ON r.procedimiento_id = p.id
         LEFT JOIN medicos m ON r.medico_id = m.id
         LEFT JOIN unidad_medica um ON r.unidad_medica_id = um.id
         LEFT JOIN usuarios u ON r.usuario_creador_id = u.id
+        LEFT JOIN usuarios uc ON r.usuario_conciliador_id = uc.id
         LEFT JOIN estado_remision er ON r.estado_remision_id = er.id
         WHERE r.id = $1
     `;
@@ -79,10 +84,12 @@ const getRemisionById = async (id) => {
 };
 
 const createRemision = async (remisionData) => {
+    // MODIFICADO: Añadido 'cliente' a la desestructuración
     const { 
         no_solicitud, 
         fecha_cirugia, 
         paciente, 
+        cliente, 
         procedimiento_id, 
         medico_id, 
         unidad_medica_id, 
@@ -90,23 +97,25 @@ const createRemision = async (remisionData) => {
         estado_remision_id 
     } = remisionData;
 
+    // MODIFICADO: Añadido 'cliente' a la consulta INSERT
     const query = `
         INSERT INTO remision 
-        (no_solicitud, fecha_cirugia, paciente, procedimiento_id, medico_id, unidad_medica_id, usuario_creador_id, estado_remision_id) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        (no_solicitud, fecha_cirugia, paciente, cliente, procedimiento_id, medico_id, unidad_medica_id, usuario_creador_id, estado_remision_id) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
         RETURNING *;
     `;
     
-    // Permitimos que algunos campos vayan null si aún no se tienen los datos completos
+    // MODIFICADO: Añadido 'cliente' a los valores a insertar
     const values = [
         no_solicitud || null, 
         fecha_cirugia || null, 
         paciente || null, 
+        cliente || null,
         procedimiento_id || null, 
         medico_id || null, 
         unidad_medica_id || null, 
         usuario_creador_id, 
-        estado_remision_id || 1 // Por defecto asignamos 1 ("En proceso")
+        estado_remision_id || 1
     ];
     
     const { rows } = await pool.query(query, values);
@@ -144,35 +153,47 @@ const getDetallesByRemision = async (remision_id) => {
             c.nombre AS consumible_nombre,
             rd.cantidad_despachada,
             rd.cantidad_consumo,
-            rd.cantidad_retorno
+            rd.cantidad_retorno,
+            rd.lote,
+            rd.fecha_caducidad,
+            rd.orden,
+            rd.es_total,
+            rd.descripcion_custom
         FROM remision_detalle rd
         LEFT JOIN sets s ON rd.set_id = s.id
         LEFT JOIN piezas p ON rd.pieza_id = p.id
         LEFT JOIN consumible c ON rd.consumible_id = c.id
         WHERE rd.remision_id = $1
-        ORDER BY rd.id ASC
+        ORDER BY rd.orden ASC
     `;
     const { rows } = await pool.query(query, [remision_id]);
     return rows;
 };
 
 const addDetalleRemision = async (detalleData) => {
-    // Añadimos consumible_id a los parámetros
-    const { remision_id, set_id, pieza_id, consumible_id, cantidad_despachada } = detalleData;
+    const { 
+        remision_id, set_id, pieza_id, consumible_id, cantidad_despachada, 
+        lote, fecha_caducidad, orden, es_total, descripcion_custom 
+    } = detalleData;
+    
     const query = `
         INSERT INTO remision_detalle 
-        (remision_id, set_id, pieza_id, consumible_id, cantidad_despachada) 
-        VALUES ($1, $2, $3, $4, $5) 
+        (remision_id, set_id, pieza_id, consumible_id, cantidad_despachada, lote, fecha_caducidad, orden, es_total, descripcion_custom) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
         RETURNING *;
     `;
     
-    // Puede ser un Set, una Pieza o un Consumible
     const values = [
         remision_id, 
         set_id || null, 
         pieza_id || null, 
         consumible_id || null,
-        cantidad_despachada
+        cantidad_despachada || 0,
+        lote || null,
+        fecha_caducidad || null,
+        orden || 0,
+        es_total || false,
+        descripcion_custom || null
     ];
     
     const { rows } = await pool.query(query, values);

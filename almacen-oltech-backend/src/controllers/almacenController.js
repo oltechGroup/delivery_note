@@ -2,7 +2,7 @@
 const almacenModel = require('../models/almacenModel');
 
 // ==========================================
-// CONTROLADORES: CATEGORÍAS
+// CONTROLADORES: CATEGORÍAS (Para Sets)
 // ==========================================
 const obtenerCategorias = async (req, res) => {
     try {
@@ -28,11 +28,44 @@ const crearCategoria = async (req, res) => {
 };
 
 // ==========================================
+// CONTROLADORES: CATEGORÍAS DE CONSUMIBLES
+// ==========================================
+const obtenerCategoriasConsumibles = async (req, res) => {
+    try {
+        const categorias = await almacenModel.getAllCategoriasConsumibles();
+        res.json(categorias);
+    } catch (error) {
+        console.error('Error al obtener categorías de consumibles:', error);
+        res.status(500).json({ mensaje: 'Error interno al cargar las categorías de insumos.' });
+    }
+};
+
+const crearCategoriaConsumible = async (req, res) => {
+    try {
+        const { nombre } = req.body;
+        if (!nombre) return res.status(400).json({ mensaje: 'El nombre es obligatorio.' });
+        
+        const nuevaCategoria = await almacenModel.createCategoriaConsumible(nombre);
+        res.status(201).json({ mensaje: 'Categoría registrada.', categoria: nuevaCategoria });
+    } catch (error) {
+        console.error('Error al crear categoría de consumible:', error);
+        res.status(500).json({ mensaje: 'Error interno al registrar.' });
+    }
+};
+
+// ==========================================
 // CONTROLADORES: CONSUMIBLES (Insumos a Granel)
 // ==========================================
 const obtenerConsumibles = async (req, res) => {
     try {
-        const consumibles = await almacenModel.getAllConsumibles();
+        const { categoria_id } = req.query; 
+        
+        let consumibles;
+        if (categoria_id) {
+            consumibles = await almacenModel.getConsumiblesByCategoria(categoria_id);
+        } else {
+            consumibles = await almacenModel.getAllConsumibles();
+        }
         res.json(consumibles);
     } catch (error) {
         console.error('Error al obtener consumibles:', error);
@@ -42,8 +75,8 @@ const obtenerConsumibles = async (req, res) => {
 
 const crearConsumible = async (req, res) => {
     try {
-        // Ahora recibe 'unidad_medida' como texto en lugar del ID
-        const { codigo_referencia, nombre, unidad_medida, cantidad } = req.body;
+        const { codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id } = req.body;
+        
         if (!codigo_referencia || !nombre) {
             return res.status(400).json({ mensaje: 'Código de referencia y nombre son obligatorios.' });
         }
@@ -71,6 +104,63 @@ const modificarStockConsumible = async (req, res) => {
     } catch (error) {
         console.error('Error al modificar stock:', error);
         res.status(500).json({ mensaje: 'Error interno al actualizar el stock del insumo.' });
+    }
+};
+
+// =========================================================================
+// MÓDULO NUEVO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
+// =========================================================================
+const registrarEntrada = async (req, res) => {
+    try {
+        const { observaciones, detalles } = req.body;
+
+        // Validaciones básicas de seguridad
+        if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
+            return res.status(400).json({ mensaje: 'El carrito de entrada no puede estar vacío.' });
+        }
+
+        // Extraemos el ID del usuario que hizo la petición desde el Token
+        const usuarioId = req.usuario.id;
+
+        // Mandamos a la función transaccional del modelo
+        const nuevaEntrada = await almacenModel.registrarEntradaMasiva(
+            { observaciones }, 
+            detalles, 
+            usuarioId
+        );
+
+        res.status(201).json({ 
+            mensaje: 'Entrada registrada y stock actualizado exitosamente.', 
+            entrada: nuevaEntrada 
+        });
+
+    } catch (error) {
+        console.error('Error al registrar entrada masiva:', error);
+        res.status(500).json({ mensaje: 'Error interno al procesar el ingreso de mercancía.' });
+    }
+};
+
+const obtenerHistorialEntradas = async (req, res) => {
+    try {
+        // Hacemos un JOIN rápido directamente aquí para no complicar el modelo si es sencillo
+        const query = `
+            SELECT 
+                ea.id,
+                ea.folio,
+                ea.fecha_entrada,
+                ea.observaciones,
+                u.nombre || ' ' || u.apellido_p AS usuario_nombre,
+                (SELECT SUM(cantidad_ingresada) FROM entrada_detalle WHERE entrada_id = ea.id) AS total_articulos
+            FROM entrada_almacen ea
+            INNER JOIN usuarios u ON ea.usuario_id = u.id
+            ORDER BY ea.fecha_entrada DESC
+        `;
+        const pool = require('../config/database');
+        const { rows } = await pool.query(query);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error al obtener historial de entradas:', error);
+        res.status(500).json({ mensaje: 'Error al cargar el historial de ingresos.' });
     }
 };
 
@@ -211,7 +301,7 @@ const quitarPiezaDeSet = async (req, res) => {
 
 const surtirSet = async (req, res) => {
     try {
-        const { id } = req.params; // id de set_composicion
+        const { id } = req.params; 
         const { consumible_id, cantidad_a_surtir } = req.body;
 
         if (!consumible_id || !cantidad_a_surtir || cantidad_a_surtir <= 0) {
@@ -232,7 +322,9 @@ const surtirSet = async (req, res) => {
 
 module.exports = {
     obtenerCategorias, crearCategoria,
-    obtenerConsumibles, crearConsumible, modificarStockConsumible,
+    obtenerCategoriasConsumibles, crearCategoriaConsumible, 
+    obtenerConsumibles, crearConsumible, modificarStockConsumible, 
+    registrarEntrada, obtenerHistorialEntradas, // NUEVAS EXPORTACIONES
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
     obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet

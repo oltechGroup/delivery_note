@@ -9,21 +9,26 @@ const usuariosController = require('../controllers/usuariosController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
-// Ruta para obtener la lista de usuarios (GET /api/usuarios)
-// Pasa por 2 filtros: 1. Que traiga token válido. 2. Que su rol sea 'Sistemas'
-router.get('/', verificarToken, checkRole(['Sistemas']), usuariosController.obtenerUsuarios);
+// =========================================================================
+// RUTAS DE LECTURA (Ver usuarios)
+// =========================================================================
+// Sistemas administra, Operaciones audita/supervisa
+router.get('/', verificarToken, checkRole(['Sistemas', 'Operaciones']), usuariosController.obtenerUsuarios);
 
-// Ruta para crear un nuevo usuario (POST /api/usuarios)
-// Pasa por los mismos 2 filtros de seguridad
+// =========================================================================
+// RUTAS DE ESCRITURA (Crear y modificar usuarios)
+// =========================================================================
+// SOLO Sistemas puede alterar la información o el acceso de los usuarios
 router.post('/', verificarToken, checkRole(['Sistemas']), usuariosController.crearUsuario);
-
-// Ruta para actualizar los datos generales de un usuario (PUT /api/usuarios/:id)
 router.put('/:id', verificarToken, checkRole(['Sistemas']), usuariosController.actualizarUsuario);
-
-// Ruta para cambiar el estado (Activo/Inactivo) de un usuario (PATCH /api/usuarios/:id/estado)
 router.patch('/:id/estado', verificarToken, checkRole(['Sistemas']), usuariosController.cambiarEstado);
-
-// Ruta para restablecer la contraseña de un usuario (PATCH /api/usuarios/:id/contrasena)
 router.patch('/:id/contrasena', verificarToken, checkRole(['Sistemas']), usuariosController.restablecerContrasena);
+
+// =========================================================================
+// RUTA PERSONAL (Auto-gestión)
+// =========================================================================
+// Cualquier usuario logueado puede cambiar su propia contraseña. 
+// La seguridad (que sea SU id) se valida dentro del controlador, por eso no lleva checkRole.
+router.patch('/:id/mi-contrasena', verificarToken, usuariosController.cambiarMiContrasena);
 
 module.exports = router;

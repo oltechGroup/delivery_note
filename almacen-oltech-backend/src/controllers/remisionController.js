@@ -90,10 +90,12 @@ const crearRemision = async (req, res) => {
     const client = await pool.connect();
 
     try {
+        // MODIFICADO: Extraer 'cliente' de req.body
         const { 
             no_solicitud, 
             fecha_cirugia, 
             paciente, 
+            cliente, 
             procedimiento_id, 
             medico_id, 
             unidad_medica_id,
@@ -104,14 +106,15 @@ const crearRemision = async (req, res) => {
 
         await client.query('BEGIN'); 
 
+        // MODIFICADO: Añadido 'cliente' a la consulta y a los valores
         const queryRemision = `
             INSERT INTO remision 
-            (no_solicitud, fecha_cirugia, paciente, procedimiento_id, medico_id, unidad_medica_id, usuario_creador_id, estado_remision_id) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+            (no_solicitud, fecha_cirugia, paciente, cliente, procedimiento_id, medico_id, unidad_medica_id, usuario_creador_id, estado_remision_id) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
             RETURNING *;
         `;
         const valuesRemision = [
-            no_solicitud || null, fecha_cirugia || null, paciente || null, 
+            no_solicitud || null, fecha_cirugia || null, paciente || null, cliente || null,
             procedimiento_id || null, medico_id || null, unidad_medica_id || null, 
             usuario_creador_id, 1 
         ];
@@ -121,8 +124,8 @@ const crearRemision = async (req, res) => {
 
         if (detalles && detalles.length > 0) {
             const queryDetalle = `
-                INSERT INTO remision_detalle (remision_id, set_id, pieza_id, consumible_id, cantidad_despachada) 
-                VALUES ($1, $2, $3, $4, $5)
+                INSERT INTO remision_detalle (remision_id, set_id, pieza_id, consumible_id, cantidad_despachada, lote, fecha_caducidad, orden, es_total, descripcion_custom) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             `;
             
             const { rows: estadoRows } = await client.query(`SELECT id FROM estados_set WHERE nombre ILIKE '%no disponible%' LIMIT 1`);
@@ -134,11 +137,26 @@ const crearRemision = async (req, res) => {
                     item.set_id || null, 
                     item.pieza_id || null, 
                     item.consumible_id || null, 
-                    item.cantidad_despachada
+                    item.cantidad_despachada || 0,
+                    item.lote || null,
+                    item.fecha_caducidad || null,
+                    item.orden || 0,
+                    item.es_total || false,
+                    item.descripcion_custom || null
                 ]);
 
-                if (item.set_id && estadoNoDisponibleId) {
+                // Bloquear el Set (Cambiar a No Disponible) si NO es una fila de "Total"
+                if (item.set_id && estadoNoDisponibleId && !item.es_total) {
                     await client.query(`UPDATE sets SET estado_id = $1 WHERE id = $2`, [estadoNoDisponibleId, item.set_id]);
+                }
+
+                // Si es consumible suelto y NO es una fila de "Total", RESTARLO del inventario (Salió a cirugía)
+                if (item.consumible_id && !item.set_id && !item.es_total) {
+                    await client.query(`
+                        UPDATE consumible 
+                        SET cantidad = cantidad - $1 
+                        WHERE id = $2
+                    `, [item.cantidad_despachada, item.consumible_id]);
                 }
             }
         }
@@ -255,48 +273,82 @@ const actualizarCantidadesRetorno = async (req, res) => {
     }
 };
 
-// NUEVA SÚPER FUNCIÓN: Conciliar la remisión completa
+// ==========================================
+// NUEVA SÚPER FUNCIÓN: CONCILIAR REMISIÓN
+// ==========================================
 const conciliarRemision = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { detalles } = req.body; // Recibe un arreglo con todos los consumos
+        const { detalles, reposiciones } = req.body; 
+        // Obtenemos el ID del usuario que está haciendo la petición
+        const usuario_conciliador_id = req.usuario.id; 
 
         await client.query('BEGIN');
 
-        // 1. Cambiar estado de la remisión a Completada/Cerrada
+        // 1. Cambiar estado de la remisión a Completada/Cerrada Y GUARDAR DATOS DE AUDITORÍA
         const { rows: estadoRows } = await client.query(`SELECT id FROM estado_remision WHERE nombre ILIKE '%completad%' OR nombre ILIKE '%cerrad%' LIMIT 1`);
         const estadoCompletadoId = estadoRows.length > 0 ? estadoRows[0].id : 2; 
-        await client.query(`UPDATE remision SET estado_remision_id = $1 WHERE id = $2`, [estadoCompletadoId, id]);
+        
+        // AQUÍ ESTÁ LA MAGIA: Guardamos el estado, el ID del conciliador y la fecha/hora exacta
+        await client.query(`
+            UPDATE remision 
+            SET estado_remision_id = $1,
+                usuario_conciliador_id = $2,
+                fecha_conciliacion = CURRENT_TIMESTAMP
+            WHERE id = $3
+        `, [estadoCompletadoId, usuario_conciliador_id, id]);
 
-        // 2. Variables para procesar inventario
         const { rows: estadoSetRows } = await client.query(`SELECT id FROM estados_set WHERE nombre ILIKE '%disponible%' OR nombre ILIKE '%activo%' LIMIT 1`);
         const estadoSetDisponibleId = estadoSetRows.length > 0 ? estadoSetRows[0].id : 1;
         const setsActualizados = new Set(); 
 
+        // 2. Procesar Detalles (Anotar consumos y retornos)
         for (let item of detalles) {
-            // A. Actualizar el renglón con los consumos y retornos
+            // Ignoramos las filas "Total" para no afectar stock
+            if(item.es_total) continue;
+
             await client.query(`
                 UPDATE remision_detalle 
                 SET cantidad_consumo = $1, cantidad_retorno = $2 
                 WHERE id = $3
             `, [item.cantidad_consumo || 0, item.cantidad_retorno || 0, item.id]);
 
-            // B. Si es un CONSUMIBLE SUELTO, lo restamos directamente del inventario maestro
-            if (item.consumible_id && !item.set_id && item.cantidad_consumo > 0) {
+            // Consumible Suelto: SUMAR lo que retornó de vuelta al inventario
+            if (item.consumible_id && !item.set_id && item.cantidad_retorno > 0) {
                 await client.query(`
                     UPDATE consumible 
-                    SET cantidad = cantidad - $1 
+                    SET cantidad = cantidad + $1 
                     WHERE id = $2
-                `, [item.cantidad_consumo, item.consumible_id]);
+                `, [item.cantidad_retorno, item.consumible_id]);
             }
 
-            // C. Liberar el Set (Cambiarlo a Disponible)
-            // Nota: Asumimos que la UI ya guio a la encargada a "surtir" las piezas faltantes antes de este paso
-            if (item.set_id && !setsActualizados.has(item.set_id)) {
-                await client.query(`UPDATE sets SET estado_id = $1 WHERE id = $2`, [estadoSetDisponibleId, item.set_id]);
+            // Guardar ID del Set para liberarlo al final
+            if (item.set_id) {
                 setsActualizados.add(item.set_id);
             }
+        }
+
+        // 3. Procesar Reposiciones ("Surtir" las piezas de los Sets)
+        if (reposiciones && reposiciones.length > 0) {
+            for (let repo of reposiciones) {
+                // Restamos del inventario a granel (para rellenar la caja física)
+                const resConsumible = await client.query(`
+                    UPDATE consumible 
+                    SET cantidad = cantidad - $1 
+                    WHERE id = $2 AND cantidad >= $1
+                    RETURNING id
+                `, [repo.cantidad_a_surtir, repo.consumible_id]);
+
+                if (resConsumible.rows.length === 0) {
+                    throw new Error(`Stock insuficiente en inventario para reponer (ID Consumible: ${repo.consumible_id}).`);
+                }
+            }
+        }
+
+        // 4. Liberar los Sets involucrados (Pasan a Disponible)
+        for (let setId of setsActualizados) {
+            await client.query(`UPDATE sets SET estado_id = $1 WHERE id = $2`, [estadoSetDisponibleId, setId]);
         }
 
         await client.query('COMMIT');
@@ -305,6 +357,10 @@ const conciliarRemision = async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error al conciliar remisión:', error);
+        
+        if (error.message.includes('Stock insuficiente')) {
+            return res.status(400).json({ mensaje: error.message });
+        }
         res.status(500).json({ mensaje: 'Error al conciliar la remisión. Se canceló la operación.' });
     } finally {
         client.release();
@@ -323,5 +379,5 @@ module.exports = {
     obtenerDetallesRemision,
     agregarDetalleRemision,
     actualizarCantidadesRetorno,
-    conciliarRemision // <-- Expuesta al enrutador
+    conciliarRemision 
 };
