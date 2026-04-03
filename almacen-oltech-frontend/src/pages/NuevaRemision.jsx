@@ -15,7 +15,7 @@ function NuevaRemision() {
   const [noSolicitud, setNoSolicitud] = useState('');
   const [fechaCirugia, setFechaCirugia] = useState('');
   const [paciente, setPaciente] = useState('');
-  const [cliente, setCliente] = useState(''); // NUEVO: Estado para el cliente
+  const [cliente, setCliente] = useState(''); 
   const [procedimientoId, setProcedimientoId] = useState('');
   const [medicoId, setMedicoId] = useState('');
   const [unidadMedicaId, setUnidadMedicaId] = useState('');
@@ -124,6 +124,8 @@ function NuevaRemision() {
         descripcion: item.nombre,
         cantidad_maxima: item.cantidad,
         cantidad_despachada: 1,
+        // Jalamos el lote si lo tiene
+        lote: item.lote || '', 
         // Asignamos la fecha de la BD si existe, o la dejamos vacía
         fecha_caducidad: tieneCaducidadEnBD ? item.fecha_caducidad : '',
         // Este flag nos dirá si mostrar el checkbox en la fila
@@ -145,7 +147,7 @@ function NuevaRemision() {
         const filaSet = {
           id_temp: Date.now() + Math.random(),
           es_total: false,
-          es_fila_set_padre: true, // FLAG CLAVE PARA LA AUTO-SUMA
+          es_fila_set_padre: true, 
           set_id: item.id,
           pieza_id: null,
           consumible_id: null,
@@ -162,7 +164,7 @@ function NuevaRemision() {
           id_temp: Date.now() + Math.random(),
           es_total: false,
           es_fila_set_padre: false,
-          set_id: item.id, // Relacionadas al Set
+          set_id: item.id, 
           pieza_id: comp.pieza_id,
           consumible_id: null,
           codigo: comp.pieza_codigo,
@@ -183,30 +185,23 @@ function NuevaRemision() {
     }
   };
 
-  // Función para agregar una fila "Total" con AUTO-SUMA INTELIGENTE
+  // Función para agregar una fila "Total"
   const agregarFilaTotal = () => {
-    // 1. Calcular la suma de lo que hay arriba
     let suma = 0;
     
-    // Recorremos de abajo hacia arriba (desde el último elemento agregado)
     for (let i = detalles.length - 1; i >= 0; i--) {
       const item = detalles[i];
-      
-      // Si encontramos una fila de "Total" anterior, nos detenemos
       if (item.es_total) break;
-      
-      // Solo sumamos si NO es la fila padre del Set
       if (!item.es_fila_set_padre) {
           suma += parseInt(item.cantidad_despachada) || 0;
       }
     }
 
-    // 2. Crear la fila con el total pre-calculado
     const nuevaFilaTotal = {
       id_temp: Date.now() + Math.random(),
       es_total: true, 
       descripcion_custom: "TOTAL DE MATERIAL",
-      cantidad_despachada: suma, // Auto-Suma asignada
+      cantidad_despachada: suma, 
       set_id: null, pieza_id: null, consumible_id: null,
       tiene_caducidad_bd: false, imprimir_caducidad: false
     };
@@ -227,10 +222,9 @@ function NuevaRemision() {
     setDetalles(prev => prev.filter(d => d.id_temp !== id_temp));
   };
 
-  // Verifica si al menos una fila requiere mostrar la columna de Caducidad en la impresión
   const mostrarColumnaCaducidad = detalles.some(d => d.imprimir_caducidad);
 
-  // Formateador para las fechas de impresión
+  // Formateador para las fechas de impresión (y también para el buscador ahora)
   const formatearFechaCorto = (fechaString) => {
     if (!fechaString) return '';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric' };
@@ -257,11 +251,9 @@ function NuevaRemision() {
     setError('');
 
     try {
-      // Preparamos el array de detalles
       const detallesConOrden = detalles.map((d, index) => ({
         ...d,
         orden: index + 1,
-        // Si el usuario desmarcó el checkbox, mandamos null para no imprimirla
         fecha_caducidad: d.imprimir_caducidad ? d.fecha_caducidad : null 
       }));
 
@@ -269,7 +261,7 @@ function NuevaRemision() {
         no_solicitud: noSolicitud,
         fecha_cirugia: fechaCirugia,
         paciente: paciente.toUpperCase(),
-        cliente: cliente.toUpperCase(), // NUEVO: Enviar el cliente al backend
+        cliente: cliente.toUpperCase(), 
         procedimiento_id: parseInt(procedimientoId),
         medico_id: parseInt(medicoId),
         unidad_medica_id: parseInt(unidadMedicaId),
@@ -277,7 +269,7 @@ function NuevaRemision() {
       }, { headers: { Authorization: `Bearer ${token}` } });
 
       alert('¡Remisión guardada exitosamente!');
-      navigate('/remisiones'); // Devolvemos a la bandeja principal
+      navigate('/remisiones'); 
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al guardar la remisión en la base de datos.');
       window.scrollTo(0,0);
@@ -287,7 +279,6 @@ function NuevaRemision() {
   };
 
   return (
-    // MODIFICADO: Fondo devuelto a gris claro/blanco
     <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-4 animate-in fade-in duration-300">
       
       {/* BARRA DE CONTROLES SUPERIOR (Fija en pantalla) */}
@@ -366,19 +357,36 @@ function NuevaRemision() {
                             disabled={deshabilitado}
                             className={`w-full text-left p-3 hover:bg-blue-50 transition-colors flex flex-col ${deshabilitado ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
                           >
-                            <div className="flex justify-between items-center w-full">
-                              <span className="text-xs font-bold text-oltech-blue">{esSet ? res.codigo : res.codigo_referencia}</span>
-                              {esSet ? (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${estaNoDisponible ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                  {res.estado_nombre || 'ACTIVO'}
-                                </span>
-                              ) : (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${sinStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                  Stock: {res.cantidad}
-                                </span>
-                              )}
+                            <div className="flex justify-between items-start w-full">
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-oltech-blue">{esSet ? res.codigo : res.codigo_referencia}</span>
+                                <span className="text-sm font-bold text-gray-700 line-clamp-1 mt-0.5">{esSet ? res.descripcion : res.nombre}</span>
+                              </div>
+
+                              <div className="flex flex-col items-end space-y-1 shrink-0 ml-2">
+                                {/* RENDERING MEJORADO PARA EL BUSCADOR */}
+                                {esSet ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${estaNoDisponible ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                    {res.estado_nombre || 'ACTIVO'}
+                                  </span>
+                                ) : (
+                                  <>
+                                    {/* Etiqueta de Stock (Siempre visible para consumibles) */}
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${sinStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                      Stock: {res.cantidad}
+                                    </span>
+                                    
+                                    {/* Lote y Caducidad (Si existen) */}
+                                    {(res.lote || res.fecha_caducidad) && (
+                                      <div className="flex flex-col items-end text-[10px] text-gray-500 font-medium">
+                                        {res.lote && <span>Lote: {res.lote}</span>}
+                                        {res.fecha_caducidad && <span>Cad: {formatearFechaCorto(res.fecha_caducidad)}</span>}
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-sm font-bold text-gray-700 line-clamp-1 mt-1">{esSet ? res.descripcion : res.nombre}</span>
                           </button>
                         </li>
                       );
@@ -403,14 +411,12 @@ function NuevaRemision() {
         </div>
       </div>
 
-
       {/* ========================================================
           EL LIENZO / LIVE PREVIEW DE LA HOJA (Formato ISO Mejorado)
           ======================================================== */}
-      {/* MODIFICADO: Eliminado min-h para que no se corte, y añadida sombra pronunciada */}
       <div className="bg-white w-full max-w-[21.5cm] mx-auto p-[1cm] pt-[0.5cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black text-xs font-sans relative flex flex-col border border-gray-300">
         
-        {/* ENCABEZADO ISO 9001 (Ajustado proporciones a Word) */}
+        {/* ENCABEZADO ISO 9001 */}
         <table className="w-full border-collapse border border-gray-400 text-[10px] text-center mb-3 mt-2">
           <tbody>
             <tr>
@@ -454,7 +460,7 @@ function NuevaRemision() {
           </tbody>
         </table>
 
-        {/* FECHA Y DATOS DE CIRUGÍA (Formularios Inyectados) */}
+        {/* FECHA Y DATOS DE CIRUGÍA */}
         <div className="text-right font-bold mb-2 text-[10px] text-black">
           FECHA: {formatearFechaCorto(new Date().toISOString())}
         </div>
@@ -512,7 +518,6 @@ function NuevaRemision() {
                 </div>
               </td>
             </tr>
-            {/* NUEVA FILA PARA EL CLIENTE */}
             <tr>
               <td colSpan="2" className="border border-gray-400 p-1.5 font-bold align-middle">
                 <div className="flex items-center">

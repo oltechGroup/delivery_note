@@ -19,6 +19,10 @@ function VistaInventario({ categoria, onVolver }) {
   // Estado para saber qué Set vamos a "abrir"
   const [setSeleccionadoParaVer, setSetSeleccionadoParaVer] = useState(null);
 
+  // NUEVO: Estados para la paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const ITEMS_POR_PAGINA = 15; // Mostramos 15 sets por página
+
   // Cargar todos los sets/piezas que pertenecen a esta categoría
   const cargarSets = async () => {
     setCargando(true);
@@ -42,11 +46,21 @@ function VistaInventario({ categoria, onVolver }) {
     }
   }, [categoria, token]);
 
-  // Filtro local: Busca en tiempo real por código o descripción
+  // NUEVO: Reiniciar paginación al buscar
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda]);
+
+  // PASO 1: Filtro local: Busca en tiempo real por código o descripción
   const setsFiltrados = sets.filter(s => 
     s.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
     s.descripcion.toLowerCase().includes(busqueda.toLowerCase())
   );
+
+  // PASO 2: Paginar SOLAMENTE los sets que ya pasaron el filtro
+  const totalPaginas = Math.ceil(setsFiltrados.length / ITEMS_POR_PAGINA);
+  const indiceInicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
+  const setsPaginados = setsFiltrados.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -97,9 +111,9 @@ function VistaInventario({ categoria, onVolver }) {
         </div>
       )}
 
-      {/* TABLA TIPO EXCEL */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* CONTENEDOR PRINCIPAL: TABLA Y PAGINACIÓN */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[500px]">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-100 border-b-2 border-gray-200 text-gray-700 text-xs uppercase tracking-wider">
@@ -128,7 +142,8 @@ function VistaInventario({ categoria, onVolver }) {
                   </td>
                 </tr>
               ) : (
-                setsFiltrados.map((set) => {
+                // NUEVO: Iteramos sobre setsPaginados en lugar de setsFiltrados
+                setsPaginados.map((set) => {
                   // Lógica para determinar el color del estado
                   const nombreEstado = set.estado_nombre || 'ACTIVO';
                   const esEstadoVerde = nombreEstado.toLowerCase() === 'activo' || nombreEstado.toLowerCase() === 'disponible';
@@ -173,6 +188,34 @@ function VistaInventario({ categoria, onVolver }) {
             </tbody>
           </table>
         </div>
+
+        {/* NUEVO: CONTROLES DE PAGINACIÓN */}
+        {!cargando && totalPaginas > 1 && (
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0">
+            <span className="text-sm text-gray-500 font-medium mb-4 sm:mb-0">
+              Mostrando página <span className="font-bold text-oltech-black">{paginaActual}</span> de <span className="font-bold text-oltech-black">{totalPaginas}</span>
+            </span>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+                disabled={paginaActual === 1}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                <span>Anterior</span>
+              </button>
+              <button 
+                onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
+                disabled={paginaActual === totalPaginas}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+              >
+                <span>Siguiente</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
       
       {/* --- VENTANAS FLOTANTES (MODALES) --- */}
