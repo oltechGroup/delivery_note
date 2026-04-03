@@ -43,6 +43,8 @@ router.patch('/consumibles/:id/stock', verificarToken, checkRole(rolesEscritura)
 router.post('/entradas', verificarToken, checkRole(rolesEscritura), almacenController.registrarEntrada);
 // Ruta para consultar el historial de folios ingresados (Auditoría)
 router.get('/entradas/historial', verificarToken, checkRole(rolesLectura), almacenController.obtenerHistorialEntradas);
+// NUEVA RUTA: Consultar el detalle de productos de una entrada específica
+router.get('/entradas/:id/detalles', verificarToken, checkRole(rolesLectura), almacenController.obtenerDetallesDeEntrada);
 
 // ==========================================
 // RUTAS: PIEZAS

@@ -108,21 +108,18 @@ const modificarStockConsumible = async (req, res) => {
 };
 
 // =========================================================================
-// MÓDULO NUEVO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
+// MÓDULO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
 // =========================================================================
 const registrarEntrada = async (req, res) => {
     try {
         const { observaciones, detalles } = req.body;
 
-        // Validaciones básicas de seguridad
         if (!detalles || !Array.isArray(detalles) || detalles.length === 0) {
             return res.status(400).json({ mensaje: 'El carrito de entrada no puede estar vacío.' });
         }
 
-        // Extraemos el ID del usuario que hizo la petición desde el Token
         const usuarioId = req.usuario.id;
 
-        // Mandamos a la función transaccional del modelo
         const nuevaEntrada = await almacenModel.registrarEntradaMasiva(
             { observaciones }, 
             detalles, 
@@ -142,7 +139,6 @@ const registrarEntrada = async (req, res) => {
 
 const obtenerHistorialEntradas = async (req, res) => {
     try {
-        // Hacemos un JOIN rápido directamente aquí para no complicar el modelo si es sencillo
         const query = `
             SELECT 
                 ea.id,
@@ -161,6 +157,23 @@ const obtenerHistorialEntradas = async (req, res) => {
     } catch (error) {
         console.error('Error al obtener historial de entradas:', error);
         res.status(500).json({ mensaje: 'Error al cargar el historial de ingresos.' });
+    }
+};
+
+// NUEVA FUNCIÓN: Obtener detalles de una entrada
+const obtenerDetallesDeEntrada = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const detalles = await almacenModel.getDetallesEntrada(id);
+        
+        if (!detalles || detalles.length === 0) {
+            return res.status(404).json({ mensaje: 'No se encontraron detalles para este ticket de entrada.' });
+        }
+        
+        res.json(detalles);
+    } catch (error) {
+        console.error('Error al obtener los detalles de la entrada:', error);
+        res.status(500).json({ mensaje: 'Error al cargar el contenido del ticket.' });
     }
 };
 
@@ -320,11 +333,12 @@ const surtirSet = async (req, res) => {
     }
 };
 
+// EXPORTACIÓN ACTUALIZADA
 module.exports = {
     obtenerCategorias, crearCategoria,
     obtenerCategoriasConsumibles, crearCategoriaConsumible, 
     obtenerConsumibles, crearConsumible, modificarStockConsumible, 
-    registrarEntrada, obtenerHistorialEntradas, // NUEVAS EXPORTACIONES
+    registrarEntrada, obtenerHistorialEntradas, obtenerDetallesDeEntrada, // <- NUEVA EXPORTACIÓN
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
     obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet

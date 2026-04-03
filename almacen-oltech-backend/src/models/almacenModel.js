@@ -134,7 +134,7 @@ const updateStockConsumible = async (id, cantidad_a_sumar) => {
 };
 
 // =========================================================================
-// MÓDULO NUEVO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
+// MÓDULO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
 // =========================================================================
 const registrarEntradaMasiva = async (datosEntrada, detallesArray, usuarioId) => {
     const client = await pool.connect();
@@ -199,6 +199,26 @@ const registrarEntradaMasiva = async (datosEntrada, detallesArray, usuarioId) =>
     } finally {
         client.release();
     }
+};
+
+// NUEVA FUNCIÓN: Obtener los detalles de una entrada específica
+const getDetallesEntrada = async (entrada_id) => {
+    const query = `
+        SELECT 
+            ed.id AS detalle_id,
+            ed.cantidad_ingresada,
+            ed.lote_ingresado,
+            ed.fecha_caducidad_ingresada,
+            c.codigo_referencia,
+            c.nombre AS consumible_nombre,
+            c.unidad_medida
+        FROM entrada_detalle ed
+        INNER JOIN consumible c ON ed.consumible_id = c.id
+        WHERE ed.entrada_id = $1
+        ORDER BY c.nombre ASC
+    `;
+    const { rows } = await pool.query(query, [entrada_id]);
+    return rows;
 };
 
 // ==========================================
@@ -423,11 +443,12 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
     }
 };
 
-// NUEVA EXPORTACIÓN AÑADIDA: registrarEntradaMasiva
+// EXPORTACIÓN ACTUALIZADA
 module.exports = {
     getAllCategorias, createCategoria,
     getAllCategoriasConsumibles, createCategoriaConsumible, 
-    getAllConsumibles, getConsumiblesByCategoria, createConsumible, updateStockConsumible, registrarEntradaMasiva,
+    getAllConsumibles, getConsumiblesByCategoria, createConsumible, updateStockConsumible, 
+    registrarEntradaMasiva, getDetallesEntrada, // <- NUEVA EXPORTACIÓN
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
     getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet
