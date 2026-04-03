@@ -1,12 +1,15 @@
 // almacen-oltech-frontend/src/components/almacen/VistaInventarioConsumibles.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import Buscador from './Buscador';
 import ModalConsumible from './ModalConsumible'; 
 import ModalAjusteStock from './ModalAjusteStock';
-// NUEVO: Importamos el modal de Entrada Masiva
 import ModalEntradaMasiva from './carga-masiva/ModalEntradaMasiva';
+
+// CORRECCIÓN: Volvemos al Hook (Vite no permite el default export en esta librería)
+import { useReactToPrint } from 'react-to-print';
+import ReporteConsumibles from './impresion/ReporteConsumibles';
 
 function VistaInventarioConsumibles({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -18,8 +21,27 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
   // Estados para modales
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
   const [modalAjuste, setModalAjuste] = useState({ abierto: false, consumible: null, tipo: '' });
-  // NUEVO: Estado para el modal de Entrada Masiva
   const [modalEntradaAbierto, setModalEntradaAbierto] = useState(false);
+
+  // Referencia de impresión
+  const componenteImpresionRef = useRef();
+  
+  // Lógica de impresión con el Hook
+  const ejecutarImpresion = useReactToPrint({
+    contentRef: componenteImpresionRef,
+    documentTitle: `Inventario_${categoria?.nombre?.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
+    onBeforeGetContent: () => Promise.resolve()
+  });
+
+  // Envoltorio para depurar y asegurar que el ref existe
+  const handleImprimir = () => {
+    console.log("Verificando componente antes de imprimir:", componenteImpresionRef.current);
+    if (componenteImpresionRef.current) {
+      ejecutarImpresion();
+    } else {
+      console.error("El componente de impresión no está listo aún.");
+    }
+  };
 
   // Paginación y Ordenamiento
   const [paginaActual, setPaginaActual] = useState(1);
@@ -74,6 +96,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     setPaginaActual(1);
   };
 
+  // Ordenamos SOLO después de filtrar
   const consumiblesOrdenados = [...consumiblesFiltrados].sort((a, b) => {
     const valorA = a[ordenConfig.clave] || '';
     const valorB = b[ordenConfig.clave] || '';
@@ -112,7 +135,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
           <div>
             <h2 className="text-xl font-bold text-gray-800">
               <span className="text-gray-400 font-medium mr-2">Inventario:</span>
-              {categoria.nombre}
+              {categoria?.nombre}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">{consumibles.length} insumos en esta categoría</p>
           </div>
@@ -125,14 +148,24 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
             placeholder="Buscar por código, nombre o lote..." 
           />
           
-          {/* NUEVO BOTÓN: INGRESO MASIVO (INBOUND) */}
+          {/* BOTÓN DE IMPRESIÓN */}
+          <button 
+            onClick={handleImprimir}
+            disabled={consumiblesOrdenados.length === 0}
+            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            title="Generar formato de Excel/Impresión para conteo físico"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            <span>Imprimir Formato</span>
+          </button>
+
           <button 
             onClick={() => setModalEntradaAbierto(true)}
             className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
             title="Registrar una entrada de mercancía"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-            <span>Ingreso de Material</span>
+            <span>Ingreso</span>
           </button>
 
           <button 
@@ -154,7 +187,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         </div>
       )}
 
-      {/* TABLA DE STOCK */}
+      {/* TABLA DE STOCK (Visible en pantalla) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -302,6 +335,16 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         )}
       </div>
 
+      {/* --- REPORTE DE IMPRESIÓN --- */}
+      {/* SOLUCIÓN: Clases Tailwind para hacerlo invisible pero presente para react-to-print */}
+      <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
+        <ReporteConsumibles 
+          ref={componenteImpresionRef} 
+          categoria={categoria} 
+          consumibles={consumiblesOrdenados} 
+        />
+      </div>
+
       {/* VENTANAS FLOTANTES (MODALES) */}
       <ModalConsumible 
         isOpen={modalNuevoAbierto} 
@@ -318,7 +361,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         tipoAjuste={modalAjuste.tipo}
       />
 
-      {/* NUEVO: MODAL DE ENTRADA MASIVA (CARRITO) */}
       <ModalEntradaMasiva
        isOpen={modalEntradaAbierto}
         onClose={() => setModalEntradaAbierto(false)}

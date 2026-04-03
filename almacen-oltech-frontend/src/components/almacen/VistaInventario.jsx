@@ -1,10 +1,14 @@
 // almacen-oltech-frontend/src/components/almacen/VistaInventario.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import Buscador from './Buscador';
 import ModalSet from './ModalSet';
 import ModalDetalleSet from './ModalDetalleSet';
+
+// CORRECCIÓN: Volvemos a usar el Hook (como lo hicimos con éxito en Consumibles)
+import { useReactToPrint } from 'react-to-print';
+import ReporteSets from './impresion/ReporteSets';
 
 function VistaInventario({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -19,9 +23,68 @@ function VistaInventario({ categoria, onVolver }) {
   // Estado para saber qué Set vamos a "abrir"
   const [setSeleccionadoParaVer, setSetSeleccionadoParaVer] = useState(null);
 
-  // NUEVO: Estados para la paginación
+  // Estados para la paginación
   const [paginaActual, setPaginaActual] = useState(1);
-  const ITEMS_POR_PAGINA = 15; // Mostramos 15 sets por página
+  const ITEMS_POR_PAGINA = 15; 
+
+  // Estados y Referencias para la impresión
+  const [preparandoReporte, setPreparandoReporte] = useState(false);
+  const [dataParaImprimir, setDataParaImprimir] = useState([]);
+  const componenteImpresionRef = useRef();
+
+  // CORRECCIÓN: Configuración del Hook con 'contentRef'
+    const ejecutarImpresion = useReactToPrint({
+  contentRef: componenteImpresionRef,
+  documentTitle: `Inventario_Sets_${categoria?.nombre?.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
+  onAfterPrint: () => setPreparandoReporte(false),
+  });
+
+  // FUNCIÓN: Obtener composiciones y preparar impresión
+  const prepararYImprimir = async () => {
+    if (setsFiltrados.length === 0) return;
+    
+    setPreparandoReporte(true);
+    setError('');
+
+    try {
+      // Usamos Promise.all para hacer las peticiones en paralelo
+      const promesas = setsFiltrados.map(async (set) => {
+        const res = await axios.get(`http://localhost:4000/api/almacen/sets/${set.id}/composicion`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        return {
+          setId: set.id,
+          setCodigo: set.codigo,
+          setDescripcion: set.descripcion,
+          piezas: res.data // Array de piezas
+        };
+      });
+
+      const resultados = await Promise.all(promesas);
+      
+      // Ordenamos los resultados
+      resultados.sort((a, b) => a.setCodigo.localeCompare(b.setCodigo));
+      
+      // Actualizamos el estado con los datos completos
+      setDataParaImprimir(resultados);
+      
+      // Esperamos un momento para que React renderice el DOM oculto con los datos nuevos
+      setTimeout(() => {
+        if (componenteImpresionRef.current) {
+          ejecutarImpresion(); // Disparamos el hook
+        } else {
+          setPreparandoReporte(false);
+          console.error("El componente de impresión no se ha montado correctamente.");
+        }
+      }, 800);
+
+    } catch (err) {
+      console.error('Error al preparar reporte de sets:', err);
+      setError('Hubo un problema al preparar el formato de impresión. Inténtalo de nuevo.');
+      setPreparandoReporte(false);
+    }
+  };
 
   // Cargar todos los sets/piezas que pertenecen a esta categoría
   const cargarSets = async () => {
@@ -46,18 +109,17 @@ function VistaInventario({ categoria, onVolver }) {
     }
   }, [categoria, token]);
 
-  // NUEVO: Reiniciar paginación al buscar
   useEffect(() => {
     setPaginaActual(1);
   }, [busqueda]);
 
-  // PASO 1: Filtro local: Busca en tiempo real por código o descripción
+  // PASO 1: Filtro local
   const setsFiltrados = sets.filter(s => 
     s.codigo.toLowerCase().includes(busqueda.toLowerCase()) ||
     s.descripcion.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  // PASO 2: Paginar SOLAMENTE los sets que ya pasaron el filtro
+  // PASO 2: Paginar
   const totalPaginas = Math.ceil(setsFiltrados.length / ITEMS_POR_PAGINA);
   const indiceInicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
   const setsPaginados = setsFiltrados.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
@@ -81,18 +143,42 @@ function VistaInventario({ categoria, onVolver }) {
           <div>
             <h2 className="text-xl font-bold text-gray-800">
               <span className="text-gray-400 font-medium mr-2">Inventario:</span>
-              {categoria.nombre}
+              {categoria?.nombre}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">{sets.length} registros en esta categoría</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
           <Buscador 
             valor={busqueda} 
             onBuscar={setBusqueda} 
             placeholder="Buscar código o descripción..." 
           />
+          
+          {/* BOTÓN VISIBLE: Lanza la preparación y luego la impresión */}
+          <button 
+            onClick={prepararYImprimir}
+            disabled={setsFiltrados.length === 0 || preparandoReporte}
+            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            title="Generar formato de conteo con desglose de piezas"
+          >
+            {preparandoReporte ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Preparando...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <span>Imprimir Formato</span>
+              </>
+            )}
+          </button>
+
           <button 
             onClick={() => setModalAbierto(true)}
             className="bg-oltech-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center space-x-2 whitespace-nowrap"
@@ -142,9 +228,7 @@ function VistaInventario({ categoria, onVolver }) {
                   </td>
                 </tr>
               ) : (
-                // NUEVO: Iteramos sobre setsPaginados en lugar de setsFiltrados
                 setsPaginados.map((set) => {
-                  // Lógica para determinar el color del estado
                   const nombreEstado = set.estado_nombre || 'ACTIVO';
                   const esEstadoVerde = nombreEstado.toLowerCase() === 'activo' || nombreEstado.toLowerCase() === 'disponible';
                   
@@ -189,7 +273,7 @@ function VistaInventario({ categoria, onVolver }) {
           </table>
         </div>
 
-        {/* NUEVO: CONTROLES DE PAGINACIÓN */}
+        {/* CONTROLES DE PAGINACIÓN */}
         {!cargando && totalPaginas > 1 && (
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0">
             <span className="text-sm text-gray-500 font-medium mb-4 sm:mb-0">
@@ -218,6 +302,15 @@ function VistaInventario({ categoria, onVolver }) {
 
       </div>
       
+      {/* --- COMPONENTE DE IMPRESIÓN (Oculto visualmente) --- */}
+      <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
+        <ReporteSets 
+          ref={componenteImpresionRef}
+          categoria={categoria}
+          dataReporte={dataParaImprimir}
+        />
+      </div>
+
       {/* --- VENTANAS FLOTANTES (MODALES) --- */}
       <ModalSet 
         isOpen={modalAbierto} 
