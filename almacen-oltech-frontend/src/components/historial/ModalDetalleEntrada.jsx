@@ -1,7 +1,11 @@
 // almacen-oltech-frontend/src/components/historial/ModalDetalleEntrada.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // Agregamos useRef
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+
+// IMPORTACIONES PARA IMPRESIÓN
+import { useReactToPrint } from 'react-to-print';
+import ReporteEntrada from '../almacen/impresion/ReporteEntrada';
 
 function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
   const { token } = useAuth();
@@ -9,6 +13,15 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   
+  // Referencia para el componente de impresión
+  const componenteImpresionRef = useRef();
+
+  // Configuración del Hook de impresión (Versión 3.0+)
+  const handleImprimir = useReactToPrint({
+    contentRef: componenteImpresionRef,
+    documentTitle: `Comprobante_Ingreso_${entrada?.folio || 'Sin_Folio'}`,
+  });
+
   // Paginación y Búsqueda interna
   const [busqueda, setBusqueda] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
@@ -82,9 +95,22 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
               <span>📅 {formatearFechaHora(entrada.fecha_entrada)}</span>
             </p>
           </div>
-          <button onClick={onClose} className="text-green-100 hover:text-white bg-green-700 hover:bg-green-800 transition-colors p-2 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+          
+          <div className="flex items-center space-x-2">
+            {/* BOTÓN DE IMPRESIÓN */}
+            <button 
+              onClick={handleImprimir}
+              disabled={cargando || detalles.length === 0}
+              className="flex items-center space-x-2 px-4 py-2 bg-white text-green-700 hover:bg-green-50 rounded-lg font-bold text-sm transition-colors shadow-sm disabled:opacity-50"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+              <span>Imprimir Ticket</span>
+            </button>
+
+            <button onClick={onClose} className="text-green-100 hover:text-white bg-green-700 hover:bg-green-800 transition-colors p-2 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
         </div>
 
         {/* Resumen y Buscador */}
@@ -101,7 +127,6 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
             )}
           </div>
           
-          {/* Buscador Interno */}
           <div className="w-full sm:w-64 relative">
             <input 
               type="text" 
@@ -114,12 +139,6 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           </div>
         </div>
 
-        {error && (
-          <div className="mx-6 mt-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-100 font-medium">
-            {error}
-          </div>
-        )}
-
         {/* Tabla de Productos */}
         <div className="flex-1 overflow-auto p-6 bg-white">
           {cargando ? (
@@ -130,7 +149,6 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           ) : detallesPaginados.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400">
               <p className="text-lg font-medium text-gray-500">No se encontraron productos</p>
-              <p className="text-sm mt-1">Prueba buscando con otro código o nombre.</p>
             </div>
           ) : (
             <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -176,7 +194,7 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           )}
         </div>
 
-        {/* Controles de Paginación Interna */}
+        {/* Controles de Paginación */}
         {!cargando && totalPaginas > 1 && (
           <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex items-center justify-between shrink-0 rounded-b-2xl">
             <span className="text-sm text-gray-500 font-medium">
@@ -200,6 +218,15 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
             </div>
           </div>
         )}
+
+        {/* --- COMPONENTE DE IMPRESIÓN OCULTO (FUERA DE PANTALLA) --- */}
+        <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
+          <ReporteEntrada 
+            ref={componenteImpresionRef}
+            entrada={entrada}
+            detalles={detalles} // Enviamos todos los detalles, no solo los paginados
+          />
+        </div>
 
       </div>
     </div>

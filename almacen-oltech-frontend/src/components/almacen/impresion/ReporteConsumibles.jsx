@@ -25,7 +25,7 @@ const ReporteConsumibles = forwardRef(({ categoria, consumibles }, ref) => {
 
       {/* --- ENCABEZADO DEL REPORTE --- */}
       <div className="mb-6 border-b-2 border-black pb-4 text-center">
-        <h1 className="text-2xl font-bold uppercase tracking-wider mb-2">Inventario- Insumos</h1>
+        <h1 className="text-2xl font-bold uppercase tracking-wider mb-2">Registro de existencias - Insumos</h1>
         <div className="flex justify-between items-end px-2">
           <div className="text-left">
             <p><span className="font-bold">Categoría:</span> {categoria?.nombre || 'General'}</p>
