@@ -60,12 +60,26 @@ const createCategoriaConsumible = async (nombre) => {
 // ==========================================
 // MÓDULO: CONSUMIBLES (Inventario a Granel)
 // ==========================================
-const getConsumiblesByCategoria = async (categoria_id) => {
+
+/**
+ * MODIFICADO: Ahora soporta filtro de limpieza (soloActivos)
+ * soloActivos = true: Oculta lotes en 0. Muestra genéricos en 0 y todo lo que tenga stock.
+ */
+const getConsumiblesByCategoria = async (categoria_id, soloActivos = false) => {
+    let filterClause = "WHERE c.categoria_id = $1";
+    
+    if (soloActivos) {
+        // REGLA DE ORO: Mostrar si hay stock O si es un genérico (lote y fecha null)
+        filterClause += " AND (c.cantidad > 0 OR (c.lote IS NULL AND c.fecha_caducidad IS NULL))";
+    }
+
     const query = `
         SELECT 
             c.id, 
             c.codigo_referencia, 
             c.nombre, 
+            c.nombre_comercial,
+            c.precio,
             c.cantidad,
             c.unidad_medida,
             c.lote,
@@ -74,19 +88,27 @@ const getConsumiblesByCategoria = async (categoria_id) => {
             cc.nombre AS categoria_nombre
         FROM consumible c
         LEFT JOIN categoria_consumible cc ON c.categoria_id = cc.id
-        WHERE c.categoria_id = $1
+        ${filterClause}
         ORDER BY c.nombre ASC
     `;
     const { rows } = await pool.query(query, [categoria_id]);
     return rows;
 };
 
-const getAllConsumibles = async () => {
+const getAllConsumibles = async (soloActivos = false) => {
+    let filterClause = "";
+    
+    if (soloActivos) {
+        filterClause = "WHERE (c.cantidad > 0 OR (c.lote IS NULL AND c.fecha_caducidad IS NULL))";
+    }
+
     const query = `
         SELECT 
             c.id, 
             c.codigo_referencia, 
             c.nombre, 
+            c.nombre_comercial,
+            c.precio,
             c.cantidad,
             c.unidad_medida,
             c.lote,
@@ -95,22 +117,40 @@ const getAllConsumibles = async () => {
             cc.nombre AS categoria_nombre
         FROM consumible c
         LEFT JOIN categoria_consumible cc ON c.categoria_id = cc.id
+        ${filterClause}
         ORDER BY c.nombre ASC
     `;
     const { rows } = await pool.query(query);
     return rows;
 };
 
-const createConsumible = async (data) => {
-    const { codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id } = data;
+/**
+ * NUEVA FUNCIÓN: Búsqueda Profunda
+ * Sirve para encontrar un registro aunque esté oculto por stock 0.
+ */
+const getConsumibleByCodigoYLote = async (codigo, lote) => {
     const query = `
-        INSERT INTO consumible (codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7) 
+        SELECT * FROM consumible 
+        WHERE codigo_referencia = $1 
+        AND (lote = $2 OR (lote IS NULL AND $2 IS NULL))
+        LIMIT 1;
+    `;
+    const { rows } = await pool.query(query, [codigo, lote]);
+    return rows[0];
+};
+
+const createConsumible = async (data) => {
+    const { codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id, nombre_comercial, precio } = data;
+    const query = `
+        INSERT INTO consumible (codigo_referencia, nombre, nombre_comercial, precio, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id) 
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
         RETURNING *;
     `;
     const values = [
         codigo_referencia, 
         nombre, 
+        nombre_comercial || null,
+        precio !== undefined ? parseFloat(precio) : null,
         unidad_medida || null, 
         cantidad || 0,
         lote || null,
@@ -139,14 +179,12 @@ const updateStockConsumible = async (id, cantidad_a_sumar) => {
 const registrarEntradaMasiva = async (datosEntrada, detallesArray, usuarioId) => {
     const client = await pool.connect();
     try {
-        await client.query('BEGIN'); // Iniciamos la transacción
+        await client.query('BEGIN');
 
-        // 1. Obtener y formatear el siguiente Folio de la secuencia
         const resFolio = await client.query("SELECT nextval('entrada_folio_seq') AS num");
         const numeroSecuencia = resFolio.rows[0].num;
-        const folioEntrada = `ENT-${numeroSecuencia.toString().padStart(5, '0')}`; // Ej: ENT-00001
+        const folioEntrada = `ENT-${numeroSecuencia.toString().padStart(5, '0')}`;
 
-        // 2. Guardar la Cabecera (El Ticket)
         const insertCabeceraQuery = `
             INSERT INTO entrada_almacen (folio, usuario_id, observaciones)
             VALUES ($1, $2, $3)
@@ -159,49 +197,50 @@ const registrarEntradaMasiva = async (datosEntrada, detallesArray, usuarioId) =>
         ]);
         const nuevaEntrada = resCabecera.rows[0];
 
-        // 3. Guardar el Detalle y Sumar Stock (El carrito)
         for (let item of detallesArray) {
-            // a) Guardar el registro en el historial de entradas
+            // 1. Guardar en historial de entradas
             const insertDetalleQuery = `
-                INSERT INTO entrada_detalle (entrada_id, consumible_id, cantidad_ingresada, lote_ingresado, fecha_caducidad_ingresada)
-                VALUES ($1, $2, $3, $4, $5);
+                INSERT INTO entrada_detalle (entrada_id, consumible_id, cantidad_ingresada, lote_ingresado, fecha_caducidad_ingresada, precio_ingresado)
+                VALUES ($1, $2, $3, $4, $5, $6);
             `;
             await client.query(insertDetalleQuery, [
                 nuevaEntrada.id,
                 item.consumible_id,
                 item.cantidad,
                 item.lote || null,
-                item.fecha_caducidad || null
+                item.fecha_caducidad || null,
+                item.precio !== undefined && item.precio !== null ? parseFloat(item.precio) : null
             ]);
 
-            // b) Sumar el stock en la tabla principal de consumibles y actualizar Lote/Caducidad si vienen nuevos
+            // 2. Actualizar maestro (Sumar stock y actualizar datos informativos si vienen)
             const updateStockQuery = `
                 UPDATE consumible
                 SET cantidad = cantidad + $1,
                     lote = COALESCE($2, lote), 
-                    fecha_caducidad = COALESCE($3, fecha_caducidad)
-                WHERE id = $4;
+                    fecha_caducidad = COALESCE($3, fecha_caducidad),
+                    precio = COALESCE($4, precio)
+                WHERE id = $5;
             `;
             await client.query(updateStockQuery, [
                 item.cantidad,
                 item.lote || null,
                 item.fecha_caducidad || null,
+                item.precio !== undefined && item.precio !== null ? parseFloat(item.precio) : null,
                 item.consumible_id
             ]);
         }
 
-        await client.query('COMMIT'); // Todo salió bien, guardamos cambios
+        await client.query('COMMIT'); 
         return nuevaEntrada;
 
     } catch (error) {
-        await client.query('ROLLBACK'); // Algo falló, cancelamos todo
+        await client.query('ROLLBACK'); 
         throw error;
     } finally {
         client.release();
     }
 };
 
-// NUEVA FUNCIÓN: Obtener los detalles de una entrada específica
 const getDetallesEntrada = async (entrada_id) => {
     const query = `
         SELECT 
@@ -209,8 +248,10 @@ const getDetallesEntrada = async (entrada_id) => {
             ed.cantidad_ingresada,
             ed.lote_ingresado,
             ed.fecha_caducidad_ingresada,
+            ed.precio_ingresado,
             c.codigo_referencia,
             c.nombre AS consumible_nombre,
+            c.nombre_comercial,
             c.unidad_medida
         FROM entrada_detalle ed
         INNER JOIN consumible c ON ed.consumible_id = c.id
@@ -443,12 +484,12 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
     }
 };
 
-// EXPORTACIÓN ACTUALIZADA
 module.exports = {
     getAllCategorias, createCategoria,
     getAllCategoriasConsumibles, createCategoriaConsumible, 
-    getAllConsumibles, getConsumiblesByCategoria, createConsumible, updateStockConsumible, 
-    registrarEntradaMasiva, getDetallesEntrada, // <- NUEVA EXPORTACIÓN
+    getAllConsumibles, getConsumiblesByCategoria, getConsumibleByCodigoYLote, // <- NUEVA EXPORTACIÓN
+    createConsumible, updateStockConsumible, 
+    registrarEntradaMasiva, getDetallesEntrada,
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
     getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet

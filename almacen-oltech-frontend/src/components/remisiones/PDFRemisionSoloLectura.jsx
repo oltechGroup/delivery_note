@@ -1,13 +1,17 @@
 // almacen-oltech-frontend/src/components/remisiones/PDFRemisionSoloLectura.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import { useReactToPrint } from 'react-to-print';
 import LogoOltech from '../../assets/Logo acostado.png';
 
 function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
   const { token } = useAuth();
   const [detalles, setDetalles] = useState([]);
   const [cargando, setCargando] = useState(true);
+  
+  // Referencia para la librería de impresión
+  const componentRef = useRef(null);
 
   const formatearFechaCorto = (fechaString) => {
     if (!fechaString) return '';
@@ -33,12 +37,14 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
     }
   }, [remisionMaestra, token]);
 
-  const handleImprimir = () => {
-    window.print();
-  };
+  // Hook de react-to-print (Corregido para la última versión de la librería)
+  const handleImprimir = useReactToPrint({
+    contentRef: componentRef, // <--- Aquí estaba el detalle, ahora usa contentRef
+    documentTitle: `Remision_${remisionMaestra.no_solicitud || 'OLTECH'}`,
+  });
 
   // ==========================================
-  // MOTOR DE PAGINACIÓN INTELIGENTE (Calibrado con margen)
+  // MOTOR DE PAGINACIÓN INTELIGENTE
   // ==========================================
   const paginas = useMemo(() => {
     if (detalles.length === 0) return [];
@@ -46,11 +52,10 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
     let itemsRestantes = [...detalles];
     let isFirst = true;
 
-    // LÍMITES AJUSTADOS (-2 filas de seguridad para evitar cortes)
-    const MAX_PRIMERA_HOJA_SIN_PIE = 32; // Bajado de 35
-    const MAX_PRIMERA_HOJA_CON_PIE = 17; // Bajado de 20
-    const MAX_HOJA_MEDIA = 42;           // Bajado de 45
-    const MAX_ULTIMA_HOJA = 28;          // Bajado de 30
+    const MAX_PRIMERA_HOJA_SIN_PIE = 24; 
+    const MAX_PRIMERA_HOJA_CON_PIE = 12; 
+    const MAX_HOJA_MEDIA = 28;           
+    const MAX_ULTIMA_HOJA = 16;          
 
     while (itemsRestantes.length > 0 || isFirst) {
       if (isFirst) {
@@ -81,7 +86,7 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
       <div className="fixed inset-0 z-[10000] bg-gray-900/95 flex items-center justify-center">
         <div className="text-white text-xl font-bold flex flex-col items-center">
           <svg className="animate-spin h-10 w-10 text-oltech-pink mb-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-          Generando documento...
+          Preparando documento...
         </div>
       </div>
     );
@@ -91,169 +96,142 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
   const mostrarColumnaCaducidad = detalles.some(d => d.fecha_caducidad);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/80 flex flex-col items-center overflow-y-auto pdf-main-overlay">
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex flex-col items-center overflow-y-auto">
       
       <style>
         {`
-          /* VISTA EN PANTALLA: Estilo Modal */
+          /* VISTA EN PANTALLA: Estilo Modal normal */
           .hoja-impresion {
             background: white;
-            width: 21.5cm;
-            min-height: 27.9cm;
+            width: 21.59cm;
+            height: 27.94cm;
             padding: 1.5cm;
             margin: 2rem auto;
             box-shadow: 0 0 40px rgba(0,0,0,0.6);
             position: relative;
             flex-shrink: 0;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
           }
 
+          /* ESTILOS AISLADOS SOLO PARA EL PDF (react-to-print los usa) */
           @media print {
-            /* 1. MATAR TODO LO EXTERNO */
-            body * {
-              visibility: hidden !important;
-            }
-            
-            /* 2. SOLO EL CONTENEDOR DEL PDF ES VISIBLE */
-            .pdf-main-overlay, .pdf-main-overlay * {
-              visibility: visible !important;
-            }
-
-            /* 3. RESET DE POSICIONAMIENTO PARA MULTIPÁGINA */
-            .pdf-main-overlay {
-              position: absolute !important;
-              left: 0 !important;
-              top: 0 !important;
-              width: 100% !important;
-              height: auto !important;
-              overflow: visible !important;
-              background: white !important;
-              display: block !important;
-            }
-
             @page { 
               margin: 0; 
               size: letter portrait; 
             }
-            
-            html, body {
-              height: auto !important;
-              overflow: visible !important;
-              background-color: white !important;
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
-
             .hoja-impresion {
               margin: 0 !important;
-              padding: 1cm !important;
+              padding: 1.5cm !important;
+              width: 21.59cm !important;
+              height: 27.94cm !important;
               box-shadow: none !important;
               border: none !important;
               page-break-after: always !important;
-              display: block !important;
-              height: 27.7cm !important; /* Altura fija para la impresora */
+              page-break-inside: avoid !important;
+              display: flex !important; 
+              flex-direction: column !important;
             }
-
             .hoja-impresion:last-child {
               page-break-after: auto !important;
             }
-
-            .print\\:hidden {
-              display: none !important;
-            }
-
             .bg-iso-purple {
               background-color: #e9d5ff !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
             }
           }
         `}
       </style>
 
-      {/* CONTROLES FLOTANTES (Ocultos en impresión) */}
-      <div className="sticky top-0 w-full flex justify-center py-4 bg-gray-900/50 backdrop-blur-sm print:hidden z-[10001] shrink-0">
+      {/* CONTROLES FLOTANTES */}
+      <div className="sticky top-0 w-full flex justify-center py-4 bg-gray-900/50 backdrop-blur-sm z-[10001] shrink-0">
         <div className="flex space-x-4">
           <button onClick={onClose} className="bg-white text-gray-800 px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-gray-100 transition-all active:scale-95">
             Cerrar Vista
           </button>
           <button onClick={handleImprimir} className="bg-oltech-pink text-white px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-pink-700 flex items-center space-x-2 transition-all active:scale-95">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-            <span>Imprimir</span>
+            <span>Generar PDF / Imprimir</span>
           </button>
         </div>
       </div>
 
-      {/* LIENZO DE HOJAS */}
-      <div className="w-full flex flex-col items-center">
+      {/* LIENZO DE HOJAS: Le pasamos el componentRef aquí */}
+      <div ref={componentRef} className="w-full flex flex-col items-center bg-white">
         {paginas.map((pagina, index) => (
           <div key={index} className="hoja-impresion text-black text-xs font-sans">
             
             {/* ENCABEZADO ISO */}
-            <table className="w-full border-collapse border border-gray-600 text-[10px] text-center mb-3">
-              <tbody>
-                <tr>
-                  <td rowSpan="6" className="border border-gray-600 w-1/4 p-1 align-middle"><img src={LogoOltech} alt="OLTECH" className="mx-auto w-28 object-contain" /></td>
-                  <td rowSpan="2" className="border border-gray-600 w-2/4 p-1 font-bold text-[11px] uppercase align-middle tracking-wider">REMISIÓN DE ENTRADA Y SALIDA DE ALMACÉN</td>
-                  <td className="border border-gray-600 w-[12.5%] p-0.5 text-left font-bold bg-gray-50/50">Código:</td>
-                  <td className="border border-gray-600 w-[12.5%] p-0.5 text-center font-bold">MPA-05-R02</td>
-                </tr>
-                <tr>
-                  <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Revisión:</td>
-                  <td className="border border-gray-600 p-0.5 text-center font-bold">01</td>
-                </tr>
-                <tr>
-                  <td rowSpan="1" className="border border-gray-600 p-1 font-bold text-[10px] uppercase">OLTECH, S.A. DE C.V.</td>
-                  <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Emisión:</td>
-                  <td className="border border-gray-600 p-0.5 text-center">05/NOV/2023</td>
-                </tr>
-                <tr>
-                  <td rowSpan="3" className="border border-gray-600 p-1 text-center text-[8px] leading-tight"><span className="font-bold">SUSTITUYE A:</span> NUEVO<br/>Referencia a la norma ISO 9001:2015<br/><span className="font-bold">8.5.4 Preservación</span></td>
-                  <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Vigencia:</td>
-                  <td className="border border-gray-600 p-0.5 text-center">05/NOV/2026</td>
-                </tr>
-                <tr>
-                  <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Página:</td>
-                  <td className="border border-gray-600 p-0.5 text-center font-bold">{index + 1} de {paginas.length}</td>
-                </tr>
-                <tr>
-                  <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Resp:</td>
-                  <td className="border border-gray-600 p-0.5 text-center text-[8px] font-bold">Coord. Almacén</td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="shrink-0 w-full">
+              <table className="w-full border-collapse border border-gray-600 text-[10px] text-center mb-3">
+                <tbody>
+                  <tr>
+                    <td rowSpan="6" className="border border-gray-600 w-1/4 p-1 align-middle"><img src={LogoOltech} alt="OLTECH" className="mx-auto w-28 object-contain" /></td>
+                    <td rowSpan="2" className="border border-gray-600 w-2/4 p-1 font-bold text-[11px] uppercase align-middle tracking-wider">REMISIÓN DE ENTRADA Y SALIDA DE ALMACÉN</td>
+                    <td className="border border-gray-600 w-[12.5%] p-0.5 text-left font-bold bg-gray-50/50">Código:</td>
+                    <td className="border border-gray-600 w-[12.5%] p-0.5 text-center font-bold">MPA-05-R02</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Revisión:</td>
+                    <td className="border border-gray-600 p-0.5 text-center font-bold">01</td>
+                  </tr>
+                  <tr>
+                    <td rowSpan="1" className="border border-gray-600 p-1 font-bold text-[10px] uppercase">OLTECH, S.A. DE C.V.</td>
+                    <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Emisión:</td>
+                    <td className="border border-gray-600 p-0.5 text-center">05/NOV/2023</td>
+                  </tr>
+                  <tr>
+                    <td rowSpan="3" className="border border-gray-600 p-1 text-center text-[8px] leading-tight"><span className="font-bold">SUSTITUYE A:</span> NUEVO<br/>Referencia a la norma ISO 9001:2015<br/><span className="font-bold">8.5.4 Preservación</span></td>
+                    <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Vigencia:</td>
+                    <td className="border border-gray-600 p-0.5 text-center">05/NOV/2026</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Página:</td>
+                    <td className="border border-gray-600 p-0.5 text-center font-bold">{index + 1} de {paginas.length}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50/50">Resp:</td>
+                    <td className="border border-gray-600 p-0.5 text-center text-[8px] font-bold">Coord. Almacén</td>
+                  </tr>
+                </tbody>
+              </table>
 
-            {/* DATOS DE LA CX (Solo Hoja 1) */}
-            {pagina.isFirst && (
-              <div className="block">
-                <div className="text-right font-bold mb-2 text-[10px]">FECHA: {formatearFechaCorto(remisionMaestra.fecha_creacion)}</div>
-                <table className="w-full border-collapse border border-gray-600 text-[10px] mb-4">
-                  <tbody>
-                    <tr>
-                      <td className="border border-gray-600 p-1.5 w-1/2 font-bold bg-gray-50/50">FECHA CX: <span className="font-normal uppercase ml-1">{formatearFechaCorto(remisionMaestra.fecha_cirugia)}</span></td>
-                      <td className="border border-gray-600 p-1.5 w-1/2 font-bold bg-gray-50/50">No. DE SOLICITUD: <span className="font-bold ml-1">{remisionMaestra.no_solicitud}</span></td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">PACIENTE: <span className="font-normal uppercase ml-1">{remisionMaestra.paciente}</span></td>
-                      <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">PROCEDIMIENTO: <span className="font-normal uppercase ml-1">{remisionMaestra.procedimiento_nombre}</span></td>
-                    </tr>
-                    <tr>
-                      <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">MÉDICO: <span className="font-normal uppercase ml-1">{remisionMaestra.medico_nombre}</span></td>
-                      <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">UNIDAD MÉDICA: <span className="font-normal uppercase ml-1">{remisionMaestra.unidad_medica_nombre}</span></td>
-                    </tr>
-                    <tr>
-                      <td colSpan="2" className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">CLIENTE: <span className="font-normal uppercase ml-1">{remisionMaestra.cliente || 'N/A'}</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div className="text-center font-bold text-sm mb-2 uppercase underline">MATERIAL A VISTAS</div>
-              </div>
-            )}
+              {/* DATOS DE LA CX (Solo Hoja 1) */}
+              {pagina.isFirst && (
+                <div className="block">
+                  <div className="text-right font-bold mb-2 text-[10px]">FECHA: {formatearFechaCorto(remisionMaestra.fecha_creacion)}</div>
+                  <table className="w-full border-collapse border border-gray-600 text-[10px] mb-4">
+                    <tbody>
+                      <tr>
+                        <td className="border border-gray-600 p-1.5 w-1/2 font-bold bg-gray-50/50">FECHA CX: <span className="font-normal uppercase ml-1">{formatearFechaCorto(remisionMaestra.fecha_cirugia)}</span></td>
+                        <td className="border border-gray-600 p-1.5 w-1/2 font-bold bg-gray-50/50">No. DE SOLICITUD: <span className="font-bold ml-1">{remisionMaestra.no_solicitud}</span></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">PACIENTE: <span className="font-normal uppercase ml-1">{remisionMaestra.paciente}</span></td>
+                        <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">PROCEDIMIENTO: <span className="font-normal uppercase ml-1">{remisionMaestra.procedimiento_nombre}</span></td>
+                      </tr>
+                      <tr>
+                        <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">MÉDICO: <span className="font-normal uppercase ml-1">{remisionMaestra.medico_nombre}</span></td>
+                        <td className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">UNIDAD MÉDICA: <span className="font-normal uppercase ml-1">{remisionMaestra.unidad_medica_nombre}</span></td>
+                      </tr>
+                      <tr>
+                        <td colSpan="2" className="border border-gray-600 p-1.5 font-bold bg-gray-50/50">CLIENTE: <span className="font-normal uppercase ml-1">{remisionMaestra.cliente || 'N/A'}</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="text-center font-bold text-sm mb-2 uppercase underline">MATERIAL A VISTAS</div>
+                </div>
+              )}
+            </div>
 
             {/* TABLA DE MATERIALES */}
-            <div className="block w-full">
+            <div className="w-full flex-1">
               {pagina.items.length > 0 && (
-                // === AQUÍ ESTÁ EL CAMBIO (solo esto modifiqué) ===
-                // Cambié mb-2 por mb-8 para que la tabla de piezas/consumibles 
-                // deje mucho más espacio abajo (antes de las firmas o del final de página)
-                <table className="w-full border-collapse border border-gray-600 text-[9px] mb-8">
+                <table className="w-full border-collapse border border-gray-600 text-[9px] mb-2">
                   <thead className="bg-iso-purple">
                     <tr>
                       <th className="border border-gray-600 p-1.5 w-32 text-black font-bold">LOTE / REF</th>
@@ -293,9 +271,9 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
               )}
             </div>
 
-            {/* FIRMAS (Solo última hoja) */}
+            {/* FIRMAS */}
             {pagina.isLast && (
-              <div className="pt-4 block">
+              <div className="w-full shrink-0 mt-auto pt-4">
                 <table className="w-full border-collapse border border-gray-600 text-[10px] mb-4">
                   <thead className="bg-iso-purple">
                     <tr>

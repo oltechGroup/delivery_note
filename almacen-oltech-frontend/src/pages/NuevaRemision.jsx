@@ -81,12 +81,20 @@ function NuevaRemision() {
           
         const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
         
-        // Filtro Flexible: Busca en código O en nombre/descripción
+        // FILTRO ACTUALIZADO: Busca en texto Y asegura que el material tenga stock real (>0)
         const filtrados = res.data.filter(item => {
           const buscarEn = tipoBusqueda === 'set' 
             ? `${item.codigo} ${item.descripcion}`.toLowerCase()
             : `${item.codigo_referencia} ${item.nombre}`.toLowerCase();
-          return buscarEn.includes(busquedaTexto.toLowerCase());
+          
+          const coincideTexto = buscarEn.includes(busquedaTexto.toLowerCase());
+
+          // Si es consumible, obligatoriamente debe tener stock para salir en remisión
+          if (tipoBusqueda === 'consumible') {
+            return coincideTexto && item.cantidad > 0;
+          }
+
+          return coincideTexto;
         });
         
         setResultadosBusqueda(filtrados.slice(0, 10)); // Mostramos hasta 10 resultados
@@ -111,7 +119,6 @@ function NuevaRemision() {
 
     if (tipoBusqueda === 'consumible') {
       // 1. Agregar Consumible Suelto
-      // Evaluamos si el insumo ya tiene una fecha de caducidad en la BD
       const tieneCaducidadEnBD = !!item.fecha_caducidad;
 
       const nuevoDetalle = {
@@ -124,13 +131,9 @@ function NuevaRemision() {
         descripcion: item.nombre,
         cantidad_maxima: item.cantidad,
         cantidad_despachada: 1,
-        // Jalamos el lote si lo tiene
         lote: item.lote || '', 
-        // Asignamos la fecha de la BD si existe, o la dejamos vacía
         fecha_caducidad: tieneCaducidadEnBD ? item.fecha_caducidad : '',
-        // Este flag nos dirá si mostrar el checkbox en la fila
         tiene_caducidad_bd: tieneCaducidadEnBD,
-        // Por defecto, si tiene caducidad en la BD, la mostramos en la impresión
         imprimir_caducidad: tieneCaducidadEnBD
       };
       setDetalles(prev => [...prev, nuevoDetalle]);
@@ -143,7 +146,6 @@ function NuevaRemision() {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // A. Fila principal del Set (Visual)
         const filaSet = {
           id_temp: Date.now() + Math.random(),
           es_total: false,
@@ -159,7 +161,6 @@ function NuevaRemision() {
           imprimir_caducidad: false
         };
 
-        // B. Filas de las piezas que lo componen
         const piezasDelSet = res.data.map(comp => ({
           id_temp: Date.now() + Math.random(),
           es_total: false,
@@ -175,7 +176,6 @@ function NuevaRemision() {
           imprimir_caducidad: false
         }));
 
-        // Agregamos todo en orden
         setDetalles(prev => [...prev, filaSet, ...piezasDelSet]);
       } catch (err) {
         setError('Error al extraer las piezas del Set seleccionado.');
@@ -185,7 +185,6 @@ function NuevaRemision() {
     }
   };
 
-  // Función para agregar una fila "Total"
   const agregarFilaTotal = () => {
     let suma = 0;
     
@@ -224,7 +223,6 @@ function NuevaRemision() {
 
   const mostrarColumnaCaducidad = detalles.some(d => d.imprimir_caducidad);
 
-  // Formateador para las fechas de impresión (y también para el buscador ahora)
   const formatearFechaCorto = (fechaString) => {
     if (!fechaString) return '';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric' };
@@ -232,7 +230,7 @@ function NuevaRemision() {
   };
 
   // ==========================================
-  // GUARDAR EN BASE DE DATOS (El gran botón final)
+  // GUARDAR EN BASE DE DATOS
   // ==========================================
   const handleGuardarRemision = async () => {
     if (detalles.length === 0) {
@@ -281,7 +279,7 @@ function NuevaRemision() {
   return (
     <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-4 animate-in fade-in duration-300">
       
-      {/* BARRA DE CONTROLES SUPERIOR (Fija en pantalla) */}
+      {/* BARRA DE CONTROLES SUPERIOR */}
       <div className="max-w-[22cm] mx-auto bg-white p-4 rounded-xl shadow-md border border-gray-200 flex justify-between items-center mb-6 sticky top-4 z-50">
         <button onClick={() => navigate('/remisiones')} className="text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -313,7 +311,7 @@ function NuevaRemision() {
         </div>
       )}
 
-      {/* CONTROLES DE BÚSQUEDA (Para inyectar material al lienzo) */}
+      {/* CONTROLES DE BÚSQUEDA */}
       <div className="max-w-[22cm] mx-auto bg-oltech-black p-5 rounded-xl shadow-lg border border-gray-800 mb-8 relative z-40">
         <h3 className="text-white text-sm font-bold uppercase tracking-wide mb-3 flex items-center space-x-2">
           <span className="text-oltech-pink">Paso 1.</span> <span>Agrega material a la hoja</span>
@@ -334,13 +332,12 @@ function NuevaRemision() {
               className="w-full px-4 py-2.5 border-none rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm bg-white shadow-inner font-medium text-gray-800"
             />
             
-            {/* Resultados Flotantes */}
             {busquedaTexto.length >= 3 && (
               <div className="absolute top-full left-0 mt-2 w-full bg-white border border-gray-200 rounded-lg shadow-2xl overflow-hidden divide-y divide-gray-100 z-50">
                 {buscandoMaterial ? (
                   <div className="p-4 text-center text-sm font-bold text-gray-400">Buscando en almacén...</div>
                 ) : resultadosBusqueda.length === 0 ? (
-                  <div className="p-4 text-center text-sm font-bold text-red-400">No se encontraron coincidencias.</div>
+                  <div className="p-4 text-center text-sm font-bold text-red-400">No se encontraron coincidencias o material sin stock.</div>
                 ) : (
                   <ul className="max-h-60 overflow-y-auto">
                     {resultadosBusqueda.map(res => {
@@ -364,19 +361,15 @@ function NuevaRemision() {
                               </div>
 
                               <div className="flex flex-col items-end space-y-1 shrink-0 ml-2">
-                                {/* RENDERING MEJORADO PARA EL BUSCADOR */}
                                 {esSet ? (
                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${estaNoDisponible ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                                     {res.estado_nombre || 'ACTIVO'}
                                   </span>
                                 ) : (
                                   <>
-                                    {/* Etiqueta de Stock (Siempre visible para consumibles) */}
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${sinStock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                                       Stock: {res.cantidad}
                                     </span>
-                                    
-                                    {/* Lote y Caducidad (Si existen) */}
                                     {(res.lote || res.fecha_caducidad) && (
                                       <div className="flex flex-col items-end text-[10px] text-gray-500 font-medium">
                                         {res.lote && <span>Lote: {res.lote}</span>}
@@ -397,12 +390,10 @@ function NuevaRemision() {
             )}
           </div>
 
-          {/* Opciones Adicionales */}
           <div className="flex space-x-2">
             <button 
               onClick={agregarFilaTotal}
               className="bg-gray-800 text-oltech-pink px-4 py-2.5 rounded-lg text-sm font-bold border border-oltech-pink/30 hover:bg-gray-700 transition-colors whitespace-nowrap shadow-md"
-              title="Inserta una fila para agrupar y sumar un total"
             >
               + Fila Resumen
             </button>
@@ -411,9 +402,7 @@ function NuevaRemision() {
         </div>
       </div>
 
-      {/* ========================================================
-          EL LIENZO / LIVE PREVIEW DE LA HOJA (Formato ISO Mejorado)
-          ======================================================== */}
+      {/* LIENZO DE LA HOJA */}
       <div className="bg-white w-full max-w-[21.5cm] mx-auto p-[1cm] pt-[0.5cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black text-xs font-sans relative flex flex-col border border-gray-300">
         
         {/* ENCABEZADO ISO 9001 */}
@@ -529,24 +518,20 @@ function NuevaRemision() {
           </tbody>
         </table>
 
-        {/* TÍTULO MATERIAL */}
+        {/* TABLA DE MATERIALES */}
         <div className="text-center font-bold text-sm mb-2 uppercase underline underline-offset-2 text-black">
           MATERIAL A VISTAS
         </div>
 
-        {/* TABLA DE EXPLOSIÓN DE MATERIALES (Interactiva) */}
         <div className="flex-1 border border-gray-400 pb-10">
           <table className="w-full border-collapse text-[10px]">
             <thead className="bg-gray-100 border-b border-gray-400">
               <tr>
                 <th className="border-r border-gray-400 p-1.5 w-32 text-gray-800">LOTE / REF</th>
-                
                 {mostrarColumnaCaducidad && (
                   <th className="border-r border-gray-400 p-1.5 w-24 text-center text-gray-800 bg-pink-50">CADUCIDAD</th>
                 )}
-                
                 <th className="border-r border-gray-400 p-1.5 text-gray-800">DESCRIPCION</th>
-                
                 <th className="border-r border-gray-400 p-1.5 w-16 text-center text-gray-800">DESPACHO</th>
                 <th className="p-1.5 w-8 text-center text-gray-400">✖</th> 
               </tr>
@@ -560,8 +545,6 @@ function NuevaRemision() {
                 </tr>
               ) : (
                 detalles.map((d) => {
-                  
-                  // RENDER: FILA DE TOTAL
                   if (d.es_total) {
                     return (
                       <tr key={d.id_temp} className="bg-gray-50 border-b border-gray-300 group">
@@ -589,18 +572,11 @@ function NuevaRemision() {
                     );
                   }
 
-                  // RENDER: FILA NORMAL DE ÍTEM (SET O CONSUMIBLE)
-                  const esFilaPadreSet = d.es_fila_set_padre;
-
                   return (
-                    <tr key={d.id_temp} className={`border-b border-gray-200 group hover:bg-blue-50/30 ${esFilaPadreSet ? 'bg-gray-50' : ''}`}>
-                      
-                      {/* CÓDIGO */}
-                      <td className={`border-r border-gray-400 p-1 text-center font-mono ${esFilaPadreSet ? 'font-black text-black' : 'font-bold text-gray-800'}`}>
+                    <tr key={d.id_temp} className={`border-b border-gray-200 group hover:bg-blue-50/30 ${d.es_fila_set_padre ? 'bg-gray-50' : ''}`}>
+                      <td className={`border-r border-gray-400 p-1 text-center font-mono ${d.es_fila_set_padre ? 'font-black text-black' : 'font-bold text-gray-800'}`}>
                         {d.codigo}
                       </td>
-                      
-                      {/* COLUMNA DINÁMICA DE CADUCIDAD */}
                       {mostrarColumnaCaducidad && (
                         <td className="border-r border-gray-400 p-1 text-center align-middle bg-pink-50/10">
                           {d.tiene_caducidad_bd ? (
@@ -610,7 +586,6 @@ function NuevaRemision() {
                                 checked={d.imprimir_caducidad}
                                 onChange={(e) => actualizarCampoDetalle(d.id_temp, 'imprimir_caducidad', e.target.checked)}
                                 className="w-3 h-3 text-oltech-pink"
-                                title="¿Imprimir Caducidad en el documento?"
                               />
                               <span className={`text-[9px] font-bold ${d.imprimir_caducidad ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
                                 {formatearFechaCorto(d.fecha_caducidad)}
@@ -621,16 +596,12 @@ function NuevaRemision() {
                           )}
                         </td>
                       )}
-
-                      {/* DESCRIPCIÓN */}
-                      <td className={`border-r border-gray-400 p-1 pl-2 uppercase flex flex-col justify-center ${esFilaPadreSet ? 'font-black text-black' : 'font-semibold text-gray-800'}`}>
+                      <td className={`border-r border-gray-400 p-1 pl-2 uppercase flex flex-col justify-center ${d.es_fila_set_padre ? 'font-black text-black' : 'font-semibold text-gray-800'}`}>
                         {d.descripcion}
                       </td>
-
-                      {/* CANTIDAD DE DESPACHO */}
                       <td className="border-r border-gray-400 p-1 text-center align-middle">
-                        {esFilaPadreSet ? (
-                           <span className="font-black text-[10px] text-black">{d.cantidad_despachada}</span>
+                        {d.es_fila_set_padre ? (
+                            <span className="font-black text-[10px] text-black">{d.cantidad_despachada}</span>
                         ) : (
                           <input 
                             type="number" 
@@ -641,10 +612,8 @@ function NuevaRemision() {
                           />
                         )}
                       </td>
-                      
-                      {/* BOTÓN QUITAR */}
                       <td className="p-1 text-center align-middle">
-                        <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Quitar de la hoja">
+                        <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                           ✖
                         </button>
                       </td>

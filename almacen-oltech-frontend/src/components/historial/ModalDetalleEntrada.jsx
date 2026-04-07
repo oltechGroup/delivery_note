@@ -1,5 +1,5 @@
 // almacen-oltech-frontend/src/components/historial/ModalDetalleEntrada.jsx
-import { useState, useEffect, useRef } from 'react'; // Agregamos useRef
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -13,16 +13,13 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   
-  // Referencia para el componente de impresión
   const componenteImpresionRef = useRef();
 
-  // Configuración del Hook de impresión (Versión 3.0+)
   const handleImprimir = useReactToPrint({
     contentRef: componenteImpresionRef,
     documentTitle: `Comprobante_Ingreso_${entrada?.folio || 'Sin_Folio'}`,
   });
 
-  // Paginación y Búsqueda interna
   const [busqueda, setBusqueda] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
   const ITEMS_POR_PAGINA = 10;
@@ -53,19 +50,18 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
 
   if (!isOpen || !entrada) return null;
 
-  // Filtrado interno
+  // Filtrado interno (Actualizado para incluir nombre_comercial)
   const detallesFiltrados = detalles.filter(d => 
     d.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
     d.consumible_nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (d.nombre_comercial && d.nombre_comercial.toLowerCase().includes(busqueda.toLowerCase())) ||
     (d.lote_ingresado && d.lote_ingresado.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
-  // Paginación
   const totalPaginas = Math.ceil(detallesFiltrados.length / ITEMS_POR_PAGINA);
   const indiceInicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
   const detallesPaginados = detallesFiltrados.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
 
-  // Funciones de formato
   const formatearFechaHora = (fechaString) => {
     if (!fechaString) return '--';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -80,7 +76,7 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado del Modal */}
         <div className="bg-green-600 px-6 py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
@@ -97,7 +93,6 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           </div>
           
           <div className="flex items-center space-x-2">
-            {/* BOTÓN DE IMPRESIÓN */}
             <button 
               onClick={handleImprimir}
               disabled={cargando || detalles.length === 0}
@@ -156,11 +151,13 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
                 <thead>
                   <tr className="bg-gray-100 border-b border-gray-200 text-xs uppercase tracking-wider text-gray-600">
                     <th className="p-3 font-bold w-12 text-center">#</th>
-                    <th className="p-3 font-bold w-48">Código</th>
+                    <th className="p-3 font-bold w-32">Código</th>
                     <th className="p-3 font-bold">Descripción</th>
-                    <th className="p-3 font-bold text-center w-32 bg-green-50 text-green-800 border-x border-gray-200">Cant. Ingresada</th>
-                    <th className="p-3 font-bold w-32">Lote</th>
-                    <th className="p-3 font-bold w-32">Caducidad</th>
+                    <th className="p-3 font-bold w-40">Nombre Com.</th>
+                    <th className="p-3 font-bold text-center w-24">Precio Unit.</th>
+                    <th className="p-3 font-bold text-center w-24 bg-green-50 text-green-800 border-x border-gray-200">Cant.</th>
+                    <th className="p-3 font-bold w-28">Lote</th>
+                    <th className="p-3 font-bold w-28">Caducidad</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 text-sm">
@@ -169,9 +166,21 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
                       <td className="p-3 text-center text-gray-400 font-bold">{indiceInicio + idx + 1}</td>
                       <td className="p-3 font-mono font-bold text-oltech-blue">{item.codigo_referencia}</td>
                       <td className="p-3 font-medium text-gray-800">{item.consumible_nombre}</td>
+                      
+                      {/* DATO: NOMBRE COMERCIAL */}
+                      <td className="p-3 text-gray-500 italic text-xs">
+                        {item.nombre_comercial || <span className="text-gray-300">-</span>}
+                      </td>
+
+                      {/* DATO: PRECIO INGRESADO */}
+                      <td className="p-3 text-center font-bold text-gray-600">
+                        {item.precio_ingresado ? `$${Number(item.precio_ingresado).toFixed(2)}` : <span className="text-gray-300">-</span>}
+                      </td>
+
                       <td className="p-3 text-center font-black text-green-700 bg-green-50/30 border-x border-green-100 text-base">
                         {item.cantidad_ingresada} <span className="text-[10px] text-green-600/70 font-bold uppercase ml-1">{item.unidad_medida}</span>
                       </td>
+                      
                       <td className="p-3">
                         {item.lote_ingresado ? (
                           <span className="font-mono text-xs bg-gray-100 border border-gray-200 px-2 py-1 rounded text-gray-700">{item.lote_ingresado}</span>
@@ -179,6 +188,7 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
                           <span className="text-gray-300 italic text-xs">-</span>
                         )}
                       </td>
+                      
                       <td className="p-3">
                         {item.fecha_caducidad_ingresada ? (
                           <span className="text-xs font-bold text-gray-600">{formatearSoloFecha(item.fecha_caducidad_ingresada)}</span>
@@ -219,12 +229,12 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           </div>
         )}
 
-        {/* --- COMPONENTE DE IMPRESIÓN OCULTO (FUERA DE PANTALLA) --- */}
+        {/* --- COMPONENTE DE IMPRESIÓN OCULTO --- */}
         <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
           <ReporteEntrada 
             ref={componenteImpresionRef}
             entrada={entrada}
-            detalles={detalles} // Enviamos todos los detalles, no solo los paginados
+            detalles={detalles} 
           />
         </div>
 

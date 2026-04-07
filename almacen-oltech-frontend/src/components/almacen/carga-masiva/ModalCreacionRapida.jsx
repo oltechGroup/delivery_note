@@ -13,6 +13,8 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
   const [formData, setFormData] = useState({
     codigo_referencia: '',
     nombre: '',
+    nombre_comercial: '', // NUEVO
+    precio: '',           // NUEVO
     unidad_medida: 'PIEZA'
   });
 
@@ -21,6 +23,8 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
       setFormData({ 
         codigo_referencia: '', 
         nombre: '', 
+        nombre_comercial: '', // LIMPIAR
+        precio: '',           // LIMPIAR
         unidad_medida: 'PIEZA'
       });
       setError('');
@@ -36,7 +40,7 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.codigo_referencia.trim() || !formData.nombre.trim() || !formData.unidad_medida.trim()) {
-      setError('Todos los campos son obligatorios.');
+      setError('Código, nombre y unidad son obligatorios.');
       return;
     }
 
@@ -44,10 +48,12 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
     setCargando(true);
 
     try {
-      // 1. Creamos el producto en la BD con cantidad 0 (el stock entrará con el carrito)
+      // 1. Creamos el producto en la BD con cantidad 0
       const respuesta = await axios.post('http://localhost:4000/api/almacen/consumibles', {
         codigo_referencia: formData.codigo_referencia.toUpperCase(),
         nombre: formData.nombre.toUpperCase(),
+        nombre_comercial: formData.nombre_comercial.trim() ? formData.nombre_comercial.toUpperCase() : null,
+        precio: formData.precio ? parseFloat(formData.precio) : null,
         unidad_medida: formData.unidad_medida.toUpperCase(),
         cantidad: 0, 
         lote: null,
@@ -55,14 +61,16 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
         categoria_id: categoriaId 
       }, { headers: { Authorization: `Bearer ${token}` } });
       
-      // 2. Le pasamos el producto RECIÉN CREADO al carrito
+      // 2. Le pasamos el producto RECIÉN CREADO al carrito incluyendo los nuevos campos
       const nuevoProducto = respuesta.data.consumible;
       onProductoCreado({
         id: nuevoProducto.id,
         codigo_referencia: nuevoProducto.codigo_referencia,
         nombre: nuevoProducto.nombre,
+        nombre_comercial: nuevoProducto.nombre_comercial,
+        precio: nuevoProducto.precio,
         unidad_medida: nuevoProducto.unidad_medida,
-        cantidad: 0, // Stock actual
+        cantidad: 0, 
         lote: null,
         fecha_caducidad: null
       });
@@ -121,22 +129,40 @@ function ModalCreacionRapida({ isOpen, onClose, onProductoCreado, categoriaId })
             />
           </div>
 
+          {/* NUEVO: NOMBRE COMERCIAL */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">UNIDAD DE MEDIDA *</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">NOMBRE COMERCIAL (OPCIONAL)</label>
             <input 
-              type="text" 
-              name="unidad_medida" 
-              list="unidades-sugeridas-rapida"
-              required 
-              value={formData.unidad_medida} 
-              onChange={handleChange}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none uppercase bg-white text-sm"
+              type="text" name="nombre_comercial" 
+              value={formData.nombre_comercial} onChange={handleChange}
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none uppercase text-sm italic" 
+              placeholder="Ej. MARCA O LÍNEA" 
             />
-            <datalist id="unidades-sugeridas-rapida">
-              {sugerenciasUnidad.map(u => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">UNIDAD *</label>
+              <input 
+                type="text" name="unidad_medida" list="unidades-sugeridas-rapida" required 
+                value={formData.unidad_medida} onChange={handleChange}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none uppercase bg-white text-sm"
+              />
+              <datalist id="unidades-sugeridas-rapida">
+                {sugerenciasUnidad.map(u => <option key={u} value={u} />)}
+              </datalist>
+            </div>
+
+            {/* NUEVO: PRECIO */}
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">PRECIO UNITARIO</label>
+              <input 
+                type="number" name="precio" step="0.01" min="0"
+                value={formData.precio} onChange={handleChange}
+                className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 outline-none text-sm font-bold" 
+                placeholder="$ 0.00"
+              />
+            </div>
           </div>
 
           {/* Botones */}

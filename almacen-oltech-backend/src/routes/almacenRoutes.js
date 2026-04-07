@@ -30,9 +30,12 @@ router.post('/categorias-consumibles', verificarToken, checkRole(rolesEscritura)
 // ==========================================
 // RUTAS: CONSUMIBLES (Inventario de Insumos)
 // ==========================================
-// Esta ruta ahora soporta filtrado dinámico mediante query param: ?categoria_id=X
+// NUEVA RUTA: Búsqueda profunda en el histórico (Debe ir antes de las rutas con :id)
+router.get('/consumibles/historico', verificarToken, checkRole(rolesLectura), almacenController.buscarHistoricoLote);
+
 router.get('/consumibles', verificarToken, checkRole(rolesLectura), almacenController.obtenerConsumibles);
 router.post('/consumibles', verificarToken, checkRole(rolesEscritura), almacenController.crearConsumible);
+
 // Usamos PATCH porque solo actualizamos el número de stock (+ o -), no todo el registro
 router.patch('/consumibles/:id/stock', verificarToken, checkRole(rolesEscritura), almacenController.modificarStockConsumible);
 

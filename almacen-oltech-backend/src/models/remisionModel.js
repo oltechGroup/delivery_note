@@ -33,7 +33,7 @@ const getAllRemisiones = async () => {
             r.fecha_creacion, 
             r.fecha_cirugia, 
             r.paciente, 
-            r.cliente, -- NUEVO: Campo cliente
+            r.cliente, 
             r.procedimiento_id,
             p.nombre AS procedimiento_nombre,
             r.medico_id,
@@ -84,7 +84,6 @@ const getRemisionById = async (id) => {
 };
 
 const createRemision = async (remisionData) => {
-    // MODIFICADO: Añadido 'cliente' a la desestructuración
     const { 
         no_solicitud, 
         fecha_cirugia, 
@@ -97,7 +96,6 @@ const createRemision = async (remisionData) => {
         estado_remision_id 
     } = remisionData;
 
-    // MODIFICADO: Añadido 'cliente' a la consulta INSERT
     const query = `
         INSERT INTO remision 
         (no_solicitud, fecha_cirugia, paciente, cliente, procedimiento_id, medico_id, unidad_medica_id, usuario_creador_id, estado_remision_id) 
@@ -105,7 +103,6 @@ const createRemision = async (remisionData) => {
         RETURNING *;
     `;
     
-    // MODIFICADO: Añadido 'cliente' a los valores a insertar
     const values = [
         no_solicitud || null, 
         fecha_cirugia || null, 
@@ -134,7 +131,7 @@ const updateEstadoRemision = async (id, estado_remision_id) => {
 };
 
 // ==========================================
-// MÓDULO: DETALLES DE LA REMISIÓN (Sets, Piezas y Consumibles)
+// MÓDULO: DETALLES DE LA REMISIÓN (ACTUALIZADO)
 // ==========================================
 
 const getDetallesByRemision = async (remision_id) => {
@@ -151,6 +148,7 @@ const getDetallesByRemision = async (remision_id) => {
             rd.consumible_id,
             c.codigo_referencia AS consumible_codigo,
             c.nombre AS consumible_nombre,
+            c.nombre_comercial, -- <--- NUEVO CAMPO AGREGADO
             rd.cantidad_despachada,
             rd.cantidad_consumo,
             rd.cantidad_retorno,

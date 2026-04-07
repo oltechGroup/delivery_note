@@ -13,6 +13,7 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+  const [modoHistorico, setModoHistorico] = useState(false); // NUEVO: Estado para búsqueda profunda
   const buscadorRef = useRef(null);
 
   // Estados del Carrito de Entrada
@@ -40,23 +41,28 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       setObservaciones('');
       setBusqueda('');
       setError('');
+      setModoHistorico(false); // Resetear modo al abrir
     }
   }, [isOpen]);
 
-  // Buscador en tiempo real de consumibles (FILTRADO POR CATEGORÍA)
+  // Buscador en tiempo real de consumibles (INTELIGENTE)
   useEffect(() => {
     if (busqueda.length > 2) {
       const buscar = async () => {
         try {
-          // El query_param categoria_id asegura que solo traiga de ESTA categoría
-          const res = await axios.get(`http://localhost:4000/api/almacen/consumibles?categoria_id=${categoriaId || ''}`, {
+          // LÓGICA: Si modoHistorico es true, pedimos audit=true al backend
+          const url = `http://localhost:4000/api/almacen/consumibles?categoria_id=${categoriaId || ''}${modoHistorico ? '&audit=true' : ''}`;
+          
+          const res = await axios.get(url, {
             headers: { Authorization: `Bearer ${token}` }
           });
+
           const filtrados = res.data.filter(c => 
             c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
             c.nombre.toLowerCase().includes(busqueda.toLowerCase())
           );
-          setResultados(filtrados.slice(0, 8)); // Mostrar máximo 8 sugerencias
+          
+          setResultados(filtrados.slice(0, 10)); 
           setMostrarSugerencias(true);
         } catch (err) {
           console.error("Error buscando insumos:", err);
@@ -67,17 +73,15 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       setResultados([]);
       setMostrarSugerencias(false);
     }
-  }, [busqueda, token, categoriaId]);
+  }, [busqueda, token, categoriaId, modoHistorico]);
 
   if (!isOpen) return null;
 
-  // Formatear fecha para el input type="date" (YYYY-MM-DD)
   const formatearFechaParaInput = (fechaISO) => {
     if (!fechaISO) return '';
     return new Date(fechaISO).toISOString().split('T')[0];
   };
 
-  // Agregar un producto al carrito
   const agregarAlCarrito = (producto, esNuevo = false) => {
     if (carrito.find(item => item.consumible_id === producto.id)) {
       setError(`El producto ${producto.codigo_referencia} ya está en la lista.`);
@@ -92,35 +96,33 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       unidad: producto.unidad_medida,
       cantidad_actual: producto.cantidad || 0, 
       cantidad_ingreso: 1, 
-      // Si el producto ya tenía lote, lo marcamos como "traiaLoteOriginal" para bloquear el input
       lote: producto.lote || '', 
       traiaLoteOriginal: !!producto.lote, 
-      
-      // Mismo caso para la caducidad
       fecha_caducidad: formatearFechaParaInput(producto.fecha_caducidad),
       traiaCaducidadOriginal: !!producto.fecha_caducidad,
-      
+      nombre_comercial: producto.nombre_comercial || '',
+      traiaNombreComercialOriginal: !!producto.nombre_comercial,
+      precio: producto.precio || '',
+      traiaPrecioOriginal: !!producto.precio,
       esNuevo: esNuevo
     }, ...carrito]);
     
     setBusqueda('');
+    setModoHistorico(false); // Volver a modo normal tras seleccionar
     setMostrarSugerencias(false);
     setError('');
   };
 
-  // Actualizar valores de una fila del carrito
   const actualizarFila = (index, campo, valor) => {
     const nuevoCarrito = [...carrito];
     nuevoCarrito[index][campo] = valor;
     setCarrito(nuevoCarrito);
   };
 
-  // Quitar del carrito
   const eliminarDelCarrito = (index) => {
     setCarrito(carrito.filter((_, i) => i !== index));
   };
 
-  // Enviar todo al backend
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (carrito.length === 0) {
@@ -141,7 +143,8 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       consumible_id: item.consumible_id,
       cantidad: parseInt(item.cantidad_ingreso),
       lote: item.lote,
-      fecha_caducidad: item.fecha_caducidad
+      fecha_caducidad: item.fecha_caducidad,
+      precio: item.precio ? parseFloat(item.precio) : null 
     }));
 
     try {
@@ -161,7 +164,7 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-7xl max-h-[95vh] flex flex-col animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] max-h-[95vh] flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* ENCABEZADO */}
         <div className="bg-oltech-black px-6 py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
@@ -180,42 +183,66 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col lg:flex-row gap-6">
           
           {/* LADO IZQUIERDO: Buscador y Detalles */}
-          <div className="w-full lg:w-1/3 flex flex-col space-y-4">
+          <div className="w-full lg:w-1/4 flex flex-col space-y-4">
             
-            {/* Buscador */}
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 relative" ref={buscadorRef}>
-              <label className="block text-sm font-bold text-gray-800 mb-2">1. Buscar producto de esta categoría</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-bold text-gray-800">1. Buscar producto</label>
+                {modoHistorico && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold animate-pulse">MODO HISTÓRICO ACTIVO</span>}
+              </div>
+              
               <div className="relative">
                 <input 
                   type="text" 
                   value={busqueda} 
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-oltech-pink outline-none text-sm"
-                  placeholder="Código o nombre..."
+                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 outline-none text-sm transition-colors ${modoHistorico ? 'border-blue-400 focus:ring-blue-400 bg-blue-50/30' : 'border-gray-300 focus:ring-oltech-pink'}`}
+                  placeholder={modoHistorico ? "Buscando en todos los lotes..." : "Código o nombre..."}
                 />
-                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <svg className={`w-5 h-5 absolute left-3 top-3 ${modoHistorico ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
 
-              {/* Sugerencias Flotantes */}
-              {mostrarSugerencias && resultados.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+              {/* Sugerencias Flotantes con Lógica Histórica */}
+              {mostrarSugerencias && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 overflow-y-auto">
                   {resultados.map(prod => (
                     <button 
                       key={prod.id} type="button"
                       onClick={() => agregarAlCarrito(prod)}
                       className="w-full text-left p-3 hover:bg-pink-50 border-b border-gray-100 last:border-0 transition-colors"
                     >
-                      <div className="text-xs font-bold text-oltech-blue">{prod.codigo_referencia}</div>
+                      <div className="flex justify-between items-start">
+                        <div className="text-xs font-bold text-oltech-blue">{prod.codigo_referencia}</div>
+                        <div className={`text-[9px] font-bold px-1.5 rounded ${prod.cantidad > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>Stock: {prod.cantidad}</div>
+                      </div>
                       <div className="text-sm font-medium text-gray-700 truncate">{prod.nombre}</div>
-                      <div className="text-[10px] text-gray-400 mt-1">Stock actual: {prod.cantidad}</div>
+                      {(prod.lote || prod.nombre_comercial) && (
+                        <div className="text-[10px] text-gray-400 italic truncate">
+                          {prod.lote ? `Lote: ${prod.lote}` : ''} {prod.nombre_comercial ? `| ${prod.nombre_comercial}` : ''}
+                        </div>
+                      )}
                     </button>
                   ))}
+                  
+                  {/* BOTÓN DE RESCATE: BUSCAR EN HISTÓRICO */}
+                  {!modoHistorico && busqueda.length > 2 && (
+                    <button 
+                      type="button"
+                      onClick={() => setModoHistorico(true)}
+                      className="w-full p-4 bg-gray-50 text-blue-600 hover:bg-blue-50 text-xs font-bold flex items-center justify-center space-x-2 transition-colors border-t border-gray-100"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                      <span>¿No aparece el lote? Buscar en históricos</span>
+                    </button>
+                  )}
+
+                  {resultados.length === 0 && modoHistorico && (
+                    <div className="p-4 text-center text-xs text-gray-500 italic">No se encontró el registro ni en los históricos.</div>
+                  )}
                 </div>
               )}
               
-              {/* Botón de Crear Nuevo SIEMPRE VISIBLE */}
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-500 mb-2 text-center">¿El producto no está en el catálogo?</p>
                 <button 
                   type="button"
                   onClick={() => setModalRapidoAbierto(true)}
@@ -227,94 +254,99 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
               </div>
             </div>
 
-            {/* Observaciones */}
             <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex-1">
-              <label className="block text-sm font-bold text-gray-800 mb-2">2. Observaciones de Recepción</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">2. Observaciones</label>
               <textarea 
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
                 className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink resize-none text-sm"
                 rows="4"
-                placeholder="Ej. Factura #1234, entregado por FedEx..."
+                placeholder="Ej. Factura #1234..."
               ></textarea>
             </div>
             
-            {error && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-bold">
-                {error}
-              </div>
-            )}
+            {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-bold">{error}</div>}
           </div>
 
-          {/* LADO DERECHO: El Carrito Ampliado */}
-          <div className="w-full lg:w-2/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+          {/* LADO DERECHO: Carrito */}
+          <div className="w-full lg:w-3/4 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">3. Lista de Ingreso (Carrito)</h3>
-              <span className="bg-oltech-blue text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-                {carrito.length} productos listos
-              </span>
+              <h3 className="font-bold text-gray-800">3. Lista de Ingreso</h3>
+              <span className="bg-oltech-blue text-white text-xs font-bold px-3 py-1 rounded-full">{carrito.length} productos</span>
             </div>
 
-            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[600px] p-0">
+            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[600px]">
               {carrito.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-12 text-gray-400">
-                  <svg className="w-16 h-16 mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                  <p className="text-lg font-medium text-gray-500">El carrito de entrada está vacío</p>
-                  <p className="text-sm mt-1">Busca y selecciona productos a la izquierda para agregarlos a la lista de recepción.</p>
+                <div className="h-full flex flex-col items-center justify-center p-12 text-gray-400 text-center">
+                  <p className="text-lg font-medium">El carrito está vacío</p>
+                  <p className="text-sm">Busca productos a la izquierda para comenzar.</p>
                 </div>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <table className="w-full text-left border-collapse table-fixed">
                   <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200 text-[11px] uppercase tracking-wider text-gray-600">
-                      <th className="p-3 font-bold w-48">Producto</th>
-                      <th className="p-3 font-bold text-center w-20 border-l border-gray-200">Stock Actual</th>
-                      <th className="p-3 font-bold text-center w-24 bg-blue-50 text-blue-800 border-x border-gray-200">+ Ingreso</th>
-                      <th className="p-3 font-bold text-center w-24 bg-green-50 text-green-800 border-r border-gray-200">= Final</th>
+                    <tr className="bg-gray-100 border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-600">
+                      <th className="p-3 font-bold w-44">Producto</th>
+                      <th className="p-3 font-bold text-center w-16">Stock</th>
+                      <th className="p-3 font-bold text-center w-24 bg-blue-50 text-blue-800">+ Ingreso</th>
+                      <th className="p-3 font-bold text-center w-24 bg-green-50 text-green-800">= Final</th>
+                      <th className="p-3 font-bold w-24">Precio</th>
+                      <th className="p-3 font-bold w-36">Nombre Com.</th>
                       <th className="p-3 font-bold w-32">Lote</th>
                       <th className="p-3 font-bold w-36">Caducidad</th>
-                      <th className="p-3 font-bold text-center w-12"></th>
+                      <th className="p-3 font-bold w-10"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200 text-sm">
+                  <tbody className="divide-y divide-gray-200 text-xs">
                     {carrito.map((item, idx) => {
-                      const cantidadIngreso = item.cantidad_ingreso === '' ? 0 : parseInt(item.cantidad_ingreso);
-                      const stockFinal = item.cantidad_actual + cantidadIngreso;
+                      const stockFinal = item.cantidad_actual + (parseInt(item.cantidad_ingreso) || 0);
 
                       return (
-                        <tr key={idx} className={`transition-colors ${item.esNuevo ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
+                        <tr key={idx} className={`${item.esNuevo ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
                           <td className="p-3">
-                            <div className="font-bold text-oltech-blue text-xs flex items-center space-x-1">
-                              {item.esNuevo && <span className="w-2 h-2 rounded-full bg-blue-500 inline-block mr-1" title="Producto Nuevo"></span>}
-                              {item.codigo}
-                            </div>
-                            <div className="font-medium text-gray-800 line-clamp-2 text-xs mt-0.5">{item.nombre}</div>
+                            <div className="font-bold text-oltech-blue truncate">{item.codigo}</div>
+                            <div className="text-gray-800 truncate" title={item.nombre}>{item.nombre}</div>
                           </td>
                           
-                          <td className="p-3 text-center font-medium text-gray-500 border-l border-gray-100 bg-gray-50/50">
-                            {item.cantidad_actual}
-                          </td>
+                          <td className="p-3 text-center text-gray-500 font-medium bg-gray-50/50">{item.cantidad_actual}</td>
 
-                          <td className="p-3 border-x border-blue-100 bg-blue-50/30">
+                          <td className="p-3 bg-blue-50/20">
                             <input 
                               type="number" min="1" required
                               value={item.cantidad_ingreso}
-                              onChange={(e) => actualizarFila(idx, 'cantidad_ingreso', e.target.value === '' ? '' : e.target.value)}
-                              className="w-full px-2 py-1.5 border border-blue-300 rounded text-center font-bold text-oltech-blue focus:ring-2 focus:ring-blue-500 outline-none"
+                              onChange={(e) => actualizarFila(idx, 'cantidad_ingreso', e.target.value)}
+                              className="w-full px-2 py-1.5 border border-blue-200 rounded text-center font-bold text-oltech-blue outline-none"
                             />
                           </td>
 
-                          <td className="p-3 text-center font-bold text-green-700 bg-green-50/30 border-r border-green-100 text-base">
-                            {stockFinal}
+                          <td className="p-3 text-center font-bold text-green-700 bg-green-50/20 text-sm">{stockFinal}</td>
+
+                          <td className="p-3">
+                            <input 
+                              type="number" step="0.01" placeholder="0.00"
+                              value={item.precio}
+                              disabled={item.traiaPrecioOriginal}
+                              onChange={(e) => actualizarFila(idx, 'precio', e.target.value)}
+                              className={`w-full px-2 py-1.5 border rounded outline-none font-bold ${item.traiaPrecioOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                            />
                           </td>
 
                           <td className="p-3">
                             <input 
-                              type="text" placeholder="Lote (Opcional)"
+                              type="text" placeholder="Opcional"
+                              value={item.nombre_comercial}
+                              disabled={item.traiaNombreComercialOriginal}
+                              onChange={(e) => actualizarFila(idx, 'nombre_comercial', e.target.value.toUpperCase())}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase italic ${item.traiaNombreComercialOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                            />
+                          </td>
+
+                          <td className="p-3">
+                            <input 
+                              type="text" placeholder="Lote"
                               value={item.lote}
-                              disabled={item.traiaLoteOriginal} // BLOQUEADO SI YA TENÍA LOTE
+                              disabled={item.traiaLoteOriginal}
                               onChange={(e) => actualizarFila(idx, 'lote', e.target.value.toUpperCase())}
-                              className={`w-full px-2 py-1.5 border rounded outline-none text-xs uppercase font-mono ${item.traiaLoteOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink bg-white'}`}
-                              title={item.traiaLoteOriginal ? "El lote ya está registrado en sistema." : ""}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase font-mono ${item.traiaLoteOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
                           
@@ -322,17 +354,14 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
                             <input 
                               type="date"
                               value={item.fecha_caducidad}
-                              disabled={item.traiaCaducidadOriginal} // BLOQUEADO SI YA TENÍA FECHA
+                              disabled={item.traiaCaducidadOriginal}
                               onChange={(e) => actualizarFila(idx, 'fecha_caducidad', e.target.value)}
-                              className={`w-full px-2 py-1.5 border rounded outline-none text-[11px] ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink bg-white text-gray-700'}`}
-                              title={item.traiaCaducidadOriginal ? "La fecha ya está registrada en sistema." : ""}
+                              className={`w-full px-2 py-1.5 border rounded outline-none ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
                           
                           <td className="p-3 text-center">
-                            <button type="button" onClick={() => eliminarDelCarrito(idx)} className="text-gray-400 hover:text-red-600 bg-gray-100 hover:bg-red-50 p-1.5 rounded transition-colors" title="Quitar de la lista">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            </button>
+                            <button type="button" onClick={() => eliminarDelCarrito(idx)} className="text-gray-400 hover:text-red-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                           </td>
                         </tr>
                       );
@@ -347,7 +376,7 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
         {/* PIE DEL MODAL */}
         <div className="bg-white px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 shrink-0 rounded-b-2xl">
           <button type="button" onClick={onClose} disabled={cargando} className="px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">
-            Cancelar Entrada
+            Cancelar
           </button>
           <button 
             type="button" onClick={handleSubmit} 
@@ -360,13 +389,12 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
 
       </div>
 
-      {/* MODAL SOBRE MODAL: Creador Rápido */}
       <ModalCreacionRapida 
         isOpen={modalRapidoAbierto}
         onClose={() => setModalRapidoAbierto(false)}
-        categoriaId={categoriaId} // Le pasamos la categoría actual para que lo guarde ahí
+        categoriaId={categoriaId} 
         onProductoCreado={(nuevoProducto) => {
-          agregarAlCarrito(nuevoProducto, true); // true = esNuevo, se pintará azul
+          agregarAlCarrito(nuevoProducto, true);
         }}
       />
     </div>

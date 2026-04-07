@@ -52,7 +52,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       
       const esCerrada = resRemision.data.estado_nombre?.toLowerCase().includes('completad') || resRemision.data.estado_nombre?.toLowerCase().includes('cerrad');
       
-      // FILTRO IMPORTANTE: Ocultamos las filas "Total" y las "Fila Padre del Set" para no capturarles consumos por error
       const detallesReales = resDetalles.data.filter(d => !d.es_total && (d.pieza_id || d.consumible_id));
 
       const detallesFormateados = detallesReales.map(d => ({
@@ -70,7 +69,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     }
   };
 
-  // Cargar inventario a granel (Solo cuando pasamos al Paso 2)
+  // Cargar inventario (Aplica limpieza automática del backend: Stock > 0 o Genéricos)
   const cargarConsumibles = async () => {
     try {
       const res = await axios.get('http://localhost:4000/api/almacen/consumibles', {
@@ -111,18 +110,18 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       cargarConsumibles();
       setPaso(2);
     } else {
-      // Si no se gastaron piezas de Set, guardamos directamente
       handleConciliarGuardar();
     }
   };
 
   // ==========================================
-  // PASO 2: LÓGICA DE REPOSICIÓN
+  // PASO 2: LÓGICA DE REPOSICIÓN (CON NOMBRE COMERCIAL)
   // ==========================================
   const consumiblesFiltrados = consumibles.filter(c => 
     c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase())
-  ).slice(0, 5); // Mostramos max 5 para no saturar
+    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (c.nombre_comercial && c.nombre_comercial.toLowerCase().includes(busqueda.toLowerCase()))
+  ).slice(0, 5); 
 
   const agregarAReposicion = () => {
     if (!consumibleSeleccionado) return;
@@ -136,6 +135,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       consumible_id: consumibleSeleccionado.id,
       codigo: consumibleSeleccionado.codigo_referencia,
       nombre: consumibleSeleccionado.nombre,
+      nombre_comercial: consumibleSeleccionado.nombre_comercial,
       cantidad_a_surtir: parseInt(cantidadReposicion)
     }]);
 
@@ -176,6 +176,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       console.error('Error al conciliar:', err);
       setError(err.response?.data?.mensaje || 'Ocurrió un error al intentar conciliar la remisión.');
     } finally {
+      setError(''); // Limpiar errores antes de cerrar
       setCargando(false);
     }
   };
@@ -204,7 +205,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
           </button>
         </div>
 
-        {/* CUERPO DINÁMICO */}
         <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col">
           {error && (
             <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-medium mb-6 shrink-0">
@@ -218,12 +218,8 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
               <p className="text-gray-500 font-medium">Cargando datos...</p>
             </div>
           ) : paso === 1 ? (
-            /* ========================================================
-               PASO 1: VISTA DE TABLA DE CONSUMOS
-               ======================================================== */
             <div className="space-y-6">
               
-              {/* Información Resumen */}
               <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                 <div>
                   <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Paciente</p>
@@ -245,7 +241,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                 </div>
               )}
 
-              {/* Tabla de Conciliación (Solo muestra piezas reales) */}
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-100">
@@ -272,12 +267,10 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                             {d.pieza_descripcion || d.consumible_nombre}
                           </td>
                           
-                          {/* DESPACHO */}
                           <td className="p-3 bg-blue-50/30 border-l border-blue-100 text-center font-bold text-blue-700 text-sm">
                             {d.cantidad_despachada}
                           </td>
                           
-                          {/* CONSUMO */}
                           <td className="p-3 bg-red-50/50 border-l border-red-100 text-center">
                             {isCompletada ? (
                               <span className="font-bold text-red-600 text-sm">{d.cantidad_consumo}</span>
@@ -292,7 +285,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                             )}
                           </td>
 
-                          {/* RETORNO */}
                           <td className="p-3 bg-green-50/30 border-l border-green-100 text-center font-bold text-green-700 text-sm">
                             {d.cantidad_retorno}
                           </td>
@@ -302,12 +294,8 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                   </tbody>
                 </table>
               </div>
-
             </div>
           ) : (
-            /* ========================================================
-               PASO 2: VISTA DE REPOSICIÓN DE SETS
-               ======================================================== */
             <div className="space-y-6 flex-1 flex flex-col">
               
               <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md">
@@ -316,36 +304,30 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                   <span>Sets Incompletos Detectados</span>
                 </h3>
                 <p className="text-sm text-amber-700 mt-1">
-                  Se detectó el consumo de piezas pertenecientes a un Set. Para poder liberar los Sets y marcarlos como "Disponibles", debes reponer el material faltante desde el inventario a granel.
+                  Debes reponer el material consumido para liberar los Sets como "Disponibles".
                 </p>
               </div>
 
               <div className="flex flex-col lg:flex-row gap-6">
                 
-                {/* LISTA DE LO QUE FALTA (Izquierda) */}
                 <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Piezas Faltantes en los Sets:</h4>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Piezas Faltantes:</h4>
                   <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
                     {piezasSetConsumidas.map(p => (
                       <li key={p.id} className="p-3 bg-red-50/30 flex justify-between items-center">
                         <div>
                           <p className="text-xs font-bold text-oltech-blue">{p.pieza_codigo}</p>
                           <p className="text-sm text-gray-700">{p.pieza_descripcion}</p>
-                          <p className="text-[9px] text-gray-500 mt-1">Caja: {p.set_codigo}</p>
                         </div>
-                        <div className="text-center bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm">
-                          Faltan {p.cantidad_consumo}
-                        </div>
+                        <div className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm">Faltan {p.cantidad_consumo}</div>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* BUSCADOR Y CARRITO (Derecha) */}
                 <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Inventario a Granel (Para Rellenar):</h4>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Surtido desde Inventario:</h4>
                   
-                  {/* Buscador */}
                   {!consumibleSeleccionado ? (
                     <div className="relative mb-4">
                       <input 
@@ -353,26 +335,24 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                         value={busqueda} 
                         onChange={(e) => setBusqueda(e.target.value)} 
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm"
-                        placeholder="Busca el insumo para reponer..."
+                        placeholder="Buscar por código, nombre o marca..."
                       />
                       {busqueda.length >= 3 && (
                         <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-10 overflow-hidden divide-y divide-gray-100">
                           {consumiblesFiltrados.length === 0 ? (
-                            <div className="p-3 text-center text-xs text-gray-500">Sin resultados.</div>
+                            <div className="p-3 text-center text-xs text-gray-500">Sin resultados disponibles.</div>
                           ) : (
                             consumiblesFiltrados.map(c => (
                               <button 
                                 key={c.id} type="button" onClick={() => setConsumibleSeleccionado(c)}
-                                disabled={c.cantidad <= 0}
-                                className={`w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center ${c.cantidad <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                                className="w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center"
                               >
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <div className="text-xs font-bold text-oltech-blue">{c.codigo_referencia}</div>
-                                  <div className="text-sm font-medium text-gray-800 line-clamp-1">{c.nombre}</div>
+                                  <div className="text-sm font-medium text-gray-800 truncate">{c.nombre}</div>
+                                  {c.nombre_comercial && <div className="text-[10px] text-gray-500 italic truncate">{c.nombre_comercial}</div>}
                                 </div>
-                                <div className={`text-xs font-bold px-2 py-1 rounded-full ${c.cantidad > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                  Stock: {c.cantidad}
-                                </div>
+                                <div className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 ml-2">Stock: {c.cantidad}</div>
                               </button>
                             ))
                           )}
@@ -382,44 +362,39 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                   ) : (
                     <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
                       <div className="flex justify-between items-start mb-2">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="text-xs font-bold text-oltech-blue">{consumibleSeleccionado.codigo_referencia}</div>
-                          <div className="text-sm font-medium text-gray-800 line-clamp-1">{consumibleSeleccionado.nombre}</div>
-                          <div className="text-[10px] text-gray-500 mt-1">Stock Disponible: {consumibleSeleccionado.cantidad}</div>
+                          <div className="text-sm font-medium text-gray-800 truncate">{consumibleSeleccionado.nombre}</div>
+                          {consumibleSeleccionado.nombre_comercial && <div className="text-[10px] text-gray-500 italic">{consumibleSeleccionado.nombre_comercial}</div>}
                         </div>
-                        <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline">Cambiar</button>
+                        <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline shrink-0 ml-2">Cambiar</button>
                       </div>
                       <div className="flex items-center space-x-3 mt-3">
-                        <label className="text-xs font-bold text-gray-700">Cantidad a extraer:</label>
                         <input 
                           type="number" min="1" max={consumibleSeleccionado.cantidad} 
                           value={cantidadReposicion} onChange={(e) => setCantidadReposicion(e.target.value)}
                           className="w-20 px-2 py-1 text-center border border-blue-300 rounded font-bold focus:ring-2 focus:ring-oltech-pink outline-none"
                         />
-                        <button type="button" onClick={agregarAReposicion} className="px-3 py-1 bg-oltech-pink text-white font-bold rounded text-xs hover:bg-pink-700">
-                          Añadir
-                        </button>
+                        <button type="button" onClick={agregarAReposicion} className="px-3 py-1 bg-oltech-pink text-white font-bold rounded text-xs hover:bg-pink-700">Añadir</button>
                       </div>
                     </div>
                   )}
 
-                  {/* Carrito de Reposiciones */}
                   <div className="flex-1 flex flex-col border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
-                    <div className="bg-gray-200 px-3 py-2 text-[10px] font-bold text-gray-600 uppercase">Material a Surtir</div>
+                    <div className="bg-gray-200 px-3 py-2 text-[10px] font-bold text-gray-600 uppercase">Material a Extraer</div>
                     <div className="flex-1 p-2 overflow-y-auto">
                       {reposiciones.length === 0 ? (
-                        <div className="text-center text-xs text-gray-400 mt-4">Aún no has agregado piezas de reposición.</div>
+                        <div className="text-center text-xs text-gray-400 mt-4 italic">No se han añadido reposiciones.</div>
                       ) : (
                         <ul className="space-y-2">
                           {reposiciones.map(r => (
                             <li key={r.id_temp} className="bg-white border border-green-200 p-2 rounded flex justify-between items-center shadow-sm">
-                              <div>
-                                <span className="text-[10px] font-bold text-green-700">Extraer: {r.cantidad_a_surtir} pzs</span>
-                                <p className="text-xs font-bold text-gray-800">{r.codigo}</p>
+                              <div className="min-w-0 flex-1">
+                                <span className="text-[10px] font-bold text-green-700">Cantidad: {r.cantidad_a_surtir}</span>
+                                <p className="text-xs font-bold text-gray-800 truncate">{r.codigo}</p>
+                                {r.nombre_comercial && <p className="text-[9px] text-gray-500 italic truncate">{r.nombre_comercial}</p>}
                               </div>
-                              <button type="button" onClick={() => quitarDeReposicion(r.id_temp)} className="text-gray-400 hover:text-red-500">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                              </button>
+                              <button type="button" onClick={() => quitarDeReposicion(r.id_temp)} className="text-gray-400 hover:text-red-500 ml-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                             </li>
                           ))}
                         </ul>
@@ -433,52 +408,22 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
           )}
         </div>
 
-        {/* PIE DEL MODAL (Botones Dinámicos) */}
         <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-4">
-          
-          {!isCompletada && paso === 1 && (
-            <div className="text-xs text-gray-500 font-medium flex items-center space-x-2">
-              <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span>El retorno se calcula automáticamente.</span>
-            </div>
-          )}
-
-          {!isCompletada && paso === 2 && (
-            <div className="text-xs text-gray-500 font-medium">
-              Verifica que el material a surtir cubra los faltantes antes de continuar.
-            </div>
-          )}
-
           <div className="flex space-x-3 w-full sm:w-auto ml-auto">
             {isCompletada ? (
-              <button type="button" onClick={onClose} className="w-full sm:w-auto px-8 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors">
-                Cerrar Ventana
-              </button>
+              <button type="button" onClick={onClose} className="w-full sm:w-auto px-8 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors">Cerrar Ventana</button>
             ) : (
               <>
-                <button type="button" onClick={paso === 2 ? () => setPaso(1) : onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">
-                  {paso === 2 ? 'Regresar' : 'Cancelar'}
-                </button>
-
+                <button type="button" onClick={paso === 2 ? () => setPaso(1) : onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">{paso === 2 ? 'Regresar' : 'Cancelar'}</button>
                 {paso === 1 ? (
-                  <button 
-                    type="button" 
-                    onClick={handleSiguientePaso} 
-                    disabled={cargando || detalles.length === 0} 
-                    className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                  >
+                  <button type="button" onClick={handleSiguientePaso} disabled={cargando || detalles.length === 0} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors flex items-center space-x-2">
                     <span>{necesitaReposicion ? 'Siguiente: Reponer Sets' : 'Guardar y Cerrar Remisión'}</span>
                     {necesitaReposicion && <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>}
                   </button>
                 ) : (
-                  <button 
-                    type="button" 
-                    onClick={handleConciliarGuardar} 
-                    disabled={cargando || reposiciones.length === 0} 
-                    className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-bold shadow-md hover:bg-pink-700 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                  >
+                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando || (necesitaReposicion && reposiciones.length === 0)} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-bold shadow-md hover:bg-pink-700 transition-colors flex items-center justify-center space-x-2">
                     {cargando && <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                    <span>Confirmar y Finalizar Proceso</span>
+                    <span>Confirmar y Finalizar</span>
                   </button>
                 )}
               </>

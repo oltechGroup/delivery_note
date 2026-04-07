@@ -21,7 +21,7 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
       setCantidad(1);
       setError('');
 
-      // Cargar el inventario a granel
+      // Cargar el inventario (El backend ya devuelve la lista limpia por defecto)
       axios.get('http://localhost:4000/api/almacen/consumibles', {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -32,13 +32,13 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
 
   if (!isOpen || !piezaSet) return null;
 
-  // Filtrar consumibles según la búsqueda
+  // Filtrar consumibles según la búsqueda (ACTUALIZADO: Incluye nombre_comercial)
   const consumiblesFiltrados = consumibles.filter(c => 
     c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (c.nombre_comercial && c.nombre_comercial.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
-  // MEJORA DE RENDIMIENTO: Mostrar solo un máximo de 10 resultados a la vez
   const LIMITE_RESULTADOS = 10;
   const resultadosMostrados = consumiblesFiltrados.slice(0, LIMITE_RESULTADOS);
 
@@ -57,7 +57,6 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
     setError('');
 
     try {
-      // Llamamos a la ruta maestra que hace la suma/resta transaccional
       await axios.post(`http://localhost:4000/api/almacen/composicion/${piezaSet.composicion_id}/surtir`, {
         consumible_id: consumibleSeleccionado.id,
         cantidad_a_surtir: parseInt(cantidad)
@@ -94,13 +93,12 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
             </div>
           )}
 
-          {/* Info de la pieza que estamos surtiendo */}
+          {/* Info de la pieza destino */}
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex flex-col items-center text-center">
             <span className="text-xs font-bold text-gray-500 uppercase">Destino: {piezaSet.pieza_codigo}</span>
             <span className="text-sm font-bold text-gray-800">{piezaSet.pieza_descripcion}</span>
           </div>
 
-          {/* Buscador y Selección de Insumo */}
           {!consumibleSeleccionado ? (
             <div className="space-y-3">
               <label className="block text-sm font-bold text-gray-700">1. Busca el insumo a utilizar:</label>
@@ -113,30 +111,30 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
               
               <div className="max-h-56 overflow-y-auto border border-gray-200 rounded-lg divide-y divide-gray-100">
                 {resultadosMostrados.length === 0 ? (
-                  <div className="p-4 text-center text-sm text-gray-500 bg-gray-50">No hay insumos que coincidan con la búsqueda.</div>
+                  <div className="p-4 text-center text-sm text-gray-500 bg-gray-50">No hay insumos disponibles.</div>
                 ) : (
                   <>
                     {resultadosMostrados.map(c => (
                       <button 
                         key={c.id} type="button" 
                         onClick={() => setConsumibleSeleccionado(c)}
-                        disabled={c.cantidad === 0}
-                        className={`w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center ${c.cantidad === 0 ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
+                        className="w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center"
                       >
-                        <div>
+                        <div className="flex-1 min-w-0">
                           <div className="text-xs font-bold text-oltech-blue">{c.codigo_referencia}</div>
-                          <div className="text-sm font-medium text-gray-800 line-clamp-1">{c.nombre}</div>
+                          <div className="text-sm font-medium text-gray-800 truncate">{c.nombre}</div>
+                          {/* VISUALIZACIÓN: NOMBRE COMERCIAL */}
+                          {c.nombre_comercial && <div className="text-[10px] text-gray-500 italic truncate">{c.nombre_comercial}</div>}
                         </div>
-                        <div className={`text-xs font-bold px-2 py-1 rounded-full ${c.cantidad > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <div className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 ml-2">
                           Stock: {c.cantidad}
                         </div>
                       </button>
                     ))}
                     
-                    {/* Aviso si hay más resultados ocultos */}
                     {consumiblesFiltrados.length > LIMITE_RESULTADOS && (
-                      <div className="p-2 text-center text-xs text-gray-400 bg-gray-50">
-                        Mostrando 10 de {consumiblesFiltrados.length} resultados. Sigue escribiendo para filtrar.
+                      <div className="p-2 text-center text-[10px] text-gray-400 bg-gray-50 uppercase font-bold tracking-wider">
+                        Sigue escribiendo para filtrar mas resultados...
                       </div>
                     )}
                   </>
@@ -147,15 +145,16 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
             <div className="space-y-4 animate-in fade-in">
               <label className="block text-sm font-bold text-gray-700">Insumo Seleccionado:</label>
               <div className="flex justify-between items-center bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                <div>
+                <div className="min-w-0">
                   <div className="text-xs font-bold text-oltech-blue">{consumibleSeleccionado.codigo_referencia}</div>
-                  <div className="text-sm font-medium text-gray-800">{consumibleSeleccionado.nombre}</div>
+                  <div className="text-sm font-medium text-gray-800 truncate">{consumibleSeleccionado.nombre}</div>
+                  {consumibleSeleccionado.nombre_comercial && <div className="text-[10px] text-gray-500 italic">{consumibleSeleccionado.nombre_comercial}</div>}
                 </div>
-                <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline px-2 py-1">Cambiar</button>
+                <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline px-2 py-1 shrink-0">Cambiar</button>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 text-center mb-2">2. ¿Cuántos vas a meter a la caja?</label>
+                <label className="block text-sm font-bold text-gray-700 text-center mb-2">2. ¿Cuántas piezas vas a meter a la caja?</label>
                 <div className="flex justify-center">
                   <input 
                     type="number" min="1" max={consumibleSeleccionado.cantidad} required autoFocus
@@ -168,7 +167,6 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
             </div>
           )}
 
-          {/* Botones */}
           <div className="pt-4 flex justify-between space-x-3 border-t border-gray-100">
             <button type="button" onClick={onClose} disabled={cargando} className="w-full py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">
               Cancelar

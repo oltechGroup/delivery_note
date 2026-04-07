@@ -33,9 +33,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     onBeforeGetContent: () => Promise.resolve()
   });
 
-  // Envoltorio para depurar y asegurar que el ref existe
   const handleImprimir = () => {
-    console.log("Verificando componente antes de imprimir:", componenteImpresionRef.current);
     if (componenteImpresionRef.current) {
       ejecutarImpresion();
     } else {
@@ -52,11 +50,15 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     setModalAjuste({ abierto: true, consumible, tipo });
   };
 
-  // Cargar consumibles SOLO de la categoría seleccionada
+  /**
+   * CARGA DE DATOS: El backend ya devuelve la lista "Limpia" por defecto
+   * (Filtra stock 0 con lote, pero deja stock 0 genéricos)
+   */
   const cargarConsumibles = async () => {
     setCargando(true);
     setError('');
     try {
+      // Llamada normal (aplica la lógica de limpieza del backend)
       const respuesta = await axios.get(`http://localhost:4000/api/almacen/consumibles?categoria_id=${categoria.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -79,10 +81,11 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     setPaginaActual(1);
   }, [busqueda]);
 
-  // Filtrado
+  // Filtrado (Incluye nombre_comercial)
   const consumiblesFiltrados = consumibles.filter(c => 
     c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
     c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+    (c.nombre_comercial && c.nombre_comercial.toLowerCase().includes(busqueda.toLowerCase())) ||
     (c.lote && c.lote.toLowerCase().includes(busqueda.toLowerCase()))
   );
 
@@ -96,7 +99,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     setPaginaActual(1);
   };
 
-  // Ordenamos SOLO después de filtrar
   const consumiblesOrdenados = [...consumiblesFiltrados].sort((a, b) => {
     const valorA = a[ordenConfig.clave] || '';
     const valorB = b[ordenConfig.clave] || '';
@@ -137,7 +139,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
               <span className="text-gray-400 font-medium mr-2">Inventario:</span>
               {categoria?.nombre}
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">{consumibles.length} insumos en esta categoría</p>
+            <p className="text-xs text-gray-500 mt-0.5">{consumibles.length} insumos visibles en esta categoría</p>
           </div>
         </div>
 
@@ -148,12 +150,11 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
             placeholder="Buscar por código, nombre o lote..." 
           />
           
-          {/* BOTÓN DE IMPRESIÓN */}
           <button 
             onClick={handleImprimir}
             disabled={consumiblesOrdenados.length === 0}
             className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
-            title="Generar formato de Excel/Impresión para conteo físico"
+            title="Generar formato de Impresión (Sin precios, vista limpia)"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             <span>Imprimir Formato</span>
@@ -162,7 +163,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
           <button 
             onClick={() => setModalEntradaAbierto(true)}
             className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
-            title="Registrar una entrada de mercancía"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
             <span>Ingreso</span>
@@ -171,7 +171,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
           <button 
             onClick={() => setModalNuevoAbierto(true)}
             className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
-            title="Crear un nuevo producto en el catálogo"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
@@ -187,7 +186,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         </div>
       )}
 
-      {/* TABLA DE STOCK (Visible en pantalla) */}
+      {/* TABLA DE STOCK (Vista Digital) */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -196,11 +195,17 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                 <th className="py-4 px-4 font-bold w-12 text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('id')}>
                   ID {renderIconoOrden('id')}
                 </th>
-                <th className="py-4 px-4 font-bold w-40 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('codigo_referencia')}>
+                <th className="py-4 px-4 font-bold w-32 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('codigo_referencia')}>
                   Cód. Ref. {renderIconoOrden('codigo_referencia')}
                 </th>
                 <th className="py-4 px-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('nombre')}>
-                  Nombre / Descripción {renderIconoOrden('nombre')}
+                  Descripción {renderIconoOrden('nombre')}
+                </th>
+                <th className="py-4 px-4 font-bold cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('nombre_comercial')}>
+                  Nombre Com. {renderIconoOrden('nombre_comercial')}
+                </th>
+                <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-24" onClick={() => ordenarDatos('precio')}>
+                  Precio {renderIconoOrden('precio')}
                 </th>
                 <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('lote')}>
                   Lote {renderIconoOrden('lote')}
@@ -208,10 +213,8 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                 <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('fecha_caducidad')}>
                   Caducidad {renderIconoOrden('fecha_caducidad')}
                 </th>
-                <th className="py-4 px-4 font-bold text-center w-24">
-                  Unidad
-                </th>
-                <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-28" onClick={() => ordenarDatos('cantidad')}>
+                <th className="py-4 px-4 font-bold text-center w-24">Unidad</th>
+                <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-24" onClick={() => ordenarDatos('cantidad')}>
                   Stock {renderIconoOrden('cantidad')}
                 </th>
                 <th className="py-4 px-4 font-bold text-center w-32">Ajustar</th>
@@ -220,86 +223,43 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
             <tbody className="text-sm text-gray-800 divide-y divide-gray-100">
               {cargando ? (
                 <tr>
-                  <td colSpan="8" className="p-10 text-center text-gray-500">
-                    <svg className="animate-spin h-8 w-8 mx-auto text-oltech-pink mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Cargando inventario...
+                  <td colSpan="10" className="p-10 text-center text-gray-500">
+                    <svg className="animate-spin h-8 w-8 mx-auto text-oltech-pink mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    Cargando inventario actualizado...
                   </td>
                 </tr>
               ) : consumiblesPaginados.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="p-10 text-center text-gray-500">
-                    No se encontraron insumos registrados en esta categoría.
+                  <td colSpan="10" className="p-10 text-center text-gray-500 font-medium">
+                    No hay insumos vigentes para mostrar.
                   </td>
                 </tr>
               ) : (
                 consumiblesPaginados.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3 px-4 text-center text-gray-400 font-medium">#{item.id}</td>
-                    
-                    <td className="py-3 px-4">
-                      <span className="font-mono font-bold text-oltech-blue tracking-tight">
-                        {item.codigo_referencia}
-                      </span>
-                    </td>
-                    
-                    <td className="py-3 px-4 font-medium text-gray-900">
-                      {item.nombre}
-                    </td>
-
+                    <td className="py-3 px-4 font-mono font-bold text-oltech-blue tracking-tight">{item.codigo_referencia}</td>
+                    <td className="py-3 px-4 font-medium text-gray-900">{item.nombre}</td>
+                    <td className="py-3 px-4 text-gray-500 italic text-xs">{item.nombre_comercial || '-'}</td>
+                    <td className="py-3 px-4 text-center font-bold text-gray-700">{item.precio ? `$${Number(item.precio).toFixed(2)}` : '-'}</td>
                     <td className="py-3 px-4 text-center">
-                      {item.lote ? (
-                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono text-xs border border-gray-200">
-                          {item.lote}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs italic">-</span>
-                      )}
+                      {item.lote ? <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono text-xs border border-gray-200">{item.lote}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
-
                     <td className="py-3 px-4 text-center">
-                      {item.fecha_caducidad ? (
-                        <span className="text-xs font-bold text-gray-600">
-                          {new Date(item.fecha_caducidad).toLocaleDateString()}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs italic">-</span>
-                      )}
+                      {item.fecha_caducidad ? <span className="text-xs font-bold text-gray-600">{new Date(item.fecha_caducidad).toLocaleDateString()}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
-                    
-                    <td className="py-3 px-4 text-center text-gray-500 text-xs font-bold uppercase tracking-wider">
-                      {item.unidad_medida || 'N/A'}
-                    </td>
-                    
+                    <td className="py-3 px-4 text-center text-gray-500 text-xs font-bold uppercase">{item.unidad_medida || 'N/A'}</td>
                     <td className="py-3 px-4 text-center">
                       <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full font-bold text-sm border ${
                         item.cantidad > 5 ? 'bg-green-50 text-green-700 border-green-200' :
                         item.cantidad > 0 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                         'bg-red-50 text-red-700 border-red-200'
-                      }`}>
-                        {item.cantidad}
-                      </span>
+                      }`}>{item.cantidad}</span>
                     </td>
-                    
                     <td className="py-3 px-4">
                       <div className="flex items-center justify-center space-x-2">
-                        <button 
-                          onClick={() => abrirAjuste(item, 'restar')} 
-                          className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-red-600 hover:border-red-300 hover:bg-red-50 flex items-center justify-center transition-colors shadow-sm"
-                          title="Ajuste Manual: Restar Stock"
-                        >
-                          <svg className="w-4 h-4 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg>
-                        </button>
-                        
-                        <button 
-                          onClick={() => abrirAjuste(item, 'sumar')} 
-                          className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-500 hover:text-green-600 hover:border-green-300 hover:bg-green-50 flex items-center justify-center transition-colors shadow-sm"
-                          title="Ajuste Manual: Sumar Stock"
-                        >
-                          <svg className="w-4 h-4 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path></svg>
-                        </button>
+                        <button onClick={() => abrirAjuste(item, 'restar')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg></button>
+                        <button onClick={() => abrirAjuste(item, 'sumar')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path></svg></button>
                       </div>
                     </td>
                   </tr>
@@ -312,61 +272,24 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         {/* CONTROLES DE PAGINACIÓN */}
         {!cargando && totalPaginas > 1 && (
           <div className="bg-gray-50 px-6 py-3 border-t border-gray-200 flex items-center justify-between">
-            <span className="text-sm text-gray-500 font-medium">
-              Página <span className="font-bold text-gray-800">{paginaActual}</span> de {totalPaginas}
-            </span>
+            <span className="text-sm text-gray-500 font-medium">Página <span className="font-bold text-gray-800">{paginaActual}</span> de {totalPaginas}</span>
             <div className="flex space-x-2">
-              <button 
-                onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
-                disabled={paginaActual === 1}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-              >
-                Anterior
-              </button>
-              <button 
-                onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
-                disabled={paginaActual === totalPaginas}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
-              >
-                Siguiente
-              </button>
+              <button onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))} disabled={paginaActual === 1} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 shadow-sm">Anterior</button>
+              <button onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))} disabled={paginaActual === totalPaginas} className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 shadow-sm">Siguiente</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* --- REPORTE DE IMPRESIÓN --- */}
-      {/* SOLUCIÓN: Clases Tailwind para hacerlo invisible pero presente para react-to-print */}
+      {/* --- REPORTE DE IMPRESIÓN (Hereda la lista limpia) --- */}
       <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
-        <ReporteConsumibles 
-          ref={componenteImpresionRef} 
-          categoria={categoria} 
-          consumibles={consumiblesOrdenados} 
-        />
+        <ReporteConsumibles ref={componenteImpresionRef} categoria={categoria} consumibles={consumiblesOrdenados} />
       </div>
 
-      {/* VENTANAS FLOTANTES (MODALES) */}
-      <ModalConsumible 
-        isOpen={modalNuevoAbierto} 
-        onClose={() => setModalNuevoAbierto(false)} 
-        onGuardado={cargarConsumibles} 
-        categoriaId={categoria.id}
-      />
-
-      <ModalAjusteStock 
-        isOpen={modalAjuste.abierto} 
-        onClose={() => setModalAjuste({ ...modalAjuste, abierto: false })} 
-        onGuardado={cargarConsumibles}
-        consumible={modalAjuste.consumible}
-        tipoAjuste={modalAjuste.tipo}
-      />
-
-      <ModalEntradaMasiva
-       isOpen={modalEntradaAbierto}
-        onClose={() => setModalEntradaAbierto(false)}
-       onGuardado={cargarConsumibles}
-        categoriaId={categoria.id}
-      />
+      {/* VENTANAS FLOTANTES */}
+      <ModalConsumible isOpen={modalNuevoAbierto} onClose={() => setModalNuevoAbierto(false)} onGuardado={cargarConsumibles} categoriaId={categoria.id} />
+      <ModalAjusteStock isOpen={modalAjuste.abierto} onClose={() => setModalAjuste({ ...modalAjuste, abierto: false })} onGuardado={cargarConsumibles} consumible={modalAjuste.consumible} tipoAjuste={modalAjuste.tipo} />
+      <ModalEntradaMasiva isOpen={modalEntradaAbierto} onClose={() => setModalEntradaAbierto(false)} onGuardado={cargarConsumibles} categoriaId={categoria.id} />
 
     </div>
   );

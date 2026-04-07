@@ -56,15 +56,23 @@ const crearCategoriaConsumible = async (req, res) => {
 // ==========================================
 // CONTROLADORES: CONSUMIBLES (Insumos a Granel)
 // ==========================================
+
+/**
+ * ACTUALIZADO: Maneja el filtro de limpieza basado en el query param 'audit'
+ */
 const obtenerConsumibles = async (req, res) => {
     try {
-        const { categoria_id } = req.query; 
+        const { categoria_id, audit } = req.query; 
         
+        // Si audit es 'true', soloActivos será false (trae todo).
+        // Por defecto, soloActivos es true (aplica limpieza).
+        const soloActivos = audit !== 'true';
+
         let consumibles;
         if (categoria_id) {
-            consumibles = await almacenModel.getConsumiblesByCategoria(categoria_id);
+            consumibles = await almacenModel.getConsumiblesByCategoria(categoria_id, soloActivos);
         } else {
-            consumibles = await almacenModel.getAllConsumibles();
+            consumibles = await almacenModel.getAllConsumibles(soloActivos);
         }
         res.json(consumibles);
     } catch (error) {
@@ -73,9 +81,40 @@ const obtenerConsumibles = async (req, res) => {
     }
 };
 
+/**
+ * NUEVA FUNCIÓN: Búsqueda Profunda (Rescate de lotes ocultos)
+ */
+const buscarHistoricoLote = async (req, res) => {
+    try {
+        const { codigo, lote } = req.query;
+        if (!codigo) return res.status(400).json({ mensaje: 'El código de referencia es obligatorio.' });
+
+        const consumible = await almacenModel.getConsumibleByCodigoYLote(codigo, lote || null);
+        
+        if (!consumible) {
+            return res.status(404).json({ mensaje: 'No se encontró ningún lote previo con esos datos.' });
+        }
+        
+        res.json(consumible);
+    } catch (error) {
+        console.error('Error en búsqueda profunda:', error);
+        res.status(500).json({ mensaje: 'Error al realizar la búsqueda en el histórico.' });
+    }
+};
+
 const crearConsumible = async (req, res) => {
     try {
-        const { codigo_referencia, nombre, unidad_medida, cantidad, lote, fecha_caducidad, categoria_id } = req.body;
+        const { 
+            codigo_referencia, 
+            nombre, 
+            nombre_comercial, 
+            precio,           
+            unidad_medida, 
+            cantidad, 
+            lote, 
+            fecha_caducidad, 
+            categoria_id 
+        } = req.body;
         
         if (!codigo_referencia || !nombre) {
             return res.status(400).json({ mensaje: 'Código de referencia y nombre son obligatorios.' });
@@ -160,7 +199,6 @@ const obtenerHistorialEntradas = async (req, res) => {
     }
 };
 
-// NUEVA FUNCIÓN: Obtener detalles de una entrada
 const obtenerDetallesDeEntrada = async (req, res) => {
     try {
         const { id } = req.params;
@@ -333,12 +371,11 @@ const surtirSet = async (req, res) => {
     }
 };
 
-// EXPORTACIÓN ACTUALIZADA
 module.exports = {
     obtenerCategorias, crearCategoria,
     obtenerCategoriasConsumibles, crearCategoriaConsumible, 
-    obtenerConsumibles, crearConsumible, modificarStockConsumible, 
-    registrarEntrada, obtenerHistorialEntradas, obtenerDetallesDeEntrada, // <- NUEVA EXPORTACIÓN
+    obtenerConsumibles, buscarHistoricoLote, crearConsumible, modificarStockConsumible, 
+    registrarEntrada, obtenerHistorialEntradas, obtenerDetallesDeEntrada,
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
     obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet
