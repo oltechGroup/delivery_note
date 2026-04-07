@@ -32,12 +32,19 @@ const createCategoria = async (nombre) => {
 // ==========================================
 // MÓDULO: CATEGORÍAS DE CONSUMIBLES
 // ==========================================
+
+/**
+ * ACTUALIZADO: El conteo ahora es honesto con la Regla de Oro.
+ * Solo cuenta insumos con stock > 0 O insumos genéricos (sin lote ni fecha).
+ */
 const getAllCategoriasConsumibles = async () => {
     const query = `
         SELECT 
             cc.id, 
             cc.nombre, 
-            COUNT(c.id)::int AS total_consumibles
+            COUNT(c.id) FILTER (
+                WHERE c.cantidad > 0 OR (c.lote IS NULL AND c.fecha_caducidad IS NULL)
+            )::int AS total_consumibles
         FROM categoria_consumible cc
         LEFT JOIN consumible c ON cc.id = c.categoria_id
         GROUP BY cc.id
@@ -487,7 +494,7 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
 module.exports = {
     getAllCategorias, createCategoria,
     getAllCategoriasConsumibles, createCategoriaConsumible, 
-    getAllConsumibles, getConsumiblesByCategoria, getConsumibleByCodigoYLote, // <- NUEVA EXPORTACIÓN
+    getAllConsumibles, getConsumiblesByCategoria, getConsumibleByCodigoYLote,
     createConsumible, updateStockConsumible, 
     registrarEntradaMasiva, getDetallesEntrada,
     getAllPiezas, createPieza, updatePieza,
