@@ -1,10 +1,9 @@
 // almacen-oltech-frontend/src/components/historial/ModalDetalleEntrada.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
 // IMPORTACIONES PARA IMPRESIÓN
-import { useReactToPrint } from 'react-to-print';
 import ReporteEntrada from '../almacen/impresion/ReporteEntrada';
 
 function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
@@ -13,12 +12,8 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   
-  const componenteImpresionRef = useRef();
-
-  const handleImprimir = useReactToPrint({
-    contentRef: componenteImpresionRef,
-    documentTitle: `Comprobante_Ingreso_${entrada?.folio || 'Sin_Folio'}`,
-  });
+  // NUEVO: Estado para controlar la Vista Previa de Impresión
+  const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
 
   const [busqueda, setBusqueda] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
@@ -50,7 +45,7 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
 
   if (!isOpen || !entrada) return null;
 
-  // Filtrado interno (Actualizado para incluir nombre_comercial)
+  // Filtrado interno
   const detallesFiltrados = detalles.filter(d => 
     d.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
     d.consumible_nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -93,8 +88,9 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           </div>
           
           <div className="flex items-center space-x-2">
+            {/* BOTÓN VISIBLE: ABRE LA VISTA PREVIA DE IMPRESIÓN */}
             <button 
-              onClick={handleImprimir}
+              onClick={() => setMostrarModalImpresion(true)}
               disabled={cargando || detalles.length === 0}
               className="flex items-center space-x-2 px-4 py-2 bg-white text-green-700 hover:bg-green-50 rounded-lg font-bold text-sm transition-colors shadow-sm disabled:opacity-50"
             >
@@ -229,14 +225,14 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
           </div>
         )}
 
-        {/* --- COMPONENTE DE IMPRESIÓN OCULTO --- */}
-        <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
+        {/* --- EL COMPONENTE DE IMPRESIÓN (SE MUESTRA COMO VISTA PREVIA) --- */}
+        {mostrarModalImpresion && (
           <ReporteEntrada 
-            ref={componenteImpresionRef}
             entrada={entrada}
             detalles={detalles} 
+            onClose={() => setMostrarModalImpresion(false)}
           />
-        </div>
+        )}
 
       </div>
     </div>

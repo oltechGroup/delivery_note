@@ -1,14 +1,11 @@
 // almacen-oltech-frontend/src/components/almacen/VistaInventarioConsumibles.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import Buscador from './Buscador';
 import ModalConsumible from './ModalConsumible'; 
 import ModalAjusteStock from './ModalAjusteStock';
 import ModalEntradaMasiva from './carga-masiva/ModalEntradaMasiva';
-
-// CORRECCIÓN: Volvemos al Hook (Vite no permite el default export en esta librería)
-import { useReactToPrint } from 'react-to-print';
 import ReporteConsumibles from './impresion/ReporteConsumibles';
 
 function VistaInventarioConsumibles({ categoria, onVolver }) {
@@ -23,23 +20,8 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
   const [modalAjuste, setModalAjuste] = useState({ abierto: false, consumible: null, tipo: '' });
   const [modalEntradaAbierto, setModalEntradaAbierto] = useState(false);
 
-  // Referencia de impresión
-  const componenteImpresionRef = useRef();
-  
-  // Lógica de impresión con el Hook
-  const ejecutarImpresion = useReactToPrint({
-    contentRef: componenteImpresionRef,
-    documentTitle: `Inventario_${categoria?.nombre?.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
-    onBeforeGetContent: () => Promise.resolve()
-  });
-
-  const handleImprimir = () => {
-    if (componenteImpresionRef.current) {
-      ejecutarImpresion();
-    } else {
-      console.error("El componente de impresión no está listo aún.");
-    }
-  };
+  // NUEVO: Estado para controlar la Vista Previa de Impresión
+  const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
 
   // Paginación y Ordenamiento
   const [paginaActual, setPaginaActual] = useState(1);
@@ -58,7 +40,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
     setCargando(true);
     setError('');
     try {
-      // Llamada normal (aplica la lógica de limpieza del backend)
       const respuesta = await axios.get(`http://localhost:4000/api/almacen/consumibles?categoria_id=${categoria.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -150,13 +131,14 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
             placeholder="Buscar por código, nombre o lote..." 
           />
           
+          {/* BOTÓN VISIBLE: ABRE LA VISTA PREVIA */}
           <button 
-            onClick={handleImprimir}
+            onClick={() => setMostrarModalImpresion(true)}
             disabled={consumiblesOrdenados.length === 0}
             className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
-            title="Generar formato de Impresión (Sin precios, vista limpia)"
+            title="Generar formato de Impresión (Vista Previa)"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             <span>Imprimir Formato</span>
           </button>
 
@@ -281,10 +263,14 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         )}
       </div>
 
-      {/* --- REPORTE DE IMPRESIÓN (Hereda la lista limpia) --- */}
-      <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
-        <ReporteConsumibles ref={componenteImpresionRef} categoria={categoria} consumibles={consumiblesOrdenados} />
-      </div>
+      {/* --- EL COMPONENTE DE IMPRESIÓN (SE MUESTRA COMO VISTA PREVIA) --- */}
+      {mostrarModalImpresion && (
+        <ReporteConsumibles 
+          categoria={categoria} 
+          consumibles={consumiblesOrdenados} 
+          onClose={() => setMostrarModalImpresion(false)}
+        />
+      )}
 
       {/* VENTANAS FLOTANTES */}
       <ModalConsumible isOpen={modalNuevoAbierto} onClose={() => setModalNuevoAbierto(false)} onGuardado={cargarConsumibles} categoriaId={categoria.id} />

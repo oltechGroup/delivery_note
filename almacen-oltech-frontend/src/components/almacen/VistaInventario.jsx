@@ -1,14 +1,11 @@
 // almacen-oltech-frontend/src/components/almacen/VistaInventario.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import Buscador from './Buscador';
 import ModalSet from './ModalSet';
 import ModalDetalleSet from './ModalDetalleSet';
-
-// CORRECCIÓN: Volvemos a usar el Hook (como lo hicimos con éxito en Consumibles)
-import { useReactToPrint } from 'react-to-print';
-import ReporteSets from './impresion/ReporteSets';
+import ReporteSets from './impresion/ReporteSets'; // Importamos la nueva vista de impresión
 
 function VistaInventario({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -27,20 +24,13 @@ function VistaInventario({ categoria, onVolver }) {
   const [paginaActual, setPaginaActual] = useState(1);
   const ITEMS_POR_PAGINA = 15; 
 
-  // Estados y Referencias para la impresión
+  // NUEVO: Estados para manejar la apertura del modal de impresión
   const [preparandoReporte, setPreparandoReporte] = useState(false);
-  const [dataParaImprimir, setDataParaImprimir] = useState([]);
-  const componenteImpresionRef = useRef();
+  const [dataParaImprimir, setDataParaImprimir] = useState(null);
+  const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
 
-  // CORRECCIÓN: Configuración del Hook con 'contentRef'
-    const ejecutarImpresion = useReactToPrint({
-  contentRef: componenteImpresionRef,
-  documentTitle: `Inventario_Sets_${categoria?.nombre?.replace(/\s+/g, '_')}_${new Date().toLocaleDateString().replace(/\//g, '-')}`,
-  onAfterPrint: () => setPreparandoReporte(false),
-  });
-
-  // FUNCIÓN: Obtener composiciones y preparar impresión
-  const prepararYImprimir = async () => {
+  // FUNCIÓN: Obtener composiciones y abrir la vista previa
+  const prepararYAbrirImpresion = async () => {
     if (setsFiltrados.length === 0) return;
     
     setPreparandoReporte(true);
@@ -63,25 +53,17 @@ function VistaInventario({ categoria, onVolver }) {
 
       const resultados = await Promise.all(promesas);
       
-      // Ordenamos los resultados
+      // Ordenamos los resultados alfabéticamente
       resultados.sort((a, b) => a.setCodigo.localeCompare(b.setCodigo));
       
-      // Actualizamos el estado con los datos completos
+      // Actualizamos el estado con los datos y abrimos el modal
       setDataParaImprimir(resultados);
-      
-      // Esperamos un momento para que React renderice el DOM oculto con los datos nuevos
-      setTimeout(() => {
-        if (componenteImpresionRef.current) {
-          ejecutarImpresion(); // Disparamos el hook
-        } else {
-          setPreparandoReporte(false);
-          console.error("El componente de impresión no se ha montado correctamente.");
-        }
-      }, 800);
+      setMostrarModalImpresion(true);
 
     } catch (err) {
       console.error('Error al preparar reporte de sets:', err);
-      setError('Hubo un problema al preparar el formato de impresión. Inténtalo de nuevo.');
+      setError('Hubo un problema al extraer la información de las cajas. Inténtalo de nuevo.');
+    } finally {
       setPreparandoReporte(false);
     }
   };
@@ -156,9 +138,9 @@ function VistaInventario({ categoria, onVolver }) {
             placeholder="Buscar código o descripción..." 
           />
           
-          {/* BOTÓN VISIBLE: Lanza la preparación y luego la impresión */}
+          {/* BOTÓN VISIBLE: Lanza la preparación y ABRE LA VISTA PREVIA */}
           <button 
-            onClick={prepararYImprimir}
+            onClick={prepararYAbrirImpresion}
             disabled={setsFiltrados.length === 0 || preparandoReporte}
             className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
             title="Generar formato de conteo con desglose de piezas"
@@ -169,12 +151,12 @@ function VistaInventario({ categoria, onVolver }) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span>Preparando...</span>
+                <span>Cargando Contenido...</span>
               </>
             ) : (
               <>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                <span>Imprimir Formato</span>
+                <span>Generar Reporte (Sets)</span>
               </>
             )}
           </button>
@@ -301,15 +283,15 @@ function VistaInventario({ categoria, onVolver }) {
         )}
 
       </div>
-      
-      {/* --- COMPONENTE DE IMPRESIÓN (Oculto visualmente) --- */}
-      <div className="absolute opacity-0 pointer-events-none -z-50 left-[-9999px] top-[-9999px]">
+
+      {/* --- EL COMPONENTE DE IMPRESIÓN (AHORA SE MUESTRA COMO VISTA PREVIA) --- */}
+      {mostrarModalImpresion && dataParaImprimir && (
         <ReporteSets 
-          ref={componenteImpresionRef}
           categoria={categoria}
           dataReporte={dataParaImprimir}
+          onClose={() => setMostrarModalImpresion(false)}
         />
-      </div>
+      )}
 
       {/* --- VENTANAS FLOTANTES (MODALES) --- */}
       <ModalSet 
