@@ -36,6 +36,10 @@ router.get('/consumibles/historico', verificarToken, checkRole(rolesLectura), al
 router.get('/consumibles', verificarToken, checkRole(rolesLectura), almacenController.obtenerConsumibles);
 router.post('/consumibles', verificarToken, checkRole(rolesEscritura), almacenController.crearConsumible);
 
+// NUEVAS RUTAS: EDITAR Y ELIMINAR CONSUMIBLES
+router.put('/consumibles/:id', verificarToken, checkRole(rolesEscritura), almacenController.actualizarConsumible);
+router.delete('/consumibles/:id', verificarToken, checkRole(rolesEscritura), almacenController.eliminarConsumible);
+
 // Usamos PATCH porque solo actualizamos el número de stock (+ o -), no todo el registro
 router.patch('/consumibles/:id/stock', verificarToken, checkRole(rolesEscritura), almacenController.modificarStockConsumible);
 

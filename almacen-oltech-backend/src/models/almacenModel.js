@@ -180,6 +180,61 @@ const updateStockConsumible = async (id, cantidad_a_sumar) => {
     return rows[0];
 };
 
+// ==========================================
+// NUEVAS FUNCIONES: EDICIÓN Y ELIMINACIÓN
+// ==========================================
+
+const updateConsumible = async (id, data) => {
+    const { 
+        codigo_referencia, 
+        nombre, 
+        nombre_comercial, 
+        precio, 
+        unidad_medida, 
+        lote, 
+        fecha_caducidad, 
+        categoria_id 
+    } = data;
+
+    // NOTA: No incluimos 'cantidad' en el UPDATE para proteger el stock
+    const query = `
+        UPDATE consumible 
+        SET 
+            codigo_referencia = $1, 
+            nombre = $2, 
+            nombre_comercial = $3, 
+            precio = $4, 
+            unidad_medida = $5, 
+            lote = $6, 
+            fecha_caducidad = $7, 
+            categoria_id = $8
+        WHERE id = $9 
+        RETURNING *;
+    `;
+    const values = [
+        codigo_referencia, 
+        nombre, 
+        nombre_comercial || null, 
+        precio !== undefined && precio !== null ? parseFloat(precio) : null, 
+        unidad_medida || null, 
+        lote || null, 
+        fecha_caducidad || null, 
+        categoria_id || null, 
+        id
+    ];
+
+    const { rows } = await pool.query(query, values);
+    return rows[0];
+};
+
+const deleteConsumible = async (id) => {
+    // Si el registro está amarrado a una foreign key, PostgreSQL lanzará un error
+    // que el controlador atrapará
+    const query = `DELETE FROM consumible WHERE id = $1 RETURNING id;`;
+    const { rows } = await pool.query(query, [id]);
+    return rows[0];
+};
+
 // =========================================================================
 // MÓDULO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
 // =========================================================================
@@ -496,6 +551,7 @@ module.exports = {
     getAllCategoriasConsumibles, createCategoriaConsumible, 
     getAllConsumibles, getConsumiblesByCategoria, getConsumibleByCodigoYLote,
     createConsumible, updateStockConsumible, 
+    updateConsumible, deleteConsumible, // <--- EXPORTADAS AQUÍ
     registrarEntradaMasiva, getDetallesEntrada,
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,

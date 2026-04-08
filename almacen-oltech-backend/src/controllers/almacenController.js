@@ -146,6 +146,66 @@ const modificarStockConsumible = async (req, res) => {
     }
 };
 
+// ==========================================
+// NUEVAS FUNCIONES: EDICIÓN Y ELIMINACIÓN DE CONSUMIBLES
+// ==========================================
+
+const actualizarConsumible = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { 
+            codigo_referencia, 
+            nombre, 
+            nombre_comercial, 
+            precio,           
+            unidad_medida, 
+            lote, 
+            fecha_caducidad, 
+            categoria_id 
+        } = req.body;
+
+        if (!codigo_referencia || !nombre) {
+            return res.status(400).json({ mensaje: 'Código de referencia y nombre son obligatorios.' });
+        }
+
+        const consumibleActualizado = await almacenModel.updateConsumible(id, req.body);
+        
+        if (!consumibleActualizado) {
+            return res.status(404).json({ mensaje: 'Insumo no encontrado.' });
+        }
+
+        res.json({ mensaje: 'Insumo actualizado exitosamente.', consumible: consumibleActualizado });
+    } catch (error) {
+        console.error('Error al actualizar consumible:', error);
+        if (error.code === '23505') {
+            return res.status(400).json({ mensaje: 'El código de referencia ya está en uso por otro insumo.' });
+        }
+        res.status(500).json({ mensaje: 'Error interno al actualizar el insumo.' });
+    }
+};
+
+const eliminarConsumible = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const insumoEliminado = await almacenModel.deleteConsumible(id);
+        
+        if (!insumoEliminado) {
+            return res.status(404).json({ mensaje: 'Insumo no encontrado.' });
+        }
+
+        res.json({ mensaje: 'Insumo eliminado exitosamente.' });
+    } catch (error) {
+        console.error('Error al eliminar consumible:', error);
+        // Capturar el error de Foreign Key de PostgreSQL (Integridad Referencial)
+        if (error.code === '23503') {
+            return res.status(409).json({ 
+                mensaje: 'No se puede eliminar este insumo porque ya tiene historial de movimientos (entradas o remisiones). Si fue un error, realiza un ajuste de stock a cero.' 
+            });
+        }
+        res.status(500).json({ mensaje: 'Error interno al eliminar el insumo.' });
+    }
+};
+
 // =========================================================================
 // MÓDULO: ENTRADA MASIVA DE CONSUMIBLES (Inbound)
 // =========================================================================
@@ -375,6 +435,7 @@ module.exports = {
     obtenerCategorias, crearCategoria,
     obtenerCategoriasConsumibles, crearCategoriaConsumible, 
     obtenerConsumibles, buscarHistoricoLote, crearConsumible, modificarStockConsumible, 
+    actualizarConsumible, eliminarConsumible, // <--- NUEVAS FUNCIONES EXPORTADAS
     registrarEntrada, obtenerHistorialEntradas, obtenerDetallesDeEntrada,
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
