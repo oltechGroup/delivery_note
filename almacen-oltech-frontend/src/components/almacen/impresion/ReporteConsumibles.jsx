@@ -210,7 +210,8 @@ function ReporteConsumibles({ categoria, consumibles, onClose }) {
                                                     <td className="p-1.5 border border-gray-600 uppercase">{item.nombre}</td>
                                                     <td className="p-1.5 border border-gray-600 text-center">{item.unidad_medida || '-'}</td>
                                                     <td className="p-1.5 border border-gray-600 text-center">
-                                                        {item.fecha_caducidad ? new Date(item.fecha_caducidad).toLocaleDateString() : '-'}
+                                                        {/* MODIFICADO: Ya no intentamos parsear la fecha, imprimimos el texto libre */}
+                                                        {item.fecha_caducidad ? <span className="font-bold">{item.fecha_caducidad}</span> : '-'}
                                                     </td>
                                                     <td className="p-1.5 border border-gray-600 text-center font-bold bg-gray-50 text-gray-800">{item.cantidad}</td>
                                                     <td className="p-1.5 border border-gray-600 h-8"></td>

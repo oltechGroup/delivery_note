@@ -13,7 +13,7 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
-  const [modoHistorico, setModoHistorico] = useState(false); // NUEVO: Estado para búsqueda profunda
+  const [modoHistorico, setModoHistorico] = useState(false);
   const buscadorRef = useRef(null);
 
   // Estados del Carrito de Entrada
@@ -41,16 +41,15 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       setObservaciones('');
       setBusqueda('');
       setError('');
-      setModoHistorico(false); // Resetear modo al abrir
+      setModoHistorico(false);
     }
   }, [isOpen]);
 
-  // Buscador en tiempo real de consumibles (INTELIGENTE)
+  // Buscador en tiempo real de consumibles
   useEffect(() => {
     if (busqueda.length > 2) {
       const buscar = async () => {
         try {
-          // LÓGICA: Si modoHistorico es true, pedimos audit=true al backend
           const url = `http://localhost:4000/api/almacen/consumibles?categoria_id=${categoriaId || ''}${modoHistorico ? '&audit=true' : ''}`;
           
           const res = await axios.get(url, {
@@ -77,11 +76,6 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
 
   if (!isOpen) return null;
 
-  const formatearFechaParaInput = (fechaISO) => {
-    if (!fechaISO) return '';
-    return new Date(fechaISO).toISOString().split('T')[0];
-  };
-
   const agregarAlCarrito = (producto, esNuevo = false) => {
     if (carrito.find(item => item.consumible_id === producto.id)) {
       setError(`El producto ${producto.codigo_referencia} ya está en la lista.`);
@@ -98,7 +92,8 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       cantidad_ingreso: 1, 
       lote: producto.lote || '', 
       traiaLoteOriginal: !!producto.lote, 
-      fecha_caducidad: formatearFechaParaInput(producto.fecha_caducidad),
+      // MODIFICADO: Ya no forzamos a ISO Date. Tomamos el string tal cual o vacío.
+      fecha_caducidad: producto.fecha_caducidad || '',
       traiaCaducidadOriginal: !!producto.fecha_caducidad,
       nombre_comercial: producto.nombre_comercial || '',
       traiaNombreComercialOriginal: !!producto.nombre_comercial,
@@ -108,7 +103,7 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
     }, ...carrito]);
     
     setBusqueda('');
-    setModoHistorico(false); // Volver a modo normal tras seleccionar
+    setModoHistorico(false);
     setMostrarSugerencias(false);
     setError('');
   };
@@ -143,7 +138,8 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
       consumible_id: item.consumible_id,
       cantidad: parseInt(item.cantidad_ingreso),
       lote: item.lote,
-      fecha_caducidad: item.fecha_caducidad,
+      // Se enviará el texto libre que haya tecleado el usuario o null si está vacío
+      fecha_caducidad: item.fecha_caducidad.trim() || null,
       precio: item.precio ? parseFloat(item.precio) : null 
     }));
 
@@ -351,12 +347,14 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
                           </td>
                           
                           <td className="p-3">
+                            {/* MODIFICADO: De type="date" a type="text" con placeholder "MM/AA" */}
                             <input 
-                              type="date"
+                              type="text"
+                              placeholder="Ej. MM/AA"
                               value={item.fecha_caducidad}
                               disabled={item.traiaCaducidadOriginal}
-                              onChange={(e) => actualizarFila(idx, 'fecha_caducidad', e.target.value)}
-                              className={`w-full px-2 py-1.5 border rounded outline-none ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                              onChange={(e) => actualizarFila(idx, 'fecha_caducidad', e.target.value.toUpperCase())}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
                           

@@ -57,12 +57,14 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
   const indiceInicio = (paginaActual - 1) * ITEMS_POR_PAGINA;
   const detallesPaginados = detallesFiltrados.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
 
+  // Esta se queda igual porque se usa para la fecha de creación del ticket
   const formatearFechaHora = (fechaString) => {
     if (!fechaString) return '--';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
     return new Date(fechaString).toLocaleDateString('es-MX', opciones).toUpperCase();
   };
 
+  // Esta ya no se usa para la caducidad, pero la dejamos por si acaso
   const formatearSoloFecha = (fechaString) => {
     if (!fechaString) return '--';
     const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
@@ -186,8 +188,9 @@ function ModalDetalleEntrada({ isOpen, onClose, entrada }) {
                       </td>
                       
                       <td className="p-3">
+                        {/* MODIFICADO: Ya no intentamos parsearlo con Date, lo mostramos como texto plano */}
                         {item.fecha_caducidad_ingresada ? (
-                          <span className="text-xs font-bold text-gray-600">{formatearSoloFecha(item.fecha_caducidad_ingresada)}</span>
+                          <span className="text-xs font-bold text-gray-600">{item.fecha_caducidad_ingresada}</span>
                         ) : (
                           <span className="text-gray-300 italic text-xs">-</span>
                         )}

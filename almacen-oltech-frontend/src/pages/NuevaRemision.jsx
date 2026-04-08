@@ -252,6 +252,7 @@ function NuevaRemision() {
       const detallesConOrden = detalles.map((d, index) => ({
         ...d,
         orden: index + 1,
+        // Como ahora es texto plano, simplemente lo mandamos tal cual
         fecha_caducidad: d.imprimir_caducidad ? d.fecha_caducidad : null 
       }));
 
@@ -373,7 +374,8 @@ function NuevaRemision() {
                                     {(res.lote || res.fecha_caducidad) && (
                                       <div className="flex flex-col items-end text-[10px] text-gray-500 font-medium">
                                         {res.lote && <span>Lote: {res.lote}</span>}
-                                        {res.fecha_caducidad && <span>Cad: {formatearFechaCorto(res.fecha_caducidad)}</span>}
+                                        {/* MODIFICADO: Solo imprimimos el string de la BD */}
+                                        {res.fecha_caducidad && <span>Cad: {res.fecha_caducidad}</span>}
                                       </div>
                                     )}
                                   </>
@@ -587,8 +589,9 @@ function NuevaRemision() {
                                 onChange={(e) => actualizarCampoDetalle(d.id_temp, 'imprimir_caducidad', e.target.checked)}
                                 className="w-3 h-3 text-oltech-pink"
                               />
+                              {/* MODIFICADO: Ya no intentamos parsear, mostramos el string */}
                               <span className={`text-[9px] font-bold ${d.imprimir_caducidad ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
-                                {formatearFechaCorto(d.fecha_caducidad)}
+                                {d.fecha_caducidad}
                               </span>
                             </div>
                           ) : (

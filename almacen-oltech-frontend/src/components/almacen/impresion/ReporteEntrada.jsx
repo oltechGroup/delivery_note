@@ -264,7 +264,8 @@ function ReporteEntrada({ entrada, detalles, onClose }) {
                                                 <td className="p-1.5 border border-gray-600 text-center text-[9px]">{item.unidad_medida}</td>
                                                 <td className="p-1.5 border border-gray-600 text-center text-[9px] font-mono">{item.lote_ingresado || item.lote || '-'}</td>
                                                 <td className="p-1.5 border border-gray-600 text-center text-[9px]">
-                                                    {(item.fecha_caducidad_ingresada || item.fecha_caducidad) ? new Date(item.fecha_caducidad_ingresada || item.fecha_caducidad).toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}) : '-'}
+                                                    {/* MODIFICADO: Ya no forzamos Date, mostramos el texto */}
+                                                    {(item.fecha_caducidad_ingresada || item.fecha_caducidad) ? <span className="font-bold text-gray-600">{item.fecha_caducidad_ingresada || item.fecha_caducidad}</span> : '-'}
                                                 </td>
                                                 <td className="p-1.5 border border-gray-600 text-center text-xs font-black bg-green-50/30 text-green-800">
                                                     {item.cantidad_ingresada || item.cantidad}

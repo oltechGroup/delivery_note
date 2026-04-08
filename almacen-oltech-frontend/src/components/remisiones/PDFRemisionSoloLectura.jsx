@@ -13,6 +13,7 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
   // Referencia para la librería de impresión
   const componentRef = useRef(null);
 
+  // Esta función se mantiene para las fechas del encabezado (creación y cirugía)
   const formatearFechaCorto = (fechaString) => {
     if (!fechaString) return '';
     const opciones = { day: '2-digit', month: 'short', year: 'numeric' };
@@ -39,7 +40,7 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
 
   // Hook de react-to-print (Corregido para la última versión de la librería)
   const handleImprimir = useReactToPrint({
-    contentRef: componentRef, // <--- Aquí estaba el detalle, ahora usa contentRef
+    contentRef: componentRef, 
     documentTitle: `Remision_${remisionMaestra.no_solicitud || 'OLTECH'}`,
   });
 
@@ -258,7 +259,8 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
                       return (
                         <tr key={idx} className="border-b border-gray-600">
                           <td className={`border-r border-gray-600 p-1.5 text-center font-mono ${esSetPadre ? 'font-black bg-gray-50' : 'font-semibold'}`}>{d.pieza_codigo || d.consumible_codigo || d.set_codigo}</td>
-                          {mostrarColumnaCaducidad && <td className={`border-r border-gray-600 p-1.5 text-center ${esSetPadre ? 'bg-gray-50' : ''}`}>{d.fecha_caducidad ? formatearFechaCorto(d.fecha_caducidad) : '-'}</td>}
+                          {/* MODIFICADO: Solo imprimimos el string de la caducidad */}
+                          {mostrarColumnaCaducidad && <td className={`border-r border-gray-600 p-1.5 text-center ${esSetPadre ? 'bg-gray-50' : ''}`}>{d.fecha_caducidad || '-'}</td>}
                           <td className={`border-r border-gray-600 p-1.5 pl-2 uppercase ${esSetPadre ? 'font-black bg-gray-50' : 'font-medium'}`}>{d.pieza_descripcion || d.consumible_nombre || d.set_descripcion}</td>
                           <td className={`border-r border-gray-600 p-1.5 text-center font-bold ${esSetPadre ? 'bg-gray-50' : ''}`}>{d.cantidad_despachada}</td>
                           <td className={`border-r border-gray-600 p-1.5 text-center font-bold ${esSetPadre ? 'bg-gray-50' : ''}`}>{estaCompletada && !esSetPadre ? d.cantidad_consumo : ''}</td>

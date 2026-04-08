@@ -228,7 +228,8 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                       {item.lote ? <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono text-xs border border-gray-200">{item.lote}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {item.fecha_caducidad ? <span className="text-xs font-bold text-gray-600">{new Date(item.fecha_caducidad).toLocaleDateString()}</span> : <span className="text-gray-300 italic">-</span>}
+                      {/* MODIFICADO: Solo mostramos la cadena de texto de la caducidad (ej: "OCT/26") */}
+                      {item.fecha_caducidad ? <span className="text-xs font-bold text-gray-600">{item.fecha_caducidad}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
                     <td className="py-3 px-4 text-center text-gray-500 text-xs font-bold uppercase">{item.unidad_medida || 'N/A'}</td>
                     <td className="py-3 px-4 text-center">
