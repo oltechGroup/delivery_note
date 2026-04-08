@@ -263,22 +263,6 @@ function ReporteSets({ categoria, dataReporte, onClose }) {
                                 </table>
                             )}
                         </div>
-
-                        {/* PIE DE FIRMAS (Anclado al fondo con mt-auto) */}
-                        {pagina.isLast && (
-                            <div className="w-full shrink-0 mt-auto pt-4">
-                                <div className="flex justify-around items-end px-10 pb-4">
-                                    <div className="text-center w-64">
-                                        <div className="border-b border-black w-full h-10"></div>
-                                        <p className="mt-2 font-bold text-[10px] uppercase">Realizado por (Nombre y Firma)</p>
-                                    </div>
-                                    <div className="text-center w-64">
-                                        <div className="border-b border-black w-full h-10"></div>
-                                        <p className="mt-2 font-bold text-[10px] uppercase">Validado por (Jefe de Almacén)</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 ))}
             </div>

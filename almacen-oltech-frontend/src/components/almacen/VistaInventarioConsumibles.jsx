@@ -7,6 +7,7 @@ import ModalConsumible from './ModalConsumible';
 import ModalAjusteStock from './ModalAjusteStock';
 import ModalEntradaMasiva from './carga-masiva/ModalEntradaMasiva';
 import ReporteConsumibles from './impresion/ReporteConsumibles';
+import ModalEditarConsumible from './ModalEditarConsumible'; // <--- LO CREAREMOS A CONTINUACIÓN
 
 function VistaInventarioConsumibles({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -19,6 +20,9 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
   const [modalNuevoAbierto, setModalNuevoAbierto] = useState(false);
   const [modalAjuste, setModalAjuste] = useState({ abierto: false, consumible: null, tipo: '' });
   const [modalEntradaAbierto, setModalEntradaAbierto] = useState(false);
+  
+  // NUEVOS ESTADOS: Edición y Eliminación
+  const [modalEditar, setModalEditar] = useState({ abierto: false, consumible: null });
 
   // NUEVO: Estado para controlar la Vista Previa de Impresión
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
@@ -30,6 +34,28 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
 
   const abrirAjuste = (consumible, tipo) => {
     setModalAjuste({ abierto: true, consumible, tipo });
+  };
+
+  // Función para abrir edición
+  const abrirEdicion = (consumible) => {
+    setModalEditar({ abierto: true, consumible });
+  };
+
+  // Función para eliminar (Con validación estética)
+  const ejecutarEliminacion = async (id) => {
+    if (!window.confirm('¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer.')) return;
+
+    try {
+      await axios.delete(`http://localhost:4000/api/almacen/consumibles/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Insumo eliminado correctamente.');
+      cargarConsumibles();
+    } catch (err) {
+      console.error(err);
+      // Mostramos el mensaje de error amigable que configuramos en el backend
+      alert(err.response?.data?.mensaje || 'Error al intentar eliminar el insumo.');
+    }
   };
 
   /**
@@ -131,7 +157,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
             placeholder="Buscar por código, nombre o lote..." 
           />
           
-          {/* BOTÓN VISIBLE: ABRE LA VISTA PREVIA */}
           <button 
             onClick={() => setMostrarModalImpresion(true)}
             disabled={consumiblesOrdenados.length === 0}
@@ -189,7 +214,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                 <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-24" onClick={() => ordenarDatos('precio')}>
                   Precio {renderIconoOrden('precio')}
                 </th>
-                <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('lote')}>
+                <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-24" onClick={() => ordenarDatos('lote')}>
                   Lote {renderIconoOrden('lote')}
                 </th>
                 <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => ordenarDatos('fecha_caducidad')}>
@@ -199,7 +224,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                 <th className="py-4 px-4 font-bold text-center cursor-pointer hover:bg-gray-100 transition-colors w-24" onClick={() => ordenarDatos('cantidad')}>
                   Stock {renderIconoOrden('cantidad')}
                 </th>
-                <th className="py-4 px-4 font-bold text-center w-32">Ajustar</th>
+                <th className="py-4 px-4 font-bold text-center w-36">Acciones</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-800 divide-y divide-gray-100">
@@ -228,7 +253,6 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                       {item.lote ? <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono text-xs border border-gray-200">{item.lote}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
                     <td className="py-3 px-4 text-center">
-                      {/* MODIFICADO: Solo mostramos la cadena de texto de la caducidad (ej: "OCT/26") */}
                       {item.fecha_caducidad ? <span className="text-xs font-bold text-gray-600">{item.fecha_caducidad}</span> : <span className="text-gray-300 italic">-</span>}
                     </td>
                     <td className="py-3 px-4 text-center text-gray-500 text-xs font-bold uppercase">{item.unidad_medida || 'N/A'}</td>
@@ -240,9 +264,28 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
                       }`}>{item.cantidad}</span>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button onClick={() => abrirAjuste(item, 'restar')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg></button>
-                        <button onClick={() => abrirAjuste(item, 'sumar')} className="w-8 h-8 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path></svg></button>
+                      <div className="flex items-center justify-center space-x-1.5">
+                        {/* BOTÓN EDITAR (Lápiz) */}
+                        <button 
+                          onClick={() => abrirEdicion(item)} 
+                          className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-oltech-blue hover:border-blue-200 hover:bg-blue-50 flex items-center justify-center transition-all shadow-sm"
+                          title="Editar información"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        </button>
+
+                        {/* BOTONES DE AJUSTE (Existentes) */}
+                        <button onClick={() => abrirAjuste(item, 'restar')} className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M20 12H4"></path></svg></button>
+                        <button onClick={() => abrirAjuste(item, 'sumar')} className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-green-600 hover:bg-green-50 flex items-center justify-center transition-colors shadow-sm"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path></svg></button>
+
+                        {/* BOTÓN ELIMINAR (Bote) */}
+                        <button 
+                          onClick={() => ejecutarEliminacion(item.id)} 
+                          className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 hover:text-red-700 hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-all shadow-sm"
+                          title="Eliminar registro"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -275,6 +318,15 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
 
       {/* VENTANAS FLOTANTES */}
       <ModalConsumible isOpen={modalNuevoAbierto} onClose={() => setModalNuevoAbierto(false)} onGuardado={cargarConsumibles} categoriaId={categoria.id} />
+      
+      {/* NUEVO MODAL DE EDICIÓN */}
+      <ModalEditarConsumible 
+        isOpen={modalEditar.abierto} 
+        onClose={() => setModalEditar({ abierto: false, consumible: null })} 
+        onGuardado={cargarConsumibles} 
+        consumible={modalEditar.consumible}
+      />
+
       <ModalAjusteStock isOpen={modalAjuste.abierto} onClose={() => setModalAjuste({ ...modalAjuste, abierto: false })} onGuardado={cargarConsumibles} consumible={modalAjuste.consumible} tipoAjuste={modalAjuste.tipo} />
       <ModalEntradaMasiva isOpen={modalEntradaAbierto} onClose={() => setModalEntradaAbierto(false)} onGuardado={cargarConsumibles} categoriaId={categoria.id} />
 
