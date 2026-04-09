@@ -546,13 +546,23 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
     }
 };
 
+// NUEVO: REPOSICIÓN DIRECTA DE INSTRUMENTAL (No descuenta de consumibles a granel)
+const surtirInstrumentalDirecto = async (composicion_id, cantidad_a_surtir) => {
+    const query = `
+        UPDATE set_composicion
+        SET cantidad_pieza = cantidad_pieza + $1
+        WHERE id = $2
+        RETURNING *;
+    `;
+    const { rows } = await pool.query(query, [cantidad_a_surtir, composicion_id]);
+    return rows[0];
+};
+
+
 // ==========================================
 // NUEVA FUNCIÓN: OBTENER SETS INCOMPLETOS PARA DASHBOARD
 // ==========================================
 const getSetsIncompletos = async () => {
-    // ACTUALIZADO: Utilizamos un CTE (UltimaRemision) para obtener SOLO 
-    // la última remisión en la que participó cada set.
-    // Esto evita mostrar historiales viejos o duplicados de cirugías pasadas.
     const query = `
         WITH UltimaRemision AS (
             SELECT set_id, MAX(remision_id) AS max_remision_id
@@ -566,6 +576,7 @@ const getSetsIncompletos = async () => {
             s.descripcion AS set_descripcion,
             r.no_solicitud,
             r.fecha_cirugia,
+            r.observaciones, 
             rd.cantidad_consumo,
             p.codigo AS pieza_codigo,
             p.descripcion AS pieza_descripcion
@@ -593,5 +604,6 @@ module.exports = {
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
     getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet,
+    surtirInstrumentalDirecto, // <--- EXPORTADA
     getSetsIncompletos 
 };

@@ -82,9 +82,11 @@ router.delete('/composicion/:id', verificarToken, checkRole(rolesEscritura), alm
 // MEJORA PREMIUM: Ruta para surtir piezas desde consumibles
 router.post('/composicion/:id/surtir', verificarToken, checkRole(rolesEscritura), almacenController.surtirSet);
 
+// NUEVO: Ruta para reponer instrumental directo (sin descontar de granel)
+router.post('/composicion/:id/surtir-instrumental', verificarToken, checkRole(rolesEscritura), almacenController.surtirInstrumentalSet);
+
 // NUEVO: Ruta para forzar el estado de un Set a "Disponible"
 router.patch('/sets/:id/disponible', verificarToken, checkRole(rolesEscritura), almacenController.marcarSetDisponible);
-
 
 // ==========================================
 // RUTAS: ALERTAS DASHBOARD

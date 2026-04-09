@@ -10,6 +10,8 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   
   const [remision, setRemision] = useState(null);
   const [detalles, setDetalles] = useState([]);
+  // NUEVO: Estado para las observaciones de la remisión
+  const [observaciones, setObservaciones] = useState('');
   
   // Estados para el Paso 2 (Reposición de Sets)
   const [paso, setPaso] = useState(1); 
@@ -19,12 +21,10 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   const [cantidadReposicion, setCantidadReposicion] = useState(1);
   const [reposiciones, setReposiciones] = useState([]);
 
-  // ACTUALIZADO: Buscamos explícitamente "finalizada"
   const isCompletada = remision?.estado_nombre?.toLowerCase().includes('finalizada') || remision?.estado_nombre?.toLowerCase().includes('completad') || remision?.estado_nombre?.toLowerCase().includes('cerrad');
   const piezasSetConsumidas = detalles.filter(d => d.set_id && d.cantidad_consumo > 0);
   const necesitaReposicion = piezasSetConsumidas.length > 0;
 
-  // Cargar datos cuando se abre el modal
   useEffect(() => {
     if (isOpen && remisionId) {
       cargarDatosRemision();
@@ -32,6 +32,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       setReposiciones([]);
       setBusqueda('');
       setConsumibleSeleccionado(null);
+      setObservaciones(''); // Limpiamos observaciones al abrir nueva
     }
   }, [isOpen, remisionId, token]);
 
@@ -39,18 +40,19 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     setCargando(true);
     setError('');
     try {
-      // 1. Traer cabecera
       const resRemision = await axios.get(`http://localhost:4000/api/remisiones/${remisionId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRemision(resRemision.data);
+      // NUEVO: Cargar observaciones si la remisión ya las tiene
+      if (resRemision.data.observaciones) {
+          setObservaciones(resRemision.data.observaciones);
+      }
 
-      // 2. Traer detalles
       const resDetalles = await axios.get(`http://localhost:4000/api/remisiones/${remisionId}/detalles`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      // ACTUALIZADO: Buscamos explícitamente "finalizada"
       const esCerrada = resRemision.data.estado_nombre?.toLowerCase().includes('finalizada') || resRemision.data.estado_nombre?.toLowerCase().includes('completad') || resRemision.data.estado_nombre?.toLowerCase().includes('cerrad');
       
       const detallesReales = resDetalles.data.filter(d => !d.es_total && (d.pieza_id || d.consumible_id));
@@ -70,7 +72,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     }
   };
 
-  // Cargar inventario (Aplica limpieza automática del backend: Stock > 0 o Genéricos)
   const cargarConsumibles = async () => {
     try {
       const res = await axios.get('http://localhost:4000/api/almacen/consumibles', {
@@ -83,9 +84,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     }
   };
 
-  // ==========================================
-  // PASO 1: LÓGICA DE CAPTURA DE CONSUMO
-  // ==========================================
   const handleConsumoChange = (detalleId, nuevoConsumoStr) => {
     if (isCompletada) return;
 
@@ -111,13 +109,11 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       cargarConsumibles();
       setPaso(2);
     } else {
-      handleConciliarGuardar();
+      // Si no hubo consumo en sets, pasamos directamente a poner observaciones si se quiere
+      setPaso(2); 
     }
   };
 
-  // ==========================================
-  // PASO 2: LÓGICA DE REPOSICIÓN (CON NOMBRE COMERCIAL)
-  // ==========================================
   const consumiblesFiltrados = consumibles.filter(c => 
     c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
     c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -150,9 +146,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     setReposiciones(prev => prev.filter(r => r.id_temp !== id_temp));
   };
 
-  // ==========================================
-  // GUARDAR EN BASE DE DATOS
-  // ==========================================
   const handleConciliarGuardar = async () => {
     let mensajeConfirmacion = '¿Estás seguro de finalizar? El inventario se ajustará y la remisión se cerrará.';
     if (necesitaReposicion && reposiciones.length === 0) {
@@ -169,6 +162,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     try {
       await axios.post(`http://localhost:4000/api/remisiones/${remisionId}/conciliar`, {
         detalles: detalles,
+        observaciones: observaciones, // <--- NUEVO: Mandamos observaciones al backend
         reposiciones: reposiciones.map(r => ({
           consumible_id: r.consumible_id,
           cantidad_a_surtir: r.cantidad_a_surtir
@@ -300,115 +294,159 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                   </tbody>
                 </table>
               </div>
+
+              {/* NUEVO: Campo de Observaciones en Modo Lectura (Si ya está completada) */}
+              {isCompletada && (
+                <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mt-4">
+                  <p className="text-xs font-bold text-gray-500 uppercase mb-2">Observaciones de la Cirugía:</p>
+                  <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded border border-gray-100">
+                    {observaciones || <span className="text-gray-400 italic">No se registraron observaciones.</span>}
+                  </p>
+                </div>
+              )}
+
             </div>
           ) : (
             <div className="space-y-6 flex-1 flex flex-col">
               
-              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md">
-                <h3 className="font-bold text-amber-800 flex items-center space-x-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                  <span>Sets Incompletos Detectados</span>
-                </h3>
-                <p className="text-sm text-amber-700 mt-1">
-                  Se ha detectado consumo en los Sets. Puedes reponer el material ahora o continuar y los Sets quedarán en estado "Incompleto".
-                </p>
-              </div>
+              {necesitaReposicion ? (
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-md">
+                  <h3 className="font-bold text-amber-800 flex items-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <span>Sets Incompletos Detectados</span>
+                  </h3>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Se ha detectado consumo en los Sets. Puedes reponer el material ahora o continuar y los Sets quedarán en estado "Incompleto".
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-md">
+                  <h3 className="font-bold text-blue-800 flex items-center space-x-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>Todo Completo</span>
+                  </h3>
+                  <p className="text-sm text-blue-700 mt-1">
+                    No hubo consumo de piezas pertenecientes a Sets. Puedes agregar observaciones (opcional) y finalizar.
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col lg:flex-row gap-6">
                 
-                <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Piezas Faltantes:</h4>
-                  <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-                    {piezasSetConsumidas.map(p => (
-                      <li key={p.id} className="p-3 bg-red-50/30 flex justify-between items-center">
-                        <div>
-                          <p className="text-xs font-bold text-oltech-blue">{p.pieza_codigo}</p>
-                          <p className="text-sm text-gray-700">{p.pieza_descripcion}</p>
-                        </div>
-                        <div className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm">Faltan {p.cantidad_consumo}</div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col">
-                  <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Surtido desde Inventario:</h4>
-                  
-                  {!consumibleSeleccionado ? (
-                    <div className="relative mb-4">
-                      <input 
-                        type="text" 
-                        value={busqueda} 
-                        onChange={(e) => setBusqueda(e.target.value)} 
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm"
-                        placeholder="Buscar por código, nombre o marca..."
-                      />
-                      {busqueda.length >= 3 && (
-                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-10 overflow-hidden divide-y divide-gray-100">
-                          {consumiblesFiltrados.length === 0 ? (
-                            <div className="p-3 text-center text-xs text-gray-500">Sin resultados disponibles.</div>
-                          ) : (
-                            consumiblesFiltrados.map(c => (
-                              <button 
-                                key={c.id} type="button" onClick={() => setConsumibleSeleccionado(c)}
-                                className="w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-xs font-bold text-oltech-blue">{c.codigo_referencia}</div>
-                                  <div className="text-sm font-medium text-gray-800 truncate">{c.nombre}</div>
-                                  {c.nombre_comercial && <div className="text-[10px] text-gray-500 italic truncate">{c.nombre_comercial}</div>}
-                                </div>
-                                <div className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 ml-2">Stock: {c.cantidad}</div>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="text-xs font-bold text-oltech-blue">{consumibleSeleccionado.codigo_referencia}</div>
-                          <div className="text-sm font-medium text-gray-800 truncate">{consumibleSeleccionado.nombre}</div>
-                          {consumibleSeleccionado.nombre_comercial && <div className="text-[10px] text-gray-500 italic">{consumibleSeleccionado.nombre_comercial}</div>}
-                        </div>
-                        <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline shrink-0 ml-2">Cambiar</button>
-                      </div>
-                      <div className="flex items-center space-x-3 mt-3">
-                        <input 
-                          type="number" min="1" max={consumibleSeleccionado.cantidad} 
-                          value={cantidadReposicion} onChange={(e) => setCantidadReposicion(e.target.value)}
-                          className="w-20 px-2 py-1 text-center border border-blue-300 rounded font-bold focus:ring-2 focus:ring-oltech-pink outline-none"
-                        />
-                        <button type="button" onClick={agregarAReposicion} className="px-3 py-1 bg-oltech-pink text-white font-bold rounded text-xs hover:bg-pink-700">Añadir</button>
-                      </div>
+                {/* LADO IZQUIERDO: Resumen Faltantes o Cero Consumo */}
+                <div className="w-full lg:w-1/2 flex flex-col space-y-4">
+                  {necesitaReposicion && (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex-1">
+                      <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Piezas Faltantes:</h4>
+                      <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                        {piezasSetConsumidas.map(p => (
+                          <li key={p.id} className="p-3 bg-red-50/30 flex justify-between items-center">
+                            <div>
+                              <p className="text-xs font-bold text-oltech-blue">{p.pieza_codigo}</p>
+                              <p className="text-sm text-gray-700">{p.pieza_descripcion}</p>
+                            </div>
+                            <div className="bg-red-100 text-red-700 px-3 py-1 rounded font-bold text-sm">Faltan {p.cantidad_consumo}</div>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
 
-                  <div className="flex-1 flex flex-col border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
-                    <div className="bg-gray-200 px-3 py-2 text-[10px] font-bold text-gray-600 uppercase">Material a Extraer</div>
-                    <div className="flex-1 p-2 overflow-y-auto">
-                      {reposiciones.length === 0 ? (
-                        <div className="text-center text-xs text-gray-400 mt-4 italic">No se han añadido reposiciones.</div>
-                      ) : (
-                        <ul className="space-y-2">
-                          {reposiciones.map(r => (
-                            <li key={r.id_temp} className="bg-white border border-green-200 p-2 rounded flex justify-between items-center shadow-sm">
-                              <div className="min-w-0 flex-1">
-                                <span className="text-[10px] font-bold text-green-700">Cantidad: {r.cantidad_a_surtir}</span>
-                                <p className="text-xs font-bold text-gray-800 truncate">{r.codigo}</p>
-                                {r.nombre_comercial && <p className="text-[9px] text-gray-500 italic truncate">{r.nombre_comercial}</p>}
-                              </div>
-                              <button type="button" onClick={() => quitarDeReposicion(r.id_temp)} className="text-gray-400 hover:text-red-500 ml-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
+                  {/* NUEVO: Cajita de texto para las observaciones de la cirugía */}
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+                     <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Observaciones Generales (Opcional):</h4>
+                     <textarea 
+                        rows="3"
+                        placeholder="Ej. Se perdió una pinza Kelly, o el doctor solicitó X material extra..."
+                        value={observaciones}
+                        onChange={(e) => setObservaciones(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm text-gray-800 bg-gray-50"
+                     />
                   </div>
-
                 </div>
+
+                {/* LADO DERECHO: Reposición de Inventario (Solo si aplica) */}
+                {necesitaReposicion && (
+                  <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Surtido desde Inventario:</h4>
+                    
+                    {!consumibleSeleccionado ? (
+                      <div className="relative mb-4">
+                        <input 
+                          type="text" 
+                          value={busqueda} 
+                          onChange={(e) => setBusqueda(e.target.value)} 
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm"
+                          placeholder="Buscar por código, nombre o marca..."
+                        />
+                        {busqueda.length >= 3 && (
+                          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-10 overflow-hidden divide-y divide-gray-100">
+                            {consumiblesFiltrados.length === 0 ? (
+                              <div className="p-3 text-center text-xs text-gray-500">Sin resultados disponibles.</div>
+                            ) : (
+                              consumiblesFiltrados.map(c => (
+                                <button 
+                                  key={c.id} type="button" onClick={() => setConsumibleSeleccionado(c)}
+                                  className="w-full text-left p-3 hover:bg-pink-50 transition-colors flex justify-between items-center"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-bold text-oltech-blue">{c.codigo_referencia}</div>
+                                    <div className="text-sm font-medium text-gray-800 truncate">{c.nombre}</div>
+                                    {c.nombre_comercial && <div className="text-[10px] text-gray-500 italic truncate">{c.nombre_comercial}</div>}
+                                  </div>
+                                  <div className="text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 ml-2">Stock: {c.cantidad}</div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-oltech-blue">{consumibleSeleccionado.codigo_referencia}</div>
+                            <div className="text-sm font-medium text-gray-800 truncate">{consumibleSeleccionado.nombre}</div>
+                            {consumibleSeleccionado.nombre_comercial && <div className="text-[10px] text-gray-500 italic">{consumibleSeleccionado.nombre_comercial}</div>}
+                          </div>
+                          <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-xs text-red-500 font-bold hover:underline shrink-0 ml-2">Cambiar</button>
+                        </div>
+                        <div className="flex items-center space-x-3 mt-3">
+                          <input 
+                            type="number" min="1" max={consumibleSeleccionado.cantidad} 
+                            value={cantidadReposicion} onChange={(e) => setCantidadReposicion(e.target.value)}
+                            className="w-20 px-2 py-1 text-center border border-blue-300 rounded font-bold focus:ring-2 focus:ring-oltech-pink outline-none"
+                          />
+                          <button type="button" onClick={agregarAReposicion} className="px-3 py-1 bg-oltech-pink text-white font-bold rounded text-xs hover:bg-pink-700">Añadir</button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex-1 flex flex-col border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
+                      <div className="bg-gray-200 px-3 py-2 text-[10px] font-bold text-gray-600 uppercase">Material a Extraer</div>
+                      <div className="flex-1 p-2 overflow-y-auto">
+                        {reposiciones.length === 0 ? (
+                          <div className="text-center text-xs text-gray-400 mt-4 italic">No se han añadido reposiciones.</div>
+                        ) : (
+                          <ul className="space-y-2">
+                            {reposiciones.map(r => (
+                              <li key={r.id_temp} className="bg-white border border-green-200 p-2 rounded flex justify-between items-center shadow-sm">
+                                <div className="min-w-0 flex-1">
+                                  <span className="text-[10px] font-bold text-green-700">Cantidad: {r.cantidad_a_surtir}</span>
+                                  <p className="text-xs font-bold text-gray-800 truncate">{r.codigo}</p>
+                                  {r.nombre_comercial && <p className="text-[9px] text-gray-500 italic truncate">{r.nombre_comercial}</p>}
+                                </div>
+                                <button type="button" onClick={() => quitarDeReposicion(r.id_temp)} className="text-gray-400 hover:text-red-500 ml-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+
               </div>
             </div>
           )}
@@ -423,13 +461,13 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                 <button type="button" onClick={paso === 2 ? () => setPaso(1) : onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">{paso === 2 ? 'Regresar' : 'Cancelar'}</button>
                 {paso === 1 ? (
                   <button type="button" onClick={handleSiguientePaso} disabled={cargando || detalles.length === 0} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors flex items-center space-x-2">
-                    <span>{necesitaReposicion ? 'Siguiente: Revisar Faltantes' : 'Guardar y Cerrar Remisión'}</span>
-                    {necesitaReposicion && <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>}
+                    <span>{necesitaReposicion ? 'Siguiente: Revisar Faltantes' : 'Siguiente: Confirmar'}</span>
+                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                   </button>
                 ) : (
-                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando} className={`w-full sm:w-auto px-6 py-2.5 text-white rounded-lg font-bold shadow-md transition-colors flex items-center justify-center space-x-2 ${reposiciones.length === 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-oltech-pink hover:bg-pink-700'}`}>
+                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando} className={`w-full sm:w-auto px-6 py-2.5 text-white rounded-lg font-bold shadow-md transition-colors flex items-center justify-center space-x-2 ${reposiciones.length === 0 && necesitaReposicion ? 'bg-amber-600 hover:bg-amber-700' : 'bg-oltech-pink hover:bg-pink-700'}`}>
                     {cargando && <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                    <span>{reposiciones.length === 0 ? 'Cerrar con Faltantes' : 'Confirmar y Finalizar'}</span>
+                    <span>{reposiciones.length === 0 && necesitaReposicion ? 'Cerrar con Faltantes' : 'Confirmar y Finalizar'}</span>
                   </button>
                 )}
               </>

@@ -46,7 +46,8 @@ const getAllRemisiones = async () => {
             er.nombre AS estado_nombre,
             r.usuario_conciliador_id,
             CONCAT_WS(' ', uc.nombre, uc.apellido_p, uc.apellido_m) AS conciliador_nombre,
-            r.fecha_conciliacion
+            r.fecha_conciliacion,
+            r.observaciones -- <--- NUEVO CAMPO AÑADIDO
         FROM remision r
         LEFT JOIN procedimiento p ON r.procedimiento_id = p.id
         LEFT JOIN medicos m ON r.medico_id = m.id
@@ -130,6 +131,18 @@ const updateEstadoRemision = async (id, estado_remision_id) => {
     return rows[0];
 };
 
+// NUEVA FUNCIÓN PARA GUARDAR LAS OBSERVACIONES
+const updateObservacionesRemision = async (id, observaciones) => {
+    const query = `
+        UPDATE remision 
+        SET observaciones = $1 
+        WHERE id = $2 
+        RETURNING id, observaciones;
+    `;
+    const { rows } = await pool.query(query, [observaciones, id]);
+    return rows[0];
+};
+
 // ==========================================
 // MÓDULO: DETALLES DE LA REMISIÓN (ACTUALIZADO)
 // ==========================================
@@ -148,7 +161,7 @@ const getDetallesByRemision = async (remision_id) => {
             rd.consumible_id,
             c.codigo_referencia AS consumible_codigo,
             c.nombre AS consumible_nombre,
-            c.nombre_comercial, -- <--- NUEVO CAMPO AGREGADO
+            c.nombre_comercial,
             rd.cantidad_despachada,
             rd.cantidad_consumo,
             rd.cantidad_retorno,
@@ -217,6 +230,7 @@ module.exports = {
     getRemisionById,
     createRemision,
     updateEstadoRemision,
+    updateObservacionesRemision, // <--- EXPORTADA
     getDetallesByRemision,
     addDetalleRemision,
     updateCantidadesDetalle

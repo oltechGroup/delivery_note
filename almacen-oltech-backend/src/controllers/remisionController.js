@@ -276,12 +276,13 @@ const conciliarRemision = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        const { detalles, reposiciones } = req.body; 
+        // ACTUALIZADO: Recibimos observaciones desde el body
+        const { detalles, reposiciones, observaciones } = req.body; 
         const usuario_conciliador_id = req.usuario.id; 
 
         await client.query('BEGIN');
 
-        // 1. Cambiar estado de la remisión a Finalizada
+        // 1. Cambiar estado de la remisión a Finalizada y guardar observaciones
         const { rows: estadoRows } = await client.query(`SELECT id FROM estado_remision WHERE nombre ILIKE '%finalizada%' OR nombre ILIKE '%completad%' OR nombre ILIKE '%cerrad%' LIMIT 1`);
         const estadoFinalizadaId = estadoRows.length > 0 ? estadoRows[0].id : 3; 
         
@@ -289,9 +290,10 @@ const conciliarRemision = async (req, res) => {
             UPDATE remision 
             SET estado_remision_id = $1,
                 usuario_conciliador_id = $2,
-                fecha_conciliacion = CURRENT_TIMESTAMP
-            WHERE id = $3
-        `, [estadoFinalizadaId, usuario_conciliador_id, id]);
+                fecha_conciliacion = CURRENT_TIMESTAMP,
+                observaciones = $3
+            WHERE id = $4
+        `, [estadoFinalizadaId, usuario_conciliador_id, observaciones || null, id]);
 
         // 2. Obtener IDs de los posibles estados de los Sets
         const { rows: estDispRows } = await client.query(`SELECT id FROM estados_set WHERE nombre ILIKE '%disponible%' LIMIT 1`);
@@ -362,10 +364,6 @@ const conciliarRemision = async (req, res) => {
 
                 // Aquí "adivinamos" para qué set era la reposición buscando si ese consumible/pieza
                 // coincide con alguna deuda en los detalles de la remision de este mismo set.
-                // Esto funciona asumiendo que el Frontend emparejó lógicamente la reposición con la caja en el modal.
-                // Como el frontend actual no envía el 'set_id' destino en el array de reposiciones, 
-                // mapeamos las reposiciones al primer Set que deba piezas en esta remisión (solución temporal rápida).
-                // *Nota para el futuro: Sería mejor que desde el Frontend manden { consumible_id, cantidad, set_id_destino }
                 let setIdDestino = null;
                 for (let d of detalles) {
                     if (d.set_id && d.cantidad_consumo > 0) {

@@ -1,3 +1,4 @@
+// src/pages/Dashboard.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
@@ -36,6 +37,7 @@ function Dashboard() {
         set_descripcion: alerta.set_descripcion,
         no_solicitud: alerta.no_solicitud,
         fecha_cirugia: alerta.fecha_cirugia,
+        observaciones: alerta.observaciones, // <--- NUEVO: Jalamos las observaciones de la remisión
         faltantes: []
       };
     }
@@ -134,6 +136,18 @@ function Dashboard() {
                       </li>
                     ))}
                   </ul>
+
+                  {/* NUEVO: Mostrar Observaciones si existen */}
+                  {set.observaciones && (
+                    <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded p-3">
+                      <p className="text-[10px] font-bold text-yellow-800 uppercase mb-1 flex items-center">
+                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Observaciones de Cirugía:
+                      </p>
+                      <p className="text-xs text-yellow-900 font-medium italic">"{set.observaciones}"</p>
+                    </div>
+                  )}
+
                 </div>
                 
                 <div className="bg-gray-50 p-3 border-t border-gray-100 text-center">

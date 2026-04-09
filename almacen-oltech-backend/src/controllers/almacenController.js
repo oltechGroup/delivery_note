@@ -410,7 +410,7 @@ const quitarPiezaDeSet = async (req, res) => {
     }
 };
 
-// ACTUALIZADO: REPOSICIÓN MANUAL EN ALMACÉN QUE YA NO LIBERA EL SET SOLITO
+// SURTIR CON DESCUENTO DE CONSUMIBLES (A GRANEL)
 const surtirSet = async (req, res) => {
     try {
         const { id } = req.params; // ID de la composición
@@ -422,8 +422,6 @@ const surtirSet = async (req, res) => {
 
         const actualizacion = await almacenModel.surtirPiezaSet(id, consumible_id, cantidad_a_surtir);
 
-        // Ya NO cambiamos el estado_id a 1 aquí, eso se hará con el nuevo botón
-
         res.json({ mensaje: 'Stock reabastecido exitosamente.', data: actualizacion });
 
     } catch (error) {
@@ -432,6 +430,26 @@ const surtirSet = async (req, res) => {
             return res.status(400).json({ mensaje: error.message });
         }
         res.status(500).json({ mensaje: 'Error interno al procesar el reabastecimiento.' });
+    }
+};
+
+// NUEVO: REPOSICIÓN DIRECTA DE INSTRUMENTAL (No descuenta de consumibles a granel)
+const surtirInstrumentalSet = async (req, res) => {
+    try {
+        const { id } = req.params; // ID de la composición (set_composicion)
+        const { cantidad_a_surtir } = req.body;
+
+        if (!cantidad_a_surtir || cantidad_a_surtir <= 0) {
+            return res.status(400).json({ mensaje: 'Debe especificar una cantidad mayor a cero.' });
+        }
+
+        const actualizacion = await almacenModel.surtirInstrumentalDirecto(id, cantidad_a_surtir);
+
+        res.json({ mensaje: 'Instrumental repuesto en la caja exitosamente.', data: actualizacion });
+
+    } catch (error) {
+        console.error('Error en surtido de instrumental:', error);
+        res.status(500).json({ mensaje: 'Error interno al procesar la reposición del instrumental.' });
     }
 };
 
@@ -474,6 +492,7 @@ module.exports = {
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
     obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet,
+    surtirInstrumentalSet, // <--- NUEVA FUNCIÓN EXPORTADA
     obtenerAlertasIncompletos,
-    marcarSetDisponible // <--- NUEVA FUNCIÓN EXPORTADA
+    marcarSetDisponible 
 };
