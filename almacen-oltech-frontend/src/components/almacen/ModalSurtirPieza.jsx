@@ -62,7 +62,8 @@ function ModalSurtirPieza({ isOpen, onClose, onGuardado, piezaSet }) {
         cantidad_a_surtir: parseInt(cantidad)
       }, { headers: { Authorization: `Bearer ${token}` } });
       
-      onGuardado();
+      // Llamamos a onGuardado con un "true" para indicarle al padre que refresque sus datos
+      onGuardado(true);
       onClose();
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al procesar el reabastecimiento.');

@@ -93,7 +93,8 @@ function PDFRemisionSoloLectura({ remisionMaestra, onClose }) {
     );
   }
 
-  const estaCompletada = remisionMaestra.estado_nombre?.toLowerCase().includes('completad') || remisionMaestra.estado_nombre?.toLowerCase().includes('cerrad');
+  // ACTUALIZADO: Buscamos explícitamente "finalizada"
+  const estaCompletada = remisionMaestra.estado_nombre?.toLowerCase().includes('finalizada') || remisionMaestra.estado_nombre?.toLowerCase().includes('completad') || remisionMaestra.estado_nombre?.toLowerCase().includes('cerrad');
   const mostrarColumnaCaducidad = detalles.some(d => d.fecha_caducidad);
 
   return (

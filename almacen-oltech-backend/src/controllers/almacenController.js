@@ -1,5 +1,6 @@
 // almacen-oltech-backend/src/controllers/almacenController.js
 const almacenModel = require('../models/almacenModel');
+const pool = require('../config/database'); // <--- AÑADIDO PARA MANEJO DE ESTADOS DE SETS
 
 // ==========================================
 // CONTROLADORES: CATEGORÍAS (Para Sets)
@@ -250,7 +251,6 @@ const obtenerHistorialEntradas = async (req, res) => {
             INNER JOIN usuarios u ON ea.usuario_id = u.id
             ORDER BY ea.fecha_entrada DESC
         `;
-        const pool = require('../config/database');
         const { rows } = await pool.query(query);
         res.json(rows);
     } catch (error) {
@@ -410,9 +410,10 @@ const quitarPiezaDeSet = async (req, res) => {
     }
 };
 
+// ACTUALIZADO: REPOSICIÓN MANUAL EN ALMACÉN QUE YA NO LIBERA EL SET SOLITO
 const surtirSet = async (req, res) => {
     try {
-        const { id } = req.params; 
+        const { id } = req.params; // ID de la composición
         const { consumible_id, cantidad_a_surtir } = req.body;
 
         if (!consumible_id || !cantidad_a_surtir || cantidad_a_surtir <= 0) {
@@ -420,7 +421,10 @@ const surtirSet = async (req, res) => {
         }
 
         const actualizacion = await almacenModel.surtirPiezaSet(id, consumible_id, cantidad_a_surtir);
-        res.json({ mensaje: 'Set reabastecido exitosamente.', data: actualizacion });
+
+        // Ya NO cambiamos el estado_id a 1 aquí, eso se hará con el nuevo botón
+
+        res.json({ mensaje: 'Stock reabastecido exitosamente.', data: actualizacion });
 
     } catch (error) {
         console.error('Error en surtido:', error);
@@ -431,13 +435,45 @@ const surtirSet = async (req, res) => {
     }
 };
 
+// ==========================================
+// NUEVO: OBTENER ALERTA DE SETS INCOMPLETOS
+// ==========================================
+const obtenerAlertasIncompletos = async (req, res) => {
+    try {
+        const setsIncompletos = await almacenModel.getSetsIncompletos();
+        res.json(setsIncompletos);
+    } catch (error) {
+        console.error('Error al obtener alertas de sets incompletos:', error);
+        res.status(500).json({ mensaje: 'Error al cargar las alertas del dashboard.' });
+    }
+};
+
+// ==========================================
+// NUEVO: FORZAR ESTADO DE SET A DISPONIBLE
+// ==========================================
+const marcarSetDisponible = async (req, res) => {
+    try {
+        const { id } = req.params; // ID del Set
+        
+        // El ID 1 es el estado 'Disponible' o 'Activo'
+        await pool.query('UPDATE sets SET estado_id = 1 WHERE id = $1', [id]);
+        
+        res.json({ mensaje: 'El Set ha sido marcado como Disponible exitosamente.' });
+    } catch (error) {
+        console.error('Error al liberar Set:', error);
+        res.status(500).json({ mensaje: 'Error interno al actualizar el estado del equipo.' });
+    }
+};
+
 module.exports = {
     obtenerCategorias, crearCategoria,
     obtenerCategoriasConsumibles, crearCategoriaConsumible, 
     obtenerConsumibles, buscarHistoricoLote, crearConsumible, modificarStockConsumible, 
-    actualizarConsumible, eliminarConsumible, // <--- NUEVAS FUNCIONES EXPORTADAS
+    actualizarConsumible, eliminarConsumible, 
     registrarEntrada, obtenerHistorialEntradas, obtenerDetallesDeEntrada,
     obtenerPiezas, crearPieza, actualizarPieza,
     obtenerSets, obtenerSetsPorCategoria, crearSet, actualizarSet,
-    obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet
+    obtenerComposicionSet, agregarPiezaASet, quitarPiezaDeSet, surtirSet,
+    obtenerAlertasIncompletos,
+    marcarSetDisponible // <--- NUEVA FUNCIÓN EXPORTADA
 };

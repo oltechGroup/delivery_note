@@ -72,7 +72,7 @@ function VistaRemisiones() {
     if (estado.includes('proceso') || estado.includes('calle') || estado.includes('pendiente')) {
       return 'bg-amber-50 text-amber-700 border-amber-200'; 
     }
-    if (estado.includes('completad') || estado.includes('cerrad')) {
+    if (estado.includes('finalizada') || estado.includes('completad') || estado.includes('cerrad')) {
       return 'bg-green-50 text-green-700 border-green-200'; 
     }
     if (estado.includes('cancelad')) {
@@ -157,7 +157,8 @@ function VistaRemisiones() {
             // NUEVO: Usamos remisionesPaginadas en lugar de remisionesFiltradas
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {remisionesPaginadas.map((rem) => {
-                const estaCompletada = rem.estado_nombre?.toLowerCase().includes('completad') || rem.estado_nombre?.toLowerCase().includes('cerrad');
+                // ACTUALIZADO: Buscamos explícitamente "finalizada"
+                const estaCompletada = rem.estado_nombre?.toLowerCase().includes('finalizada') || rem.estado_nombre?.toLowerCase().includes('completad') || rem.estado_nombre?.toLowerCase().includes('cerrad');
                 
                 return (
                   <div key={rem.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-oltech-blue transition-all flex flex-col">

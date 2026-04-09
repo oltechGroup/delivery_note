@@ -82,4 +82,14 @@ router.delete('/composicion/:id', verificarToken, checkRole(rolesEscritura), alm
 // MEJORA PREMIUM: Ruta para surtir piezas desde consumibles
 router.post('/composicion/:id/surtir', verificarToken, checkRole(rolesEscritura), almacenController.surtirSet);
 
+// NUEVO: Ruta para forzar el estado de un Set a "Disponible"
+router.patch('/sets/:id/disponible', verificarToken, checkRole(rolesEscritura), almacenController.marcarSetDisponible);
+
+
+// ==========================================
+// RUTAS: ALERTAS DASHBOARD
+// ==========================================
+// Ruta para obtener los sets que quedaron incompletos tras una remisión
+router.get('/alertas/sets-incompletos', verificarToken, checkRole(rolesLectura), almacenController.obtenerAlertasIncompletos);
+
 module.exports = router;

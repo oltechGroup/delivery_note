@@ -36,7 +36,35 @@ function ModalDetalleSet({ isOpen, onClose, setMaestro }) {
     }
   }, [isOpen, setMaestro, token]);
 
+  // ==========================================
+  // NUEVA FUNCIÓN: Marcar como Disponible
+  // ==========================================
+  const handleMarcarDisponible = async () => {
+    if (!window.confirm(`¿Estás seguro de que la caja ${setMaestro.codigo} ya está completa y lista para cirugía?`)) {
+      return;
+    }
+
+    try {
+      setCargando(true);
+      await axios.patch(`http://localhost:4000/api/almacen/sets/${setMaestro.id}/disponible`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      alert('¡El Set ha sido marcado como Disponible exitosamente!');
+      
+      // Cerramos este modal para que la tabla de atrás recargue (asumiendo que en VistaInventario tienes un recargar)
+      onClose(true); // Pasamos true para indicarle al padre que hubo un cambio de estado importante
+    } catch (err) {
+      console.error('Error al liberar el Set:', err);
+      setError(err.response?.data?.mensaje || 'Error al intentar marcar el equipo como Disponible.');
+      setCargando(false);
+    }
+  };
+
   if (!isOpen || !setMaestro) return null;
+
+  const nombreEstado = setMaestro.estado_nombre?.toLowerCase() || '';
+  const estaDisponible = nombreEstado === 'disponible' || nombreEstado === 'activo';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
@@ -53,9 +81,23 @@ function ModalDetalleSet({ isOpen, onClose, setMaestro }) {
               <span className="text-oltech-pink">{setMaestro.codigo}</span> - {setMaestro.descripcion}
             </p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-          </button>
+          <div className="flex items-center space-x-4">
+            {/* NUEVO BOTÓN: Solo se muestra si NO está disponible */}
+            {!estaDisponible && (
+              <button 
+                onClick={handleMarcarDisponible}
+                disabled={cargando}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                <span>Marcar como Disponible</span>
+              </button>
+            )}
+
+            <button onClick={() => onClose(false)} className="text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+          </div>
         </div>
 
         {/* Cuerpo (Tabla de Composición) */}

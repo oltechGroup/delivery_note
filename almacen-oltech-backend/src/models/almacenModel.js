@@ -189,7 +189,7 @@ const updateConsumible = async (id, data) => {
         codigo_referencia, 
         nombre, 
         nombre_comercial, 
-        precio, 
+        precio,           
         unidad_medida, 
         lote, 
         fecha_caducidad, 
@@ -546,6 +546,35 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
     }
 };
 
+// ==========================================
+// NUEVA FUNCIÓN: OBTENER SETS INCOMPLETOS PARA DASHBOARD
+// ==========================================
+const getSetsIncompletos = async () => {
+    // Buscamos los sets que estén marcados explícitamente como "Incompleto"
+    const query = `
+        SELECT 
+            s.id AS set_id,
+            s.codigo AS set_codigo,
+            s.descripcion AS set_descripcion,
+            r.no_solicitud,
+            r.fecha_cirugia,
+            rd.cantidad_consumo,
+            p.codigo AS pieza_codigo,
+            p.descripcion AS pieza_descripcion
+        FROM sets s
+        INNER JOIN estados_set es ON s.estado_id = es.id
+        -- Unimos con remision_detalle para encontrar la deuda (consumos no repuestos)
+        INNER JOIN remision_detalle rd ON s.id = rd.set_id
+        INNER JOIN remision r ON rd.remision_id = r.id
+        INNER JOIN piezas p ON rd.pieza_id = p.id
+        WHERE es.nombre ILIKE '%incompleto%'
+        AND rd.cantidad_consumo > 0
+        ORDER BY r.fecha_cirugia DESC;
+    `;
+    const { rows } = await pool.query(query);
+    return rows;
+};
+
 module.exports = {
     getAllCategorias, createCategoria,
     getAllCategoriasConsumibles, createCategoriaConsumible, 
@@ -555,5 +584,6 @@ module.exports = {
     registrarEntradaMasiva, getDetallesEntrada,
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
-    getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet
+    getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet,
+    getSetsIncompletos // <--- AÑADIDA A LA EXPORTACIÓN
 };

@@ -155,7 +155,7 @@ function VistaInventario({ categoria, onVolver }) {
               </>
             ) : (
               <>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 <span>Generar Reporte (Sets)</span>
               </>
             )}
@@ -303,7 +303,13 @@ function VistaInventario({ categoria, onVolver }) {
 
       <ModalDetalleSet 
         isOpen={!!setSeleccionadoParaVer}
-        onClose={() => setSetSeleccionadoParaVer(null)}
+        onClose={(huboCambios) => {
+          setSetSeleccionadoParaVer(null);
+          // ACTUALIZADO: Si el ModalDetalleSet avisa que se marcó como disponible, recargamos la tabla.
+          if (huboCambios) {
+            cargarSets();
+          }
+        }}
         setMaestro={setSeleccionadoParaVer}
       />
 

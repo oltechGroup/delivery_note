@@ -19,8 +19,8 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   const [cantidadReposicion, setCantidadReposicion] = useState(1);
   const [reposiciones, setReposiciones] = useState([]);
 
-  // Variables derivadas
-  const isCompletada = remision?.estado_nombre?.toLowerCase().includes('completad') || remision?.estado_nombre?.toLowerCase().includes('cerrad');
+  // ACTUALIZADO: Buscamos explícitamente "finalizada"
+  const isCompletada = remision?.estado_nombre?.toLowerCase().includes('finalizada') || remision?.estado_nombre?.toLowerCase().includes('completad') || remision?.estado_nombre?.toLowerCase().includes('cerrad');
   const piezasSetConsumidas = detalles.filter(d => d.set_id && d.cantidad_consumo > 0);
   const necesitaReposicion = piezasSetConsumidas.length > 0;
 
@@ -50,7 +50,8 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       
-      const esCerrada = resRemision.data.estado_nombre?.toLowerCase().includes('completad') || resRemision.data.estado_nombre?.toLowerCase().includes('cerrad');
+      // ACTUALIZADO: Buscamos explícitamente "finalizada"
+      const esCerrada = resRemision.data.estado_nombre?.toLowerCase().includes('finalizada') || resRemision.data.estado_nombre?.toLowerCase().includes('completad') || resRemision.data.estado_nombre?.toLowerCase().includes('cerrad');
       
       const detallesReales = resDetalles.data.filter(d => !d.es_total && (d.pieza_id || d.consumible_id));
 
@@ -153,7 +154,12 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   // GUARDAR EN BASE DE DATOS
   // ==========================================
   const handleConciliarGuardar = async () => {
-    if (!window.confirm('¿Estás seguro de finalizar? El inventario se ajustará, los Sets se rellenarán y la remisión se cerrará.')) {
+    let mensajeConfirmacion = '¿Estás seguro de finalizar? El inventario se ajustará y la remisión se cerrará.';
+    if (necesitaReposicion && reposiciones.length === 0) {
+        mensajeConfirmacion = 'No has repuesto el material consumido. Los Sets afectados se marcarán como INCOMPLETOS. ¿Deseas continuar?';
+    }
+
+    if (!window.confirm(mensajeConfirmacion)) {
       return;
     }
 
@@ -169,14 +175,14 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
         }))
       }, { headers: { Authorization: `Bearer ${token}` } });
 
-      alert('¡Remisión conciliada y Sets liberados con éxito!');
+      alert('¡Remisión conciliada con éxito!');
       onGuardado(); 
       onClose(); 
     } catch (err) {
       console.error('Error al conciliar:', err);
       setError(err.response?.data?.mensaje || 'Ocurrió un error al intentar conciliar la remisión.');
     } finally {
-      setError(''); // Limpiar errores antes de cerrar
+      setError(''); 
       setCargando(false);
     }
   };
@@ -304,7 +310,7 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                   <span>Sets Incompletos Detectados</span>
                 </h3>
                 <p className="text-sm text-amber-700 mt-1">
-                  Debes reponer el material consumido para liberar los Sets como "Disponibles".
+                  Se ha detectado consumo en los Sets. Puedes reponer el material ahora o continuar y los Sets quedarán en estado "Incompleto".
                 </p>
               </div>
 
@@ -417,13 +423,13 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                 <button type="button" onClick={paso === 2 ? () => setPaso(1) : onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">{paso === 2 ? 'Regresar' : 'Cancelar'}</button>
                 {paso === 1 ? (
                   <button type="button" onClick={handleSiguientePaso} disabled={cargando || detalles.length === 0} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors flex items-center space-x-2">
-                    <span>{necesitaReposicion ? 'Siguiente: Reponer Sets' : 'Guardar y Cerrar Remisión'}</span>
+                    <span>{necesitaReposicion ? 'Siguiente: Revisar Faltantes' : 'Guardar y Cerrar Remisión'}</span>
                     {necesitaReposicion && <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>}
                   </button>
                 ) : (
-                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando || (necesitaReposicion && reposiciones.length === 0)} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-bold shadow-md hover:bg-pink-700 transition-colors flex items-center justify-center space-x-2">
+                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando} className={`w-full sm:w-auto px-6 py-2.5 text-white rounded-lg font-bold shadow-md transition-colors flex items-center justify-center space-x-2 ${reposiciones.length === 0 ? 'bg-amber-600 hover:bg-amber-700' : 'bg-oltech-pink hover:bg-pink-700'}`}>
                     {cargando && <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                    <span>Confirmar y Finalizar</span>
+                    <span>{reposiciones.length === 0 ? 'Cerrar con Faltantes' : 'Confirmar y Finalizar'}</span>
                   </button>
                 )}
               </>

@@ -182,7 +182,6 @@ function ReporteSets({ categoria, dataReporte, onClose }) {
                                         <td rowSpan="3" className="border border-gray-600 p-1 text-center text-[8px] leading-tight">
                                             <span className="font-bold">SUSTITUYE A:</span> NUEVO<br/>
                                             Referencia a la norma ISO 9001:2015<br/>
-                                            <span className="font-bold">8.5.4 Preservación</span>
                                         </td>
                                         <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50">Vigencia:</td>
                                         <td className="border border-gray-600 p-0.5 text-center">01/ABR/2029</td>

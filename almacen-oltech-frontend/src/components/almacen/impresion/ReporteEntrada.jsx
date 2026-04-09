@@ -175,16 +175,16 @@ function ReporteEntrada({ entrada, detalles, onClose }) {
                                             REGISTRO DE ENTRADAS
                                         </td>
                                         <td className="border border-gray-600 w-[12.5%] p-0.5 text-left font-bold bg-gray-50">Código:</td>
-                                        <td className="border border-gray-600 w-[12.5%] p-0.5 text-center font-bold">MPA-07-R03</td>
+                                        <td className="border border-gray-600 w-[12.5%] p-0.5 text-center font-bold">MPA-07-R02</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50">Revisión:</td>
-                                        <td className="border border-gray-600 p-0.5 text-center font-bold">01</td>
+                                        <td className="border border-gray-600 p-0.5 text-center font-bold">02</td>
                                     </tr>
                                     <tr>
                                         <td rowSpan="1" className="border border-gray-600 p-1 font-bold text-[10px] uppercase">OLTECH, S.A. DE C.V.</td>
                                         <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50">Emisión:</td>
-                                        <td className="border border-gray-600 p-0.5 text-center">05/NOV/2023</td>
+                                        <td className="border border-gray-600 p-0.5 text-center">01/ABR/2026</td>
                                     </tr>
                                     <tr>
                                         <td rowSpan="3" className="border border-gray-600 p-1 text-center text-[8px] leading-tight">
@@ -193,7 +193,7 @@ function ReporteEntrada({ entrada, detalles, onClose }) {
                                             <span className="font-bold">8.5.4 Preservación</span>
                                         </td>
                                         <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50">Vigencia:</td>
-                                        <td className="border border-gray-600 p-0.5 text-center">05/NOV/2026</td>
+                                        <td className="border border-gray-600 p-0.5 text-center">01/ABR/2029</td>
                                     </tr>
                                     <tr>
                                         <td className="border border-gray-600 p-0.5 text-left font-bold bg-gray-50">Página:</td>
