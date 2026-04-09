@@ -550,8 +550,16 @@ const surtirPiezaSet = async (composicion_id, consumible_id, cantidad_a_surtir) 
 // NUEVA FUNCIÓN: OBTENER SETS INCOMPLETOS PARA DASHBOARD
 // ==========================================
 const getSetsIncompletos = async () => {
-    // Buscamos los sets que estén marcados explícitamente como "Incompleto"
+    // ACTUALIZADO: Utilizamos un CTE (UltimaRemision) para obtener SOLO 
+    // la última remisión en la que participó cada set.
+    // Esto evita mostrar historiales viejos o duplicados de cirugías pasadas.
     const query = `
+        WITH UltimaRemision AS (
+            SELECT set_id, MAX(remision_id) AS max_remision_id
+            FROM remision_detalle
+            WHERE set_id IS NOT NULL
+            GROUP BY set_id
+        )
         SELECT 
             s.id AS set_id,
             s.codigo AS set_codigo,
@@ -563,8 +571,8 @@ const getSetsIncompletos = async () => {
             p.descripcion AS pieza_descripcion
         FROM sets s
         INNER JOIN estados_set es ON s.estado_id = es.id
-        -- Unimos con remision_detalle para encontrar la deuda (consumos no repuestos)
-        INNER JOIN remision_detalle rd ON s.id = rd.set_id
+        INNER JOIN UltimaRemision ur ON s.id = ur.set_id
+        INNER JOIN remision_detalle rd ON rd.set_id = s.id AND rd.remision_id = ur.max_remision_id
         INNER JOIN remision r ON rd.remision_id = r.id
         INNER JOIN piezas p ON rd.pieza_id = p.id
         WHERE es.nombre ILIKE '%incompleto%'
@@ -580,10 +588,10 @@ module.exports = {
     getAllCategoriasConsumibles, createCategoriaConsumible, 
     getAllConsumibles, getConsumiblesByCategoria, getConsumibleByCodigoYLote,
     createConsumible, updateStockConsumible, 
-    updateConsumible, deleteConsumible, // <--- EXPORTADAS AQUÍ
+    updateConsumible, deleteConsumible, 
     registrarEntradaMasiva, getDetallesEntrada,
     getAllPiezas, createPieza, updatePieza,
     getAllSets, getSetsByCategoria, createSet, createSetConComposicion, updateSet,
     getComposicionBySet, addPiezaToSet, removePiezaFromSet, surtirPiezaSet,
-    getSetsIncompletos // <--- AÑADIDA A LA EXPORTACIÓN
+    getSetsIncompletos 
 };

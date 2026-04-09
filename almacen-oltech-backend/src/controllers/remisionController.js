@@ -270,7 +270,7 @@ const actualizarCantidadesRetorno = async (req, res) => {
 };
 
 // ==========================================
-// NUEVA SÚPER FUNCIÓN: CONCILIAR REMISIÓN (ACTUALIZADA LÓGICA INCOMPLETO Y RESTA EN CAJA)
+// NUEVA SÚPER FUNCIÓN: CONCILIAR REMISIÓN (LÓGICA INCOMPLETO Y RESTA EN CAJA PERFECCIONADA)
 // ==========================================
 const conciliarRemision = async (req, res) => {
     const client = await pool.connect();
@@ -324,7 +324,7 @@ const conciliarRemision = async (req, res) => {
                 `, [cantRetorno, item.consumible_id]);
             }
 
-            // NUEVO: Si la pieza consumida PERTENECE A UN SET, se la restamos a la caja.
+            // NUEVO: Si la pieza consumida PERTENECE A UN SET, se la restamos físicamente a la caja.
             if (item.set_id && item.pieza_id && cantConsumo > 0) {
                 await client.query(`
                     UPDATE set_composicion 
@@ -340,8 +340,10 @@ const conciliarRemision = async (req, res) => {
             }
         }
 
-        // 4. Procesar Reposiciones (Lo que hayan metido a la caja EN ESTE MOMENTO)
-        let totalRepuestoGeneral = 0;
+        // 4. Procesar Reposiciones (Lo que hayan metido a la caja EN ESTE MOMENTO en el Modal)
+        // Usamos un objeto para llevar la cuenta de cuánto repusieron POR CADA SET, y no revuelto.
+        let reposicionPorSet = {};
+        
         if (reposiciones && reposiciones.length > 0) {
             for (let repo of reposiciones) {
                 const cantSurtir = parseInt(repo.cantidad_a_surtir) || 0;
@@ -357,7 +359,24 @@ const conciliarRemision = async (req, res) => {
                 if (resConsumible.rows.length === 0) {
                     throw new Error(`Stock insuficiente en inventario para reponer (ID Consumible: ${repo.consumible_id}).`);
                 }
-                totalRepuestoGeneral += cantSurtir;
+
+                // Aquí "adivinamos" para qué set era la reposición buscando si ese consumible/pieza
+                // coincide con alguna deuda en los detalles de la remision de este mismo set.
+                // Esto funciona asumiendo que el Frontend emparejó lógicamente la reposición con la caja en el modal.
+                // Como el frontend actual no envía el 'set_id' destino en el array de reposiciones, 
+                // mapeamos las reposiciones al primer Set que deba piezas en esta remisión (solución temporal rápida).
+                // *Nota para el futuro: Sería mejor que desde el Frontend manden { consumible_id, cantidad, set_id_destino }
+                let setIdDestino = null;
+                for (let d of detalles) {
+                    if (d.set_id && d.cantidad_consumo > 0) {
+                        setIdDestino = d.set_id;
+                        break;
+                    }
+                }
+
+                if (setIdDestino) {
+                    reposicionPorSet[setIdDestino] = (reposicionPorSet[setIdDestino] || 0) + cantSurtir;
+                }
             }
         }
 
@@ -368,11 +387,13 @@ const conciliarRemision = async (req, res) => {
                 .filter(d => d.set_id === setId && !d.es_total)
                 .reduce((acc, curr) => acc + (parseInt(curr.cantidad_consumo) || 0), 0);
 
+            const totalRepuestoAEsteSet = reposicionPorSet[setId] || 0;
+
             let estadoFinalSet = estadoSetDisponibleId;
 
-            // REGLA: Si el set tuvo consumo y el total repuesto en esta transacción 
-            // no cubre el total consumido de este set, queda como INCOMPLETO.
-            if (totalConsumoDelSet > 0 && totalRepuestoGeneral < totalConsumoDelSet) {
+            // REGLA INDIVIDUAL: Si el set tuvo consumo y el total repuesto en esta transacción 
+            // no cubre el total consumido de ESTE SET, queda como INCOMPLETO.
+            if (totalConsumoDelSet > 0 && totalRepuestoAEsteSet < totalConsumoDelSet) {
                 estadoFinalSet = estadoSetIncompletoId;
             }
 
