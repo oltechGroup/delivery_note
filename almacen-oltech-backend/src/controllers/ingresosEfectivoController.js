@@ -95,8 +95,43 @@ const cambiarEstadoIngreso = async (req, res) => {
     }
 };
 
+/**
+ * NUEVO: Registra los gastos de ruta y recalcula el monto final
+ */
+const registrarGastosRuta = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { observaciones, monto_gasto, foto_observaciones_url } = req.body;
+
+        // Validamos que al menos venga alguna observación o gasto
+        if (!observaciones && monto_gasto === undefined) {
+             return res.status(400).json({ mensaje: 'Faltan datos de observaciones o monto del gasto.' });
+        }
+
+        const ingresoActualizado = await ingresosModel.agregarGastosRuta(id, {
+             observaciones,
+             monto_gasto,
+             foto_observaciones_url
+        });
+
+        if (!ingresoActualizado) {
+             return res.status(404).json({ mensaje: 'Registro de ingreso no encontrado.' });
+        }
+
+        res.json({
+             mensaje: 'Gastos de ruta registrados correctamente.',
+             ingreso: ingresoActualizado
+        });
+
+    } catch (error) {
+        console.error('Error al registrar gastos de ruta:', error);
+        res.status(500).json({ mensaje: 'Error interno al registrar los gastos.' });
+    }
+};
+
 module.exports = {
     registrarIngreso,
     obtenerHistorialIngresos,
-    cambiarEstadoIngreso
+    cambiarEstadoIngreso,
+    registrarGastosRuta // Exportamos la nueva función
 };
