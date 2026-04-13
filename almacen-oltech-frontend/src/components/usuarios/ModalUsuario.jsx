@@ -116,6 +116,7 @@ function ModalUsuario({ isOpen, onClose, onUsuarioGuardado }) {
               <option value="2">Biomédicos (Crear Remisiones)</option>
               <option value="3">Operaciones (Auditoría Total)</option>
               <option value="4">Sistemas (Administración IT)</option>
+              <option value="6">Ventas (Auditoría de Efectivo)</option>
             </select>
           </div>
 

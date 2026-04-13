@@ -10,8 +10,10 @@ const app = express();
 // Permitir peticiones desde el frontend (React)
 app.use(cors()); 
 
-// Parsear el cuerpo de las peticiones a JSON (vital para recibir datos de formularios)
-app.use(express.json()); 
+// SOLUCIÓN AL ERROR 413: Parsear el cuerpo de las peticiones a JSON con límite ampliado
+// Aumentamos a 50mb para permitir recibir las imágenes en Base64 del INE y las firmas
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Ver las peticiones en la consola (ej. GET /api/status 200)
 app.use(morgan('dev')); 
@@ -45,6 +47,9 @@ app.use('/api/almacen', require('./routes/almacenRoutes'));
 // Conectamos las rutas de remisiones y procedimientos (El núcleo de la operación).
 // Todas las rutas dentro de remisionRoutes tendrán el prefijo /api/remisiones
 app.use('/api/remisiones', require('./routes/remisionRoutes'));
+
+// Conectamos el nuevo módulo de ingresos de efectivo
+app.use('/api/ingresos-efectivo', require('./routes/ingresosEfectivoRoutes'));
 
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;

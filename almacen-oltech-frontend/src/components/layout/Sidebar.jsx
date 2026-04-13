@@ -1,4 +1,4 @@
-//almacen-oltech-frontend/src/components/layout/Sidebar.jsx
+// almacen-oltech-frontend/src/components/layout/Sidebar.jsx
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import logoBlanco from '../../assets/Logo acostado blanco.png'; 
@@ -6,7 +6,7 @@ import logoBlanco from '../../assets/Logo acostado blanco.png';
 function Sidebar() {
   const { usuario } = useAuth();
   
-  // 1. NUEVO: Función para limpiar el rol que viene de la base de datos
+  // 1. Función para limpiar el rol que viene de la base de datos
   const limpiarTexto = (texto) => {
     if (!texto) return '';
     return texto.replace(/‚/g, 'é'); // Arreglamos el Biom‚dicos
@@ -66,6 +66,32 @@ function Sidebar() {
         </svg>
       )
     },
+    // ==========================================
+    // NUEVO MÓDULO: EFECTIVO
+    // ==========================================
+    {
+      nombre: 'Reportar Efectivo',
+      ruta: '/reportar-efectivo',
+      rolesPermitidos: ['Sistemas', 'Operaciones', 'Biomédicos'],
+      icono: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+        </svg>
+      )
+    },
+    {
+      nombre: 'Auditoría Efectivo',
+      ruta: '/auditoria-efectivo',
+      rolesPermitidos: ['Sistemas', 'Operaciones', 'Ventas'],
+      icono: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+        </svg>
+      )
+    },
+    // ==========================================
+    // FIN NUEVO MÓDULO
+    // ==========================================
     {
       nombre: 'Usuarios',
       ruta: '/usuarios',

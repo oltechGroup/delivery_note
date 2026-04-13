@@ -12,6 +12,10 @@ import Remisiones from './pages/Remisiones';
 import HistorialRemisiones from './pages/HistorialRemisiones'; 
 import NuevaRemision from './pages/NuevaRemision';
 
+// NUEVAS PÁGINAS (Módulo Efectivo)
+import ReportarEfectivo from './pages/ReportarEfectivo';
+import AuditoriaEfectivo from './pages/AuditoriaEfectivo';
+
 // Componentes de Estructura
 import Layout from './components/layout/Layout';
 
@@ -21,8 +25,7 @@ const limpiarRol = (texto) => {
   return texto.replace(/‚/g, 'é');
 };
 
-// 🛡️ COMPONENTE GUARDIÁN REFORZADO (Ahora verifica la sesión y el ROL)
-// rolesPermitidos es un arreglo. Ejemplo: ['Sistemas', 'Operaciones']
+// 🛡️ COMPONENTE GUARDIÁN REFORZADO
 const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
   const { estaAutenticado, usuario } = useAuth();
 
@@ -33,17 +36,33 @@ const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
 
   // 2. Si la ruta exige roles específicos, revisamos si el usuario tiene permiso
   if (rolesPermitidos.length > 0) {
-    const rolActual = limpiarRol(usuario?.rol); // Limpiamos "Biom‚dicos" -> "Biomédicos"
+    const rolActual = limpiarRol(usuario?.rol); 
     
     // Si el rol del usuario no está en la lista de invitados a esta ruta...
     if (!rolesPermitidos.includes(rolActual)) {
-      // ¡Lo rebotamos al dashboard! (Es la página segura a la que todos tienen acceso)
+      // REDIRECCIÓN INTELIGENTE: 
+      // Si es Ventas, su inicio seguro es auditoria, para los demás es el dashboard
+      if (rolActual === 'Ventas') {
+        return <Navigate to="/auditoria-efectivo" replace />;
+      }
       return <Navigate to="/dashboard" replace />;
     }
   }
 
   // 3. Si pasó todas las pruebas, lo dejamos ver la página
   return children;
+};
+
+// COMPONENTE DE REDIRECCIÓN INICIAL
+// Decide a dónde mandarte cuando entras a la raíz "/" de la página
+const RedireccionInicial = () => {
+  const { usuario } = useAuth();
+  const rolActual = limpiarRol(usuario?.rol);
+  
+  if (rolActual === 'Ventas') {
+    return <Navigate to="/auditoria-efectivo" replace />;
+  }
+  return <Navigate to="/dashboard" replace />;
 };
 
 function App() {
@@ -55,10 +74,15 @@ function App() {
       {/* Rutas Privadas: Envolvemos todo en el Layout para que tengan el Sidebar y Topbar */}
       <Route path="/" element={<RutaProtegida><Layout /></RutaProtegida>}>
         
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        {/* Aquí usamos la redirección inteligente en lugar de ir ciegamente al dashboard */}
+        <Route index element={<RedireccionInicial />} />
         
-        {/* Nivel 1: Acceso Universal (Todos los roles logueados pueden entrar) */}
-        <Route path="dashboard" element={<Dashboard />} />
+        {/* Nivel 1: Acceso Universal (EXCEPTO VENTAS) */}
+        <Route path="dashboard" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén']}>
+            <Dashboard />
+          </RutaProtegida>
+        } />
         
         {/* Nivel 2: Acceso de Almacén (Inventario general) */}
         <Route path="almacen" element={
@@ -99,10 +123,25 @@ function App() {
           </RutaProtegida>
         } />
 
+        {/* ========================================== */}
+        {/* NUEVO NIVEL 5: MÓDULO DE EFECTIVO          */}
+        {/* ========================================== */}
+        <Route path="reportar-efectivo" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos']}>
+            <ReportarEfectivo />
+          </RutaProtegida>
+        } />
+
+        <Route path="auditoria-efectivo" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Ventas']}>
+            <AuditoriaEfectivo />
+          </RutaProtegida>
+        } />
+
       </Route>
 
       {/* Ruta Comodín: Si escriben cualquier cosa rara, los manda al inicio seguro */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<RedireccionInicial />} />
     </Routes>
   );
 }
