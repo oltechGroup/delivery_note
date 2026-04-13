@@ -4,6 +4,14 @@ import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
 import ModalAuditoriaEfectivo from '../components/efectivo/ModalAuditoriaEfectivo';
 
+// NUEVO: Función utilitaria para formatear números como moneda (Ej. 1500 -> $1,500.00)
+const formatearMoneda = (cantidad) => {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(cantidad || 0);
+};
+
 function AuditoriaEfectivo() {
   const [ingresos, setIngresos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -110,7 +118,10 @@ function AuditoriaEfectivo() {
                       <div className="text-sm text-gray-700">{ingreso.biomedico_nombre}</div>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="font-bold text-green-700">${parseFloat(ingreso.monto_recibido).toFixed(2)}</div>
+                      {/* NUEVO: Aplicamos el formateador a la columna "Recibido" */}
+                      <div className="font-bold text-green-700">
+                        {formatearMoneda(ingreso.monto_recibido)}
+                      </div>
                     </td>
                     <td className="p-4 text-center">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide border ${

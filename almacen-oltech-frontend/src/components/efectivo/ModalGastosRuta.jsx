@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
+// NUEVO: Función utilitaria para formatear números como moneda
+const formatearMoneda = (cantidad) => {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(cantidad || 0);
+};
+
 function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
   const { token } = useAuth();
   const [cargando, setCargando] = useState(false);
@@ -95,7 +103,8 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
 
         <div className="bg-blue-50 px-6 py-3 border-b border-blue-100 flex justify-between items-center text-sm">
            <span className="font-semibold text-blue-800">Folio: {ingreso.folio}</span>
-           <span className="text-blue-600">Recibido inicial: <strong>${parseFloat(ingreso.monto_recibido).toFixed(2)}</strong></span>
+           {/* NUEVO: Formato de moneda aplicado al texto */}
+           <span className="text-blue-600">Recibido inicial: <strong>{formatearMoneda(ingreso.monto_recibido)}</strong></span>
         </div>
 
         {mensaje.texto && (

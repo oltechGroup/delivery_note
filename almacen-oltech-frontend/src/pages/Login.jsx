@@ -56,7 +56,7 @@ function Login() {
         <div className="relative z-10 text-center">
           <img src={logo} alt="Grupo OLTECH" className="w-96 mb-8 mx-auto drop-shadow-lg rounded-lg" />
           <h1 className="text-white text-3xl font-light tracking-wide mt-4">
-            Sistema Integral de <span className="font-semibold text-oltech-blue">Almacén</span> y <span className="font-semibold text-oltech-pink">Remisiones</span>
+            Sistema Integral <span className="font-semibold text-oltech-blue">Grupo</span> <span className="font-semibold text-oltech-pink">OLTECH</span>
           </h1>
           <p className="text-gray-400 mt-4 max-w-md mx-auto">
             Control preciso de instrumental, inventario y procedimientos de osteosíntesis.

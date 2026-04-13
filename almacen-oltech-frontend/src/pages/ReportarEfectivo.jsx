@@ -5,6 +5,14 @@ import { useAuth } from '../hooks/useAuth';
 import FirmaCanvas from '../components/efectivo/FirmaCanvas';
 import ModalGastosRuta from '../components/efectivo/ModalGastosRuta';
 
+// NUEVO: Función utilitaria para formatear números como moneda (Ej. 1500 -> $1,500.00)
+const formatearMoneda = (cantidad) => {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(cantidad || 0);
+};
+
 function ReportarEfectivo() {
   const { token, usuario } = useAuth();
   const [cargando, setCargando] = useState(false);
@@ -220,8 +228,9 @@ function ReportarEfectivo() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Diferencia (Deuda o a favor)</label>
+                {/* NUEVO: Aplicamos formatearMoneda a la diferencia */}
                 <div className={`w-full px-4 py-3 rounded-lg border text-lg font-bold ${formData.diferencia > 0 ? 'bg-red-50 border-red-200 text-red-600' : formData.diferencia < 0 ? 'bg-yellow-50 border-yellow-200 text-yellow-600' : 'bg-green-50 border-green-200 text-green-600'}`}>
-                  $ {formData.diferencia}
+                  {formatearMoneda(formData.diferencia)}
                 </div>
               </div>
             </div>
@@ -291,11 +300,18 @@ function ReportarEfectivo() {
                     <tr key={ingreso.id} className="hover:bg-gray-50">
                       <td className="p-4 font-bold text-gray-900">{ingreso.folio}</td>
                       <td className="p-4 text-sm text-gray-700">{ingreso.nombre_quien_paga}</td>
-                      <td className="p-4 text-right font-medium text-gray-600">${parseFloat(ingreso.monto_recibido).toFixed(2)}</td>
-                      <td className="p-4 text-right text-red-500 text-sm">
-                        {parseFloat(ingreso.monto_gasto) > 0 ? `-$${parseFloat(ingreso.monto_gasto).toFixed(2)}` : '$0.00'}
+                      
+                      {/* NUEVO: Aplicamos formatearMoneda a las columnas monetarias */}
+                      <td className="p-4 text-right font-medium text-gray-600">
+                        {formatearMoneda(ingreso.monto_recibido)}
                       </td>
-                      <td className="p-4 text-right font-bold text-green-700">${parseFloat(ingreso.monto_final).toFixed(2)}</td>
+                      <td className="p-4 text-right text-red-500 text-sm">
+                        {parseFloat(ingreso.monto_gasto) > 0 ? `-${formatearMoneda(ingreso.monto_gasto)}` : formatearMoneda(0)}
+                      </td>
+                      <td className="p-4 text-right font-bold text-green-700">
+                        {formatearMoneda(ingreso.monto_final)}
+                      </td>
+                      
                       <td className="p-4 text-center">
                         <button 
                           onClick={() => handleAbrirGastos(ingreso)}

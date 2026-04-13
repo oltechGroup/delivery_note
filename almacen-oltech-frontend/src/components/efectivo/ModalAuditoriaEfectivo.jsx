@@ -4,6 +4,14 @@ import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 import ModalGastosRuta from './ModalGastosRuta';
 
+// NUEVO: Función utilitaria para formatear números como moneda (Ej. 1500 -> $1,500.00)
+const formatearMoneda = (cantidad) => {
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(cantidad || 0);
+};
+
 function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletada }) {
   const { token, usuario } = useAuth();
   const [cargando, setCargando] = useState(false);
@@ -11,6 +19,9 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
   
   // Estado para abrir el modal de gastos desde la auditoría
   const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
+
+  // NUEVO: Estado para el visor de imágenes a pantalla completa
+  const [imagenExpandida, setImagenExpandida] = useState(null);
 
   // Si no está abierto o no hay ingreso seleccionado, no renderizamos
   if (!isOpen || !ingreso) return null;
@@ -101,19 +112,23 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div className="p-4 border rounded-lg bg-gray-50">
                   <p className="text-xs text-gray-500 uppercase tracking-wide">Acordado</p>
-                  <p className="text-xl font-bold text-gray-600">${parseFloat(ingreso.monto_acordado).toFixed(2)}</p>
+                  {/* Aplicado formatearMoneda */}
+                  <p className="text-xl font-bold text-gray-600">{formatearMoneda(ingreso.monto_acordado)}</p>
                 </div>
                 <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
                   <p className="text-xs text-blue-600 uppercase tracking-wide font-bold">Recibido Físico</p>
-                  <p className="text-xl font-bold text-blue-700">${parseFloat(ingreso.monto_recibido).toFixed(2)}</p>
+                  {/* Aplicado formatearMoneda */}
+                  <p className="text-xl font-bold text-blue-700">{formatearMoneda(ingreso.monto_recibido)}</p>
                 </div>
                 <div className="p-4 border rounded-lg bg-red-50 border-red-200">
                   <p className="text-xs text-red-600 uppercase tracking-wide font-bold">Gastos Ruta</p>
-                  <p className="text-xl font-bold text-red-700">-${parseFloat(ingreso.monto_gasto || 0).toFixed(2)}</p>
+                  {/* Aplicado formatearMoneda y mantenemos el signo menos visual */}
+                  <p className="text-xl font-bold text-red-700">-{formatearMoneda(ingreso.monto_gasto || 0)}</p>
                 </div>
                 <div className="p-4 border rounded-lg bg-green-50 border-green-300 shadow-inner">
                   <p className="text-xs text-green-700 uppercase tracking-wide font-black">Final a Entregar</p>
-                  <p className="text-2xl font-black text-green-800">${parseFloat(ingreso.monto_final || ingreso.monto_recibido).toFixed(2)}</p>
+                  {/* Aplicado formatearMoneda */}
+                  <p className="text-2xl font-black text-green-800">{formatearMoneda(ingreso.monto_final || ingreso.monto_recibido)}</p>
                 </div>
               </div>
             </div>
@@ -140,15 +155,21 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
               )}
             </div>
 
-            {/* Fila 4: Evidencias Visuales CORREGIDA (4 columnas) */}
+            {/* Fila 4: Evidencias Visuales CORREGIDA (4 columnas) y EXPANDIBLES */}
             <div>
-              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1">Evidencias Adjuntas</h3>
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 border-b pb-1 flex items-center space-x-2">
+                <span>Evidencias Adjuntas</span>
+                <span className="text-xs font-normal bg-gray-100 px-2 py-0.5 rounded-full">(Click para ampliar)</span>
+              </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 
                 {/* Foto INE */}
                 <div className="space-y-2">
                   <p className="font-medium text-gray-700 text-sm">INE Pagador</p>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center">
+                  <div 
+                    onClick={() => ingreso.foto_ine_url && setImagenExpandida(ingreso.foto_ine_url)}
+                    className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center transition-transform ${ingreso.foto_ine_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
+                  >
                     {ingreso.foto_ine_url ? (
                       <img src={ingreso.foto_ine_url} alt="INE" className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -160,7 +181,10 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                 {/* Firma */}
                 <div className="space-y-2">
                   <p className="font-medium text-gray-700 text-sm">Firma</p>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-white h-40 flex items-center justify-center">
+                  <div 
+                    onClick={() => ingreso.firma_url && setImagenExpandida(ingreso.firma_url)}
+                    className={`border border-gray-200 rounded-lg overflow-hidden bg-white h-40 flex items-center justify-center transition-transform ${ingreso.firma_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
+                  >
                     {ingreso.firma_url ? (
                       <img src={ingreso.firma_url} alt="Firma" className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -169,10 +193,13 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                   </div>
                 </div>
 
-                {/* Foto Evidencia Inicial (Dinero) - RESTAURADA */}
+                {/* Foto Evidencia Inicial (Dinero) */}
                 <div className="space-y-2">
                   <p className="font-medium text-gray-700 text-sm">Evidencia Inicial (Dinero)</p>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center">
+                  <div 
+                    onClick={() => ingreso.foto_evidencia_url && setImagenExpandida(ingreso.foto_evidencia_url)}
+                    className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center transition-transform ${ingreso.foto_evidencia_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
+                  >
                     {ingreso.foto_evidencia_url ? (
                       <img src={ingreso.foto_evidencia_url} alt="Evidencia Inicial" className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -184,7 +211,10 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                 {/* Foto Ticket Gastos */}
                 <div className="space-y-2">
                   <p className="font-medium text-gray-700 text-sm">Ticket Gastos</p>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center">
+                  <div 
+                    onClick={() => ingreso.foto_observaciones_url && setImagenExpandida(ingreso.foto_observaciones_url)}
+                    className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-40 flex items-center justify-center transition-transform ${ingreso.foto_observaciones_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
+                  >
                     {ingreso.foto_observaciones_url ? (
                       <img src={ingreso.foto_observaciones_url} alt="Ticket Gastos" className="max-h-full max-w-full object-contain" />
                     ) : (
@@ -218,7 +248,8 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                    <span>Autorizar Entrega de ${parseFloat(ingreso.monto_final || ingreso.monto_recibido).toFixed(2)}</span>
+                    {/* Aplicado formatearMoneda */}
+                    <span>Autorizar Entrega de {formatearMoneda(ingreso.monto_final || ingreso.monto_recibido)}</span>
                   </>
                 )}
               </button>
@@ -239,6 +270,31 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
             onClose(); 
           }}
         />
+      )}
+
+      {/* NUEVO: Visor de Imagen Expandida */}
+      {imagenExpandida && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm cursor-zoom-out"
+          onClick={() => setImagenExpandida(null)}
+        >
+          <div className="relative max-w-[95vw] max-h-[95vh] flex items-center justify-center">
+            {/* Botón de cierre superior derecho */}
+            <button 
+              onClick={(e) => { e.stopPropagation(); setImagenExpandida(null); }}
+              className="absolute -top-4 -right-4 bg-white text-black rounded-full p-2 hover:bg-gray-200 shadow-lg"
+              title="Cerrar"
+            >
+               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            {/* La imagen a tamaño máximo conservando proporción */}
+            <img 
+              src={imagenExpandida} 
+              alt="Evidencia Ampliada" 
+              className="max-h-[90vh] max-w-full object-contain rounded-lg shadow-2xl" 
+            />
+          </div>
+        </div>
       )}
     </>
   );
