@@ -1,12 +1,12 @@
-//almacen-oltech-frontend/src/components/layout/Topbar.jsx
-import { useState } from 'react'; // NUEVO: Importamos useState
+// almacen-oltech-frontend/src/components/layout/Topbar.jsx
+import { useState } from 'react'; 
 import { useAuth } from '../../hooks/useAuth';
 import ModalCambiarContrasena from '../usuarios/ModalCambiarContrasena'; 
 
-function Topbar() {
+// NUEVO: Recibimos la prop abrirMenu desde el Layout
+function Topbar({ abrirMenu }) {
   const { usuario, logout } = useAuth();
   
-  // NUEVO: Estado para controlar si el modal está abierto o cerrado
   const [modalContrasenaAbierto, setModalContrasenaAbierto] = useState(false);
 
   const limpiarTexto = (texto) => {
@@ -37,13 +37,30 @@ function Topbar() {
 
   return (
     <>
-      <header className="bg-white h-20 px-8 flex items-center justify-between shadow-sm border-b border-gray-200 z-10 w-full relative">
+      {/* NUEVO: Ajustamos el padding horizontal en móviles (px-4) y escritorio (sm:px-8) */}
+      <header className="bg-white h-20 px-4 sm:px-8 flex items-center justify-between shadow-sm border-b border-gray-200 z-10 w-full relative">
         
-        <div className="text-gray-500 font-medium tracking-wide">
-          Panel de Administración
+        {/* Agrupamos el botón hamburguesa y el título */}
+        <div className="flex items-center space-x-3">
+          {/* NUEVO: Botón de menú hamburguesa visible solo en móviles */}
+          <button
+            onClick={abrirMenu}
+            className="md:hidden p-2 -ml-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-oltech-pink transition-colors"
+            title="Abrir menú"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          {/* NUEVO: Ocultamos el texto en pantallas muy pequeñas para evitar que se encime */}
+          <div className="text-gray-500 font-medium tracking-wide hidden sm:block">
+            Panel de Administración
+          </div>
         </div>
 
-        <div className="flex items-center space-x-6">
+        {/* NUEVO: Ajustamos el espaciado entre los elementos de la derecha en móviles */}
+        <div className="flex items-center space-x-3 sm:space-x-6">
           
           <div className="flex items-center space-x-3 text-right">
             <div className="hidden sm:block">
@@ -57,10 +74,9 @@ function Topbar() {
               </div>
             </div>
             
-            {/* NUEVO: Le agregamos el onClick al Avatar para abrir el modal */}
             <div 
               onClick={() => setModalContrasenaAbierto(true)}
-              className="h-10 w-10 rounded-full bg-gray-50 flex justify-center items-center border-2 border-gray-200 shadow-sm transition-transform hover:scale-105 cursor-pointer hover:border-oltech-pink"
+              className="h-10 w-10 rounded-full bg-gray-50 flex justify-center items-center border-2 border-gray-200 shadow-sm transition-transform hover:scale-105 cursor-pointer hover:border-oltech-pink shrink-0"
               title="Cambiar Mi Contraseña"
             >
               <svg className="w-5 h-5 text-gray-400 hover:text-oltech-pink transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,11 +85,11 @@ function Topbar() {
             </div>
           </div>
 
-          <div className="h-8 w-px bg-gray-200"></div>
+          <div className="h-8 w-px bg-gray-200 hidden sm:block"></div>
 
           <button 
             onClick={logout}
-            className="flex items-center space-x-2 text-gray-400 hover:text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg transition-all duration-200 group"
+            className="flex items-center space-x-2 text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 sm:px-3 sm:py-2 rounded-lg transition-all duration-200 group shrink-0"
             title="Cerrar Sesión"
           >
             <svg className="w-5 h-5 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,7 +101,6 @@ function Topbar() {
         </div>
       </header>
 
-      {/* NUEVO: Colocamos el Modal aquí abajo. Se mostrará cuando modalContrasenaAbierto sea true */}
       <ModalCambiarContrasena 
         isOpen={modalContrasenaAbierto} 
         onClose={() => setModalContrasenaAbierto(false)} 

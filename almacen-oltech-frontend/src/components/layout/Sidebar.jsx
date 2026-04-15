@@ -3,7 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import logoBlanco from '../../assets/Logo acostado blanco.png'; 
 
-function Sidebar() {
+// NUEVO: Agregamos las props para controlar la vista en móviles
+function Sidebar({ menuAbierto, cerrarMenu }) {
   const { usuario } = useAuth();
   
   // 1. Función para limpiar el rol que viene de la base de datos
@@ -107,40 +108,53 @@ function Sidebar() {
   const menusVisibles = menuItems.filter(item => item.rolesPermitidos.includes(rolUsuario));
 
   return (
-    <aside className="w-64 bg-oltech-black text-white flex flex-col min-h-screen shadow-2xl z-20">
-      
-      <div className="p-6 flex justify-center items-center border-b border-gray-800">
-        <img 
-          src={logoBlanco} 
-          alt="OLTECH" 
-          className="w-48 drop-shadow-md hover:scale-105 transition-transform duration-300" 
-        />
-      </div>
+    <>
+      {/* NUEVO: Fondo oscuro transparente en móviles para cerrar el menú */}
+      {menuAbierto && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-20 md:hidden transition-opacity" 
+          onClick={cerrarMenu}
+        ></div>
+      )}
 
-      <nav className="flex-1 py-8 space-y-2 px-4">
-        {menusVisibles.map((item) => (
-          <NavLink
-            key={item.nombre}
-            to={item.ruta}
-            className={({ isActive }) =>
-              `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-                isActive
-                  ? 'bg-gray-800 border-l-4 border-oltech-pink text-white shadow-md' 
-                  : 'text-gray-400 hover:bg-gray-800/50 hover:text-white border-l-4 border-transparent' 
-              }`
-            }
-          >
-            {item.icono}
-            <span className="font-medium tracking-wide">{item.nombre}</span>
-          </NavLink>
-        ))}
-      </nav>
+      {/* NUEVO: Clases responsivas añadidas (fixed, md:relative, transform, translate) */}
+      <aside className={`w-64 bg-oltech-black text-white flex flex-col h-full shadow-2xl z-30 fixed md:relative transform transition-transform duration-300 ease-in-out ${menuAbierto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+        
+        <div className="p-6 flex justify-center items-center border-b border-gray-800">
+          <img 
+            src={logoBlanco} 
+            alt="OLTECH" 
+            className="w-48 drop-shadow-md hover:scale-105 transition-transform duration-300" 
+          />
+        </div>
 
-      <div className="p-4 border-t border-gray-800 text-center text-xs text-gray-500">
-        <p>&copy; {new Date().getFullYear()} Grupo OLTECH</p>
-        <p className="mt-1">Versión 1.0.0</p>
-      </div>
-    </aside>
+        {/* NUEVO: Se agregó overflow-y-auto para pantallas pequeñas */}
+        <nav className="flex-1 py-8 space-y-2 px-4 overflow-y-auto">
+          {menusVisibles.map((item) => (
+            <NavLink
+              key={item.nombre}
+              to={item.ruta}
+              onClick={cerrarMenu} // NUEVO: Cierra el menú al hacer clic en móvil
+              className={({ isActive }) =>
+                `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                  isActive
+                    ? 'bg-gray-800 border-l-4 border-oltech-pink text-white shadow-md' 
+                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-white border-l-4 border-transparent' 
+                }`
+              }
+            >
+              {item.icono}
+              <span className="font-medium tracking-wide">{item.nombre}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-gray-800 text-center text-xs text-gray-500">
+          <p>&copy; {new Date().getFullYear()} Grupo OLTECH</p>
+          <p className="mt-1">Versión 1.0.0</p>
+        </div>
+      </aside>
+    </>
   );
 }
 
