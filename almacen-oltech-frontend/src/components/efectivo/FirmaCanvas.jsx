@@ -1,3 +1,4 @@
+// almacen-oltech-frontend/src/components/efectivo/FirmaCanvas.jsx
 import { useRef, useState, useEffect } from 'react';
 
 function FirmaCanvas({ onFirmaLista }) {
@@ -21,13 +22,26 @@ function FirmaCanvas({ onFirmaLista }) {
   const getCoordinates = (event) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
+    
+    // SOLUCIÓN: Calculamos la escala o proporción entre el tamaño interno (400x200) 
+    // y el tamaño visual real que tiene el canvas en la pantalla del dispositivo.
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Para pantallas táctiles (Móviles/Tablets)
     if (event.touches && event.touches.length > 0) {
       return {
-        offsetX: event.touches[0].clientX - rect.left,
-        offsetY: event.touches[0].clientY - rect.top
+        offsetX: (event.touches[0].clientX - rect.left) * scaleX,
+        offsetY: (event.touches[0].clientY - rect.top) * scaleY
       };
     }
-    return { offsetX: event.nativeEvent.offsetX, offsetY: event.nativeEvent.offsetY };
+    
+    // Para el ratón en PC, unificamos usando la misma fórmula matemática
+    // para garantizar que siempre pinte justo donde está el puntero.
+    return { 
+      offsetX: (event.clientX - rect.left) * scaleX, 
+      offsetY: (event.clientY - rect.top) * scaleY 
+    };
   };
 
   const startDrawing = (e) => {

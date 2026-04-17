@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import logoBlanco from '../../assets/Logo acostado blanco.png'; 
 
-// NUEVO: Agregamos las props para controlar la vista en móviles
+// Agregamos las props para controlar la vista en móviles
 function Sidebar({ menuAbierto, cerrarMenu }) {
   const { usuario } = useAuth();
   
@@ -109,32 +109,41 @@ function Sidebar({ menuAbierto, cerrarMenu }) {
 
   return (
     <>
-      {/* NUEVO: Fondo oscuro transparente en móviles para cerrar el menú */}
+      {/* Fondo oscuro transparente en móviles para cerrar el menú. z-40 para que quede debajo del menú (z-50) */}
       {menuAbierto && (
         <div 
-          className="fixed inset-0 bg-black/50 z-20 md:hidden transition-opacity" 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden transition-opacity backdrop-blur-sm" 
           onClick={cerrarMenu}
         ></div>
       )}
 
-      {/* NUEVO: Clases responsivas añadidas (fixed, md:relative, transform, translate) */}
-      <aside className={`w-64 bg-oltech-black text-white flex flex-col h-full shadow-2xl z-30 fixed md:relative transform transition-transform duration-300 ease-in-out ${menuAbierto ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      {/* CLASES RESPONSIVAS CORREGIDAS: 
+          - absolute en móvil (flota), relative en lg (empuja contenido).
+          - z-50 para asegurar que esté sobre todo en móvil.
+          - translate-x para ocultar/mostrar.
+      */}
+      <aside className={`w-64 bg-oltech-black text-white flex flex-col h-full shadow-2xl z-50 absolute lg:relative transform transition-transform duration-300 ease-in-out ${menuAbierto ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 inset-y-0 left-0`}>
         
-        <div className="p-6 flex justify-center items-center border-b border-gray-800">
+        {/* Cabecera del menú con logo */}
+        <div className="p-6 flex justify-between lg:justify-center items-center border-b border-gray-800 shrink-0">
           <img 
             src={logoBlanco} 
             alt="OLTECH" 
-            className="w-48 drop-shadow-md hover:scale-105 transition-transform duration-300" 
+            className="w-40 lg:w-48 drop-shadow-md hover:scale-105 transition-transform duration-300" 
           />
+          {/* Botón X solo visible en móviles para cerrar */}
+          <button onClick={cerrarMenu} className="lg:hidden text-gray-400 hover:text-white p-1">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
         </div>
 
-        {/* NUEVO: Se agregó overflow-y-auto para pantallas pequeñas */}
-        <nav className="flex-1 py-8 space-y-2 px-4 overflow-y-auto">
+        {/* Links de Navegación */}
+        <nav className="flex-1 py-6 space-y-2 px-4 overflow-y-auto">
           {menusVisibles.map((item) => (
             <NavLink
               key={item.nombre}
               to={item.ruta}
-              onClick={cerrarMenu} // NUEVO: Cierra el menú al hacer clic en móvil
+              onClick={cerrarMenu} // Cierra el menú al hacer clic en móvil
               className={({ isActive }) =>
                 `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                   isActive
@@ -144,12 +153,13 @@ function Sidebar({ menuAbierto, cerrarMenu }) {
               }
             >
               {item.icono}
-              <span className="font-medium tracking-wide">{item.nombre}</span>
+              <span className="font-medium tracking-wide text-sm">{item.nombre}</span>
             </NavLink>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-gray-800 text-center text-xs text-gray-500">
+        {/* Footer del Menú */}
+        <div className="p-4 border-t border-gray-800 text-center text-[10px] text-gray-500 shrink-0">
           <p>&copy; {new Date().getFullYear()} Grupo OLTECH</p>
           <p className="mt-1">Versión 1.0.0</p>
         </div>

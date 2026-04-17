@@ -92,73 +92,82 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+      {/* RESPONSIVO: flex-col y max-h-[90vh] para garantizar scroll interno */}
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white">Añadir Gastos / Observaciones</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        {/* RESPONSIVO: shrink-0 para proteger el header, padding ajustado */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-white">Añadir Gastos / Observaciones</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors shrink-0 ml-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
 
-        <div className="bg-blue-50 px-6 py-3 border-b border-blue-100 flex justify-between items-center text-sm">
+        {/* RESPONSIVO: flex-col en móvil para evitar que los textos se empalmen, shrink-0 */}
+        <div className="bg-blue-50 px-4 sm:px-6 py-3 border-b border-blue-100 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center text-sm gap-1 sm:gap-0 shrink-0">
            <span className="font-semibold text-blue-800">Folio: {ingreso.folio}</span>
-           {/* NUEVO: Formato de moneda aplicado al texto */}
            <span className="text-blue-600">Recibido inicial: <strong>{formatearMoneda(ingreso.monto_recibido)}</strong></span>
         </div>
 
-        {mensaje.texto && (
-          <div className={`mx-6 mt-4 p-3 rounded-md border-l-4 text-sm font-medium ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
-            {mensaje.texto}
-          </div>
-        )}
+        {/* Contenedor escroleable */}
+        <div className="overflow-y-auto">
+          {mensaje.texto && (
+            <div className={`mx-4 sm:mx-6 mt-4 p-3 rounded-md border-l-4 text-xs sm:text-sm font-medium ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
+              {mensaje.texto}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Monto del Gasto ($)</label>
-            <input 
-              type="number" step="0.01" min="0" name="monto_gasto" 
-              value={formData.monto_gasto} onChange={handleChange} 
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-400 outline-none font-semibold text-red-600" 
-              placeholder="Ej. 250.00" 
-            />
-            <p className="text-xs text-gray-500 mt-1">Si no hubo gasto, déjalo en blanco.</p>
-          </div>
+          {/* RESPONSIVO: paddings ajustados */}
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Monto del Gasto ($)</label>
+              {/* RESPONSIVO: text-base sm:text-sm para evitar auto-zoom en iOS */}
+              <input 
+                type="number" step="0.01" min="0" name="monto_gasto" 
+                value={formData.monto_gasto} onChange={handleChange} 
+                className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-400 outline-none font-semibold text-red-600 text-base sm:text-sm" 
+                placeholder="Ej. 250.00" 
+              />
+              <p className="text-xs text-gray-500 mt-1">Si no hubo gasto, déjalo en blanco.</p>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones / Concepto *</label>
-            <textarea 
-              name="observaciones" rows="3" required
-              value={formData.observaciones} onChange={handleChange} 
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" 
-              placeholder="Ej. Pago de 2 casetas y propina de carga..." 
-            ></textarea>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones / Concepto *</label>
+              {/* RESPONSIVO: text-base sm:text-sm para evitar auto-zoom en iOS */}
+              <textarea 
+                name="observaciones" rows="3" required
+                value={formData.observaciones} onChange={handleChange} 
+                className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm" 
+                placeholder="Ej. Pago de 2 casetas y propina de carga..." 
+              ></textarea>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Foto del Ticket / Comprobante</label>
-            <input 
-              type="file" accept="image/*" capture="environment" onChange={handleImageUpload} 
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 border border-gray-200 rounded-lg p-2" 
-            />
-            {formData.foto_observaciones_url && (
-              <div className="mt-2 h-24 w-24 border rounded-lg overflow-hidden bg-gray-50">
-                <img src={formData.foto_observaciones_url} alt="Ticket" className="h-full w-full object-cover" />
-              </div>
-            )}
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Foto del Ticket / Comprobante</label>
+              <input 
+                type="file" accept="image/*" capture="environment" onChange={handleImageUpload} 
+                className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 border border-gray-200 rounded-lg p-2" 
+              />
+              {formData.foto_observaciones_url && (
+                <div className="mt-2 h-24 w-24 border rounded-lg overflow-hidden bg-gray-50">
+                  <img src={formData.foto_observaciones_url} alt="Ticket" className="h-full w-full object-cover" />
+                </div>
+              )}
+            </div>
 
-          <div className="pt-4 border-t border-gray-100 flex justify-end space-x-3">
-            <button type="button" onClick={onClose} disabled={cargando} className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100">
-              Cancelar
-            </button>
-            <button type="submit" disabled={cargando} className="px-6 py-2 bg-oltech-black text-white rounded-lg font-bold hover:bg-gray-800 disabled:opacity-70">
-              {cargando ? 'Guardando...' : 'Guardar Gastos'}
-            </button>
-          </div>
+            {/* RESPONSIVO: w-full y botones apilados (flex-col-reverse) en móvil */}
+            <div className="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-4 mt-auto">
+              <button type="button" onClick={onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 sm:py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 flex justify-center items-center">
+                Cancelar
+              </button>
+              <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 sm:py-2 bg-oltech-black text-white rounded-lg font-bold hover:bg-gray-800 disabled:opacity-70 flex justify-center items-center">
+                {cargando ? 'Guardando...' : 'Guardar Gastos'}
+              </button>
+            </div>
 
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

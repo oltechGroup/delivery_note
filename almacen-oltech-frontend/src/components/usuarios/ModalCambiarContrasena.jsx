@@ -1,4 +1,4 @@
-//almacen-oltech-frontend/src/components/usuarios/ModalCambiarContrasena.jsx
+// almacen-oltech-frontend/src/components/usuarios/ModalCambiarContrasena.jsx
 import { useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -77,82 +77,89 @@ function ModalCambiarContrasena({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+      {/* RESPONSIVO: max-h-[90vh] y flex-col aseguran que el modal no se pierda si el teclado virtual es muy grande */}
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado */}
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-            <svg className="w-5 h-5 text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* RESPONSIVO: p-4 en móvil, shrink-0 para proteger el header del scroll */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-oltech-pink shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
             </svg>
-            <span>Cambiar Mi Contraseña</span>
+            <span className="truncate">Cambiar Contraseña</span>
           </h2>
-          <button onClick={handleCerrar} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button onClick={handleCerrar} className="text-gray-400 hover:text-white transition-colors shrink-0 ml-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
 
-        {/* Mensajes de error/éxito */}
-        {mensaje.texto && (
-          <div className={`px-6 pt-4`}>
-            <div className={`p-3 rounded-md text-sm font-medium border-l-4 ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
-              {mensaje.texto}
+        {/* Contenedor escroleable para mensajes y formulario */}
+        <div className="overflow-y-auto">
+          {/* Mensajes de error/éxito */}
+          {mensaje.texto && (
+            <div className="px-4 sm:px-6 pt-4 shrink-0">
+              <div className={`p-3 rounded-md text-xs sm:text-sm font-medium border-l-4 ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
+                {mensaje.texto}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual *</label>
-            <input 
-              type="password" 
-              required 
-              value={contrasenaActual} 
-              onChange={(e) => setContrasenaActual(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none"
-              placeholder="Ingresa tu contraseña actual"
-            />
-          </div>
+          {/* Formulario */}
+          {/* RESPONSIVO: p-4 en móvil */}
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contraseña Actual *</label>
+              {/* RESPONSIVO: text-base en móvil previene el molesto auto-zoom en iOS Safari, se vuelve text-sm en escritorio */}
+              <input 
+                type="password" 
+                required 
+                value={contrasenaActual} 
+                onChange={(e) => setContrasenaActual(e.target.value)}
+                className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm"
+                placeholder="Ingresa tu contraseña actual"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña *</label>
-            <input 
-              type="password" 
-              required 
-              value={nuevaContrasena} 
-              onChange={(e) => setNuevaContrasena(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none"
-              placeholder="Mínimo 6 caracteres"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña *</label>
+              <input 
+                type="password" 
+                required 
+                value={nuevaContrasena} 
+                onChange={(e) => setNuevaContrasena(e.target.value)}
+                className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm"
+                placeholder="Mínimo 6 caracteres"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña *</label>
-            <input 
-              type="password" 
-              required 
-              value={confirmarContrasena} 
-              onChange={(e) => setConfirmarContrasena(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none"
-              placeholder="Repite la nueva contraseña"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar Nueva Contraseña *</label>
+              <input 
+                type="password" 
+                required 
+                value={confirmarContrasena} 
+                onChange={(e) => setConfirmarContrasena(e.target.value)}
+                className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm"
+                placeholder="Repite la nueva contraseña"
+              />
+            </div>
 
-          <div className="pt-4 flex justify-end">
-            <button 
-              type="submit" 
-              disabled={cargando}
-              className="w-full px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70 flex justify-center items-center"
-            >
-              {cargando ? 'Actualizando...' : 'Guardar Nueva Contraseña'}
-            </button>
-          </div>
+            <div className="pt-2 flex justify-end">
+              <button 
+                type="submit" 
+                disabled={cargando}
+                className="w-full px-6 py-3 sm:py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70 flex justify-center items-center"
+              >
+                {cargando ? 'Actualizando...' : 'Guardar Nueva Contraseña'}
+              </button>
+            </div>
 
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

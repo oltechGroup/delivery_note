@@ -108,12 +108,13 @@ function ReporteConsumibles({ categoria, consumibles, onClose }) {
             </style>
 
             {/* BARRA DE ACCIONES */}
-            <div className="sticky top-0 w-full flex justify-center py-4 bg-gray-900/50 backdrop-blur-sm print:hidden z-[10001] shrink-0">
-                <div className="flex space-x-4">
-                    <button onClick={onClose} className="bg-white text-gray-800 px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-gray-100 transition-all active:scale-95">
+            {/* RESPONSIVO: p-4, flex-col para apilar en móvil, w-full para aprovechar espacio */}
+            <div className="sticky top-0 w-full flex justify-center py-3 sm:py-4 px-4 bg-gray-900/50 backdrop-blur-sm print:hidden z-[10001] shrink-0 border-b border-gray-700/50">
+                <div className="flex flex-col sm:flex-row w-full sm:w-auto space-y-2 sm:space-y-0 sm:space-x-4">
+                    <button onClick={onClose} className="w-full sm:w-auto bg-white text-gray-800 px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-gray-100 transition-all active:scale-95 flex justify-center">
                         Cerrar Vista
                     </button>
-                    <button onClick={handleImprimir} className="bg-oltech-pink text-white px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-pink-700 flex items-center space-x-2 transition-all active:scale-95">
+                    <button onClick={handleImprimir} className="w-full sm:w-auto bg-oltech-pink text-white px-8 py-2.5 rounded-lg font-bold shadow-xl hover:bg-pink-700 flex items-center justify-center space-x-2 transition-all active:scale-95">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                         <span>Generar PDF / Imprimir</span>
                     </button>
@@ -121,7 +122,8 @@ function ReporteConsumibles({ categoria, consumibles, onClose }) {
             </div>
 
             {/* LIENZO DE HOJAS */}
-            <div ref={componentRef} className="w-full flex flex-col items-center bg-white">
+            {/* RESPONSIVO: overflow-x-auto permite deslizar la hoja tamaño carta en el celular sin romper la web */}
+            <div ref={componentRef} className="w-full flex flex-col items-center bg-gray-900 sm:bg-white overflow-x-auto">
                 {paginas.map((pagina, index) => (
                     <div key={index} className="hoja-impresion text-black text-xs font-sans">
                         
@@ -209,7 +211,6 @@ function ReporteConsumibles({ categoria, consumibles, onClose }) {
                                                     <td className="p-1.5 border border-gray-600 uppercase">{item.nombre}</td>
                                                     <td className="p-1.5 border border-gray-600 text-center">{item.unidad_medida || '-'}</td>
                                                     <td className="p-1.5 border border-gray-600 text-center">
-                                                        {/* MODIFICADO: Ya no intentamos parsear la fecha, imprimimos el texto libre */}
                                                         {item.fecha_caducidad ? <span className="font-bold">{item.fecha_caducidad}</span> : '-'}
                                                     </td>
                                                     <td className="p-1.5 border border-gray-600 text-center font-bold bg-gray-50 text-gray-800">{item.cantidad}</td>

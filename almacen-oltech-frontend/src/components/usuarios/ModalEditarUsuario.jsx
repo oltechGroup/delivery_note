@@ -1,4 +1,4 @@
-//almacen-oltech-frontend/src/components/usuarios/ModalEditarUsuario.jsx
+// almacen-oltech-frontend/src/components/usuarios/ModalEditarUsuario.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -105,61 +105,65 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+      {/* RESPONSIVO: flex-col, max-h-[90vh] para que la estructura base respete la altura de la pantalla */}
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado del Modal */}
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-            <svg className="w-5 h-5 text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        {/* RESPONSIVO: shrink-0 para que el header nunca se aplaste y reduccion de paddings */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2 min-w-0">
+            <svg className="w-5 h-5 text-oltech-pink shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
             </svg>
-            <span>Editar Usuario: {usuarioEditando.user_name}</span>
+            <span className="truncate">Editar: {usuarioEditando.user_name}</span>
           </h2>
-          <button onClick={handleCerrar} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button onClick={handleCerrar} className="text-gray-400 hover:text-white transition-colors ml-2 shrink-0">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
 
         {/* Las Pestañas (Tabs) */}
-        <div className="flex border-b border-gray-200 bg-gray-50 px-6 pt-2 space-x-4">
+        {/* RESPONSIVO: overflow-x-auto y whitespace-nowrap para scroll horizontal fluido en moviles */}
+        <div className="flex border-b border-gray-200 bg-gray-50 px-4 sm:px-6 pt-2 space-x-4 overflow-x-auto whitespace-nowrap shrink-0">
           <button 
             onClick={() => { setPestanaActiva('generales'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'generales' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'generales' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             Datos Generales
           </button>
           <button 
             onClick={() => { setPestanaActiva('estado'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'estado' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'estado' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             Estado de Acceso
           </button>
           <button 
             onClick={() => { setPestanaActiva('contrasena'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'contrasena' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'contrasena' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
           >
             Contraseña
           </button>
         </div>
 
         {/* Área de Mensajes (Éxito o Error) */}
-        <div className="px-6 pt-4">
-          {mensaje.texto && (
-            <div className={`p-4 rounded-md border-l-4 text-sm font-medium ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
+        {mensaje.texto && (
+          <div className="px-4 sm:px-6 pt-4 shrink-0">
+            <div className={`p-3 sm:p-4 rounded-md border-l-4 text-xs sm:text-sm font-medium ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
               {mensaje.texto}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Contenido de las pestañas */}
-        <div className="p-6">
+        {/* RESPONSIVO: overflow-y-auto asegura que el contenido de los forms sea el que scrollee si falta espacio */}
+        <div className="p-4 sm:p-6 overflow-y-auto">
           
           {/* PESTAÑA 1: Datos Generales */}
           {pestanaActiva === 'generales' && (
-            <form onSubmit={handleGuardarGenerales} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <form onSubmit={handleGuardarGenerales} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div className="col-span-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
                   <input type="text" name="nombre" required value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
@@ -174,7 +178,7 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario *</label>
                   <input type="text" name="user_name" required value={formData.user_name} onChange={(e) => setFormData({...formData, user_name: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
@@ -192,8 +196,9 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 flex justify-end">
-                <button type="submit" disabled={cargando} className="px-6 py-2 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
+              <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
+                {/* RESPONSIVO: w-full en móvil, w-auto en escritorio */}
+                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
                   {cargando ? 'Guardando...' : 'Actualizar Datos'}
                 </button>
               </div>
@@ -202,36 +207,38 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
 
           {/* PESTAÑA 2: Estado */}
           {pestanaActiva === 'estado' && (
-            <form onSubmit={handleGuardarEstado} className="space-y-6">
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                <p className="text-sm text-blue-800">
+            <form onSubmit={handleGuardarEstado} className="space-y-4 sm:space-y-6">
+              <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-100">
+                <p className="text-xs sm:text-sm text-blue-800">
                   <strong>Nota:</strong> Si cambias el estado a "Inactivo", el usuario no podrá iniciar sesión en el sistema, pero su historial de remisiones se mantendrá intacto por temas de auditoría.
                 </p>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Estado de la cuenta</label>
-                <div className="flex space-x-4">
-                  <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition-all ${nuevoEstado === '1' ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                {/* RESPONSIVO: flex-col en móvil y flex-row en escritorio para no aplastar las tarjetas */}
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:space-x-4">
+                  <label className={`flex-1 border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${nuevoEstado === '1' ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                     <input type="radio" name="estado" value="1" checked={nuevoEstado === '1'} onChange={(e) => setNuevoEstado(e.target.value)} className="sr-only" />
                     <div className="flex items-center space-x-2">
                       <div className={`w-4 h-4 rounded-full border-2 ${nuevoEstado === '1' ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}></div>
-                      <span className="font-semibold text-green-700">Cuenta Activa</span>
+                      <span className="font-semibold text-green-700 text-sm sm:text-base">Cuenta Activa</span>
                     </div>
                   </label>
                   
-                  <label className={`flex-1 border rounded-lg p-4 cursor-pointer transition-all ${nuevoEstado === '2' ? 'border-red-500 bg-red-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                  <label className={`flex-1 border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${nuevoEstado === '2' ? 'border-red-500 bg-red-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                     <input type="radio" name="estado" value="2" checked={nuevoEstado === '2'} onChange={(e) => setNuevoEstado(e.target.value)} className="sr-only" />
                     <div className="flex items-center space-x-2">
                       <div className={`w-4 h-4 rounded-full border-2 ${nuevoEstado === '2' ? 'border-red-500 bg-red-500' : 'border-gray-300'}`}></div>
-                      <span className="font-semibold text-red-700">Cuenta Inactiva</span>
+                      <span className="font-semibold text-red-700 text-sm sm:text-base">Cuenta Inactiva</span>
                     </div>
                   </label>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-gray-100 flex justify-end">
-                <button type="submit" disabled={cargando} className="px-6 py-2 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
+              <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
+                {/* RESPONSIVO: w-full en móvil */}
+                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
                   {cargando ? 'Guardando...' : 'Actualizar Estado'}
                 </button>
               </div>
@@ -240,9 +247,9 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
 
           {/* PESTAÑA 3: Contraseña */}
           {pestanaActiva === 'contrasena' && (
-            <form onSubmit={handleGuardarContrasena} className="space-y-6">
-              <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-100">
-                <p className="text-sm text-yellow-800">
+            <form onSubmit={handleGuardarContrasena} className="space-y-4 sm:space-y-6">
+              <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-100">
+                <p className="text-xs sm:text-sm text-yellow-800">
                   Al restablecer la contraseña, el usuario deberá usar la nueva clave inmediatamente. Te recomendamos asignarle una contraseña temporal.
                 </p>
               </div>
@@ -254,13 +261,14 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
                   required 
                   value={nuevaContrasena} 
                   onChange={(e) => setNuevaContrasena(e.target.value)} 
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" 
+                  className="w-full px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" 
                   placeholder="Escribe la nueva clave..." 
                 />
               </div>
 
-              <div className="pt-4 border-t border-gray-100 flex justify-end">
-                <button type="submit" disabled={cargando || !nuevaContrasena} className="px-6 py-2 bg-oltech-pink text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-70">
+              <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
+                {/* RESPONSIVO: w-full en móvil */}
+                <button type="submit" disabled={cargando || !nuevaContrasena} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-70">
                   {cargando ? 'Procesando...' : 'Restablecer Contraseña'}
                 </button>
               </div>
@@ -273,4 +281,4 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
   );
 }
 
-export default ModalEditarUsuario;
+export default ModalEditarUsuario; 

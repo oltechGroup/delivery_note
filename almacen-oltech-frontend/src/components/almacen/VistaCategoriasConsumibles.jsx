@@ -37,18 +37,21 @@ function VistaCategoriasConsumibles({ onSelectCategoria }) {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    // RESPONSIVO: Ajuste de márgenes verticales
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       {/* Encabezado y Buscador Global */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
+      {/* RESPONSIVO: Ajuste de padding en móvil */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center space-x-2">
             <span>⚙️</span>
             <span>Clasificación de Insumos</span>
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Selecciona una categoría para ver o gestionar sus consumibles.</p>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Selecciona una categoría para ver o gestionar sus consumibles.</p>
         </div>
         
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
+        {/* RESPONSIVO: Elementos al 100% de ancho en móvil y apilados con gap */}
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
           <Buscador 
             valor={busqueda} 
             onBuscar={setBusqueda} 
@@ -56,7 +59,7 @@ function VistaCategoriasConsumibles({ onSelectCategoria }) {
           />
           <button 
             onClick={() => setModalAbierto(true)}
-            className="bg-oltech-black text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
             title="Nueva Categoría de Insumo"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
@@ -75,29 +78,30 @@ function VistaCategoriasConsumibles({ onSelectCategoria }) {
             Cargando categorías...
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        // RESPONSIVO: El Grid ya maneja bien las columnas (1 en móvil)
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
           {categoriasFiltradas.map((cat) => (
             <div 
               key={cat.id} 
               onClick={() => onSelectCategoria(cat)}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md hover:border-oltech-pink hover:-translate-y-1 transition-all duration-300 group"
+              className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 cursor-pointer hover:shadow-md hover:border-oltech-pink hover:-translate-y-1 transition-all duration-300 group"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-pink-50 transition-colors">
-                  <svg className="w-6 h-6 text-gray-400 group-hover:text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gray-50 rounded-lg flex items-center justify-center group-hover:bg-pink-50 transition-colors">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 group-hover:text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 </div>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
                   Cat #{cat.id}
                 </span>
               </div>
-              <h3 className="text-lg font-bold text-gray-800 group-hover:text-oltech-black mb-1">{cat.nombre}</h3>
-              <p className="text-sm font-medium text-gray-500">
+              <h3 className="text-base sm:text-lg font-bold text-gray-800 group-hover:text-oltech-black mb-1">{cat.nombre}</h3>
+              <p className="text-xs sm:text-sm font-medium text-gray-500">
                 <span className="text-oltech-blue font-bold">{cat.total_consumibles || 0}</span> Insumos distintos
               </p>
             </div>
           ))}
           {categoriasFiltradas.length === 0 && (
-            <div className="col-span-full text-center py-10 text-gray-500 bg-white rounded-xl border border-gray-100 shadow-sm">
+            <div className="col-span-full text-center py-10 text-gray-500 text-sm bg-white rounded-xl border border-gray-100 shadow-sm">
               No se encontraron categorías de insumos con ese nombre.
             </div>
           )}

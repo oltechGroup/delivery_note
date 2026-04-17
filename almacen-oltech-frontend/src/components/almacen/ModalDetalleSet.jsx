@@ -71,99 +71,103 @@ function ModalDetalleSet({ isOpen, onClose, setMaestro }) {
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado */}
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center shrink-0">
+        {/* RESPONSIVO: flex-col en móvil para apilar los botones debajo del título, flex-row en PC */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-              <svg className="w-6 h-6 text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-oltech-pink" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
               <span>Contenido del Equipo</span>
             </h2>
-            <p className="text-gray-400 text-sm font-medium mt-1">
+            <p className="text-gray-400 text-xs sm:text-sm font-medium mt-1 break-words">
               <span className="text-oltech-pink">{setMaestro.codigo}</span> - {setMaestro.descripcion}
             </p>
           </div>
-          <div className="flex items-center space-x-4">
-            {/* NUEVO BOTÓN: Solo se muestra si NO está disponible */}
+          
+          {/* RESPONSIVO: Botones al 100% de ancho en móvil y justificados al final en PC */}
+          <div className="flex items-center w-full sm:w-auto space-x-2 sm:space-x-4">
             {!estaDisponible && (
               <button 
                 onClick={handleMarcarDisponible}
                 disabled={cargando}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md hover:bg-green-700 transition-colors flex items-center space-x-2 disabled:opacity-50"
+                className="flex-1 sm:flex-none bg-green-600 text-white px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg text-xs sm:text-sm font-bold shadow-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 sm:space-x-2 disabled:opacity-50"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                <span>Marcar como Disponible</span>
+                <span>Marcar Disponible</span>
               </button>
             )}
 
-            <button onClick={() => onClose(false)} className="text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2 rounded-lg">
+            <button onClick={() => onClose(false)} className="text-gray-400 hover:text-white transition-colors bg-gray-800 hover:bg-gray-700 p-2.5 sm:p-2 rounded-lg flex-shrink-0 flex items-center justify-center">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
           </div>
         </div>
 
         {/* Cuerpo (Tabla de Composición) */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 flex flex-col">
           {error && (
-            <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-medium mb-4">
+            <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-100 font-medium mb-4 shrink-0">
               {error}
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* RESPONSIVO: Agregado overflow-x-auto para que la tabla pueda escrollear horizontalmente */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto flex-1">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-100 border-b-2 border-gray-200 text-gray-700 text-xs uppercase tracking-wider">
-                  <th className="py-3 px-4 font-bold w-12 text-center">#</th>
-                  <th className="py-3 px-4 font-bold border-r border-gray-200 w-48">Código de Pieza</th>
-                  <th className="py-3 px-4 font-bold border-r border-gray-200">Descripción</th>
-                  <th className="py-3 px-4 font-bold border-r border-gray-200 text-center w-24">Unidad</th>
-                  <th className="py-3 px-4 font-bold border-r border-gray-200 text-center w-32">Cant. Actual</th>
-                  <th className="py-3 px-4 font-bold text-center w-32 text-oltech-pink">Acciones</th>
+                {/* RESPONSIVO: whitespace-nowrap en la cabecera */}
+                <tr className="bg-gray-100 border-b-2 border-gray-200 text-gray-700 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold w-12 text-center">#</th>
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 w-48">Código de Pieza</th>
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200">Descripción</th>
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 text-center w-20 sm:w-24">Unidad</th>
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 text-center w-24 sm:w-32">Cant. Actual</th>
+                  <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold text-center w-28 sm:w-32 text-oltech-pink">Acciones</th>
                 </tr>
               </thead>
-              <tbody className="text-sm text-gray-800">
+              <tbody className="text-xs sm:text-sm text-gray-800">
                 {cargando ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-gray-500">
-                      <svg className="animate-spin h-6 w-6 mx-auto text-oltech-pink mb-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <td colSpan="6" className="p-6 sm:p-8 text-center text-gray-500">
+                      <svg className="animate-spin h-5 w-5 sm:h-6 sm:w-6 mx-auto text-oltech-pink mb-2 sm:mb-3" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                       Abriendo caja...
                     </td>
                   </tr>
                 ) : composicion.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-8 text-center text-gray-500 bg-gray-50/50">
+                    <td colSpan="6" className="p-6 sm:p-8 text-center text-gray-500 bg-gray-50/50">
                       Esta caja no tiene piezas registradas en su interior.
                     </td>
                   </tr>
                 ) : (
                   composicion.map((item, index) => (
                     <tr key={item.composicion_id} className="border-b border-gray-200 hover:bg-blue-50/50 transition-colors">
-                      <td className="py-3 px-4 border-r border-gray-200 text-center text-gray-400 font-bold">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 border-r border-gray-200 text-center text-gray-400 font-bold whitespace-nowrap">
                         {index + 1}
                       </td>
-                      <td className="py-3 px-4 border-r border-gray-200">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 border-r border-gray-200 whitespace-nowrap">
                         <span className="font-mono font-bold text-oltech-blue tracking-tight">
                           {item.pieza_codigo}
                         </span>
                       </td>
-                      <td className="py-3 px-4 border-r border-gray-200 font-medium text-gray-700">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 border-r border-gray-200 font-medium text-gray-700 whitespace-nowrap">
                         {item.pieza_descripcion}
                       </td>
-                      <td className="py-3 px-4 border-r border-gray-200 text-center text-xs font-bold text-gray-500">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 border-r border-gray-200 text-center text-[10px] sm:text-xs font-bold text-gray-500 whitespace-nowrap">
                         {item.unidad_medida || 'PZA'}
                       </td>
-                      <td className="py-3 px-4 border-r border-gray-200 text-center">
-                        <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded font-bold border border-gray-200">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 border-r border-gray-200 text-center whitespace-nowrap">
+                        <span className="bg-gray-100 text-gray-800 px-2 sm:px-3 py-1 rounded font-bold border border-gray-200">
                           {item.cantidad_pieza}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-2.5 sm:py-3 px-3 sm:px-4 text-center whitespace-nowrap">
                         {/* BOTÓN MAESTRO DE SURTIR CONECTADO */}
                         <button 
                           onClick={() => setPiezaParaSurtir(item)} 
-                          className="bg-oltech-pink text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-pink-700 transition-colors shadow-sm flex items-center justify-center space-x-1 mx-auto"
+                          className="bg-oltech-pink text-white px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold hover:bg-pink-700 transition-colors shadow-sm flex items-center justify-center space-x-1 mx-auto"
                           title="Surtir desde Inventario a Granel"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
+                          <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path></svg>
                           <span>Surtir</span>
                         </button>
                       </td>

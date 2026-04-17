@@ -94,20 +94,23 @@ function VistaRemisiones() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    // RESPONSIVO: Ajuste del space-y
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
       {/* Barra Superior */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
+      {/* RESPONSIVO: padding ajustado */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center space-x-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center space-x-2">
             <span>📋</span>
             <span>Bandeja de Remisiones</span>
           </h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
             Control de despachos a cirugía y retornos de material.
           </p>
         </div>
 
+        {/* RESPONSIVO: Elementos al 100% de ancho en móvil */}
         <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full lg:w-auto">
           <Buscador 
             valor={busqueda} 
@@ -125,7 +128,7 @@ function VistaRemisiones() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-medium">
+        <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-sm border border-red-100 font-medium">
           {error}
         </div>
       )}
@@ -134,94 +137,94 @@ function VistaRemisiones() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[500px]">
         
         {/* Encabezado del contenedor de tarjetas */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h3 className="font-bold text-gray-800">Remisiones Recientes</h3>
-          <span className="bg-oltech-blue text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+        <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+          <h3 className="font-bold text-gray-800 text-sm sm:text-base">Remisiones Recientes</h3>
+          <span className="bg-oltech-blue text-white text-[10px] sm:text-xs font-bold px-2.5 sm:px-3 py-1 rounded-full shadow-sm">
             {remisionesFiltradas.length} encontradas
           </span>
         </div>
 
         {/* Grid de Tarjetas de Remisión */}
-        <div className="flex-1 p-6 bg-gray-50/30">
+        {/* RESPONSIVO: Ajuste de padding */}
+        <div className="flex-1 p-4 sm:p-6 bg-gray-50/30">
           {cargando ? (
-            <div className="h-full flex flex-col items-center justify-center">
-              <svg className="animate-spin h-10 w-10 text-oltech-pink mb-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-              <p className="text-gray-500 font-medium">Cargando bandeja de remisiones...</p>
+            <div className="h-full flex flex-col items-center justify-center min-h-[200px]">
+              <svg className="animate-spin h-8 sm:h-10 w-8 sm:w-10 text-oltech-pink mb-3 sm:mb-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+              <p className="text-gray-500 font-medium text-sm sm:text-base">Cargando bandeja de remisiones...</p>
             </div>
           ) : remisionesFiltradas.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-10">
-              <p className="text-gray-500 font-medium text-lg">No se encontraron remisiones.</p>
-              <p className="text-gray-400 text-sm mt-1">Prueba con otra búsqueda o crea una nueva remisión.</p>
+            <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 sm:p-10 min-h-[200px]">
+              <p className="text-gray-500 font-medium text-base sm:text-lg">No se encontraron remisiones.</p>
+              <p className="text-gray-400 text-xs sm:text-sm mt-1 text-center">Prueba con otra búsqueda o crea una nueva remisión.</p>
             </div>
           ) : (
-            // NUEVO: Usamos remisionesPaginadas en lugar de remisionesFiltradas
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            // RESPONSIVO: El grid ya maneja 1 columna en móvil, ajustamos el gap
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               {remisionesPaginadas.map((rem) => {
-                // ACTUALIZADO: Buscamos explícitamente "finalizada"
                 const estaCompletada = rem.estado_nombre?.toLowerCase().includes('finalizada') || rem.estado_nombre?.toLowerCase().includes('completad') || rem.estado_nombre?.toLowerCase().includes('cerrad');
                 
                 return (
                   <div key={rem.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-oltech-blue transition-all flex flex-col">
                     
                     {/* Cabecera de la Tarjeta */}
-                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
+                    <div className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-start">
                       <div>
-                        <span className="inline-block px-2.5 py-1 bg-oltech-black text-white text-xs font-bold rounded shadow-sm tracking-wide">
+                        <span className="inline-block px-2 py-1 sm:px-2.5 sm:py-1 bg-oltech-black text-white text-[10px] sm:text-xs font-bold rounded shadow-sm tracking-wide">
                           {rem.no_solicitud || `PENDIENTE-${rem.id}`}
                         </span>
-                        <div className="text-xs text-gray-500 mt-2 font-medium flex items-center">
+                        <div className="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2 font-medium flex items-center">
                           <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                           CX: <span className="ml-1 text-gray-700 font-bold">{formatearFecha(rem.fecha_cirugia)}</span>
                         </div>
                       </div>
-                      <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${getColorEstado(rem.estado_nombre)} text-center text-wrap w-24 leading-tight shadow-sm`}>
+                      <span className={`px-2 py-1 sm:px-2.5 rounded text-[9px] sm:text-[10px] font-bold uppercase tracking-wider border ${getColorEstado(rem.estado_nombre)} text-center text-wrap w-20 sm:w-24 leading-tight shadow-sm`}>
                         {rem.estado_nombre || 'Desconocido'}
                       </span>
                     </div>
 
                     {/* Cuerpo de la Tarjeta */}
-                    <div className="p-5 flex-1 space-y-4">
+                    <div className="p-4 sm:p-5 flex-1 space-y-3 sm:space-y-4">
                       <div>
-                        <p className="text-xs font-bold text-gray-400 uppercase mb-0.5 flex items-center"><svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Paciente</p>
-                        <p className="text-sm font-bold text-gray-800 line-clamp-1">{rem.paciente || 'Sin registro'}</p>
-                        <p className="text-xs font-medium text-oltech-pink mt-1 line-clamp-1">{rem.procedimiento_nombre || 'Procedimiento no especificado'}</p>
+                        <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase mb-0.5 flex items-center"><svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg> Paciente</p>
+                        <p className="text-xs sm:text-sm font-bold text-gray-800 line-clamp-1">{rem.paciente || 'Sin registro'}</p>
+                        <p className="text-[10px] sm:text-xs font-medium text-oltech-pink mt-0.5 sm:mt-1 line-clamp-1">{rem.procedimiento_nombre || 'Procedimiento no especificado'}</p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 pt-2 sm:pt-3 border-t border-gray-100">
                         <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Hospital</p>
-                          <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.unidad_medica_nombre || 'N/A'}</p>
+                          <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Hospital</p>
+                          <p className="text-[11px] sm:text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.unidad_medica_nombre || 'N/A'}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mb-0.5">Médico</p>
-                          <p className="text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.medico_nombre || 'N/A'}</p>
+                          <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase mb-0.5">Médico</p>
+                          <p className="text-[11px] sm:text-xs font-semibold text-gray-700 line-clamp-2 leading-snug">{rem.medico_nombre || 'N/A'}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Pie de la Tarjeta */}
-                    <div className="p-4 bg-gray-50 border-t border-gray-100 shrink-0 flex space-x-2">
+                    <div className="p-3 sm:p-4 bg-gray-50 border-t border-gray-100 shrink-0 flex space-x-2">
                       <button 
                         onClick={() => {
                           setRemisionAConciliarId(rem.id);
                           setModalConciliarAbierto(true);
                         }}
-                        className="flex-1 py-2 bg-white border border-gray-200 text-oltech-blue font-bold text-sm rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors flex justify-center items-center space-x-1.5 shadow-sm"
+                        className="flex-1 py-1.5 sm:py-2 bg-white border border-gray-200 text-oltech-blue font-bold text-xs sm:text-sm rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors flex justify-center items-center space-x-1.5 shadow-sm"
                       >
                         {estaCompletada ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                         ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                          <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
                         )}
                         <span>{estaCompletada ? 'Ver Resumen' : 'Conciliar'}</span>
                       </button>
 
                       <button 
                         onClick={() => handleAbrirImpresion(rem)}
-                        className="px-3 py-2 bg-white border border-gray-200 text-gray-500 hover:text-oltech-black rounded-lg hover:bg-gray-100 transition-colors flex justify-center items-center shadow-sm"
+                        className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-white border border-gray-200 text-gray-500 hover:text-oltech-black rounded-lg hover:bg-gray-100 transition-colors flex justify-center items-center shadow-sm"
                         title={estaCompletada ? "Imprimir Formato con Consumos" : "Reimprimir Formato de Salida"}
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                       </button>
                     </div>
 
@@ -233,27 +236,28 @@ function VistaRemisiones() {
         </div>
 
         {/* NUEVO: CONTROLES DE PAGINACIÓN */}
+        {/* RESPONSIVO: flex-col en móvil para centrar los textos */}
         {!cargando && totalPaginas > 1 && (
-          <div className="bg-white px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0">
-            <span className="text-sm text-gray-500 font-medium mb-4 sm:mb-0">
+          <div className="bg-white px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0 gap-3 sm:gap-0">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium text-center sm:text-left">
               Mostrando página <span className="font-bold text-oltech-black">{paginaActual}</span> de <span className="font-bold text-oltech-black">{totalPaginas}</span>
             </span>
             <div className="flex space-x-2">
               <button 
                 onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
                 disabled={paginaActual === 1}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                 <span>Anterior</span>
               </button>
               <button 
                 onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
                 disabled={paginaActual === totalPaginas}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
               >
                 <span>Siguiente</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
               </button>
             </div>
           </div>

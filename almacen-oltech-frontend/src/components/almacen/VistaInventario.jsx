@@ -107,15 +107,17 @@ function VistaInventario({ categoria, onVolver }) {
   const setsPaginados = setsFiltrados.slice(indiceInicio, indiceInicio + ITEMS_POR_PAGINA);
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-300">
+    // RESPONSIVO: Ajuste del margen vertical
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
       {/* Barra Superior: Botón Volver, Título y Buscador Local */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100 gap-4">
+      {/* RESPONSIVO: p-4 sm:p-6 */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 gap-4">
         
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3 sm:space-x-4">
           <button 
             onClick={onVolver} 
-            className="p-2 bg-gray-50 text-gray-500 hover:text-oltech-pink hover:bg-pink-50 rounded-lg transition-colors border border-gray-200 hover:border-pink-200 shadow-sm"
+            className="p-2 bg-gray-50 text-gray-500 hover:text-oltech-pink hover:bg-pink-50 rounded-lg transition-colors border border-gray-200 hover:border-pink-200 shadow-sm shrink-0"
             title="Volver a Categorías"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,11 +125,11 @@ function VistaInventario({ categoria, onVolver }) {
             </svg>
           </button>
           <div>
-            <h2 className="text-xl font-bold text-gray-800">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">
               <span className="text-gray-400 font-medium mr-2">Inventario:</span>
               {categoria?.nombre}
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">{sets.length} registros en esta categoría</p>
+            <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">{sets.length} registros en esta categoría</p>
           </div>
         </div>
 
@@ -139,10 +141,11 @@ function VistaInventario({ categoria, onVolver }) {
           />
           
           {/* BOTÓN VISIBLE: Lanza la preparación y ABRE LA VISTA PREVIA */}
+          {/* RESPONSIVO: w-full y justify-center en móvil */}
           <button 
             onClick={prepararYAbrirImpresion}
             disabled={setsFiltrados.length === 0 || preparandoReporte}
-            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
             title="Generar formato de conteo con desglose de piezas"
           >
             {preparandoReporte ? (
@@ -161,9 +164,10 @@ function VistaInventario({ categoria, onVolver }) {
             )}
           </button>
 
+          {/* RESPONSIVO: w-full y justify-center en móvil */}
           <button 
             onClick={() => setModalAbierto(true)}
-            className="bg-oltech-black text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
@@ -184,18 +188,19 @@ function VistaInventario({ categoria, onVolver }) {
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-100 border-b-2 border-gray-200 text-gray-700 text-xs uppercase tracking-wider">
-                <th className="py-3 px-4 font-bold border-r border-gray-200 w-16 text-center">ID</th>
-                <th className="py-3 px-4 font-bold border-r border-gray-200 w-56">Código (SKU)</th>
-                <th className="py-3 px-4 font-bold border-r border-gray-200">Descripción / Nombre del Equipo</th>
-                <th className="py-3 px-4 font-bold border-r border-gray-200 w-32 text-center">Estado</th>
-                <th className="py-3 px-4 font-bold w-24 text-center">Acciones</th>
+              {/* RESPONSIVO: whitespace-nowrap y ajuste de tamaño de fuente */}
+              <tr className="bg-gray-100 border-b-2 border-gray-200 text-gray-700 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
+                <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 w-16 text-center">ID</th>
+                <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 w-56">Código (SKU)</th>
+                <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200">Descripción / Nombre del Equipo</th>
+                <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold border-r border-gray-200 w-32 text-center">Estado</th>
+                <th className="py-2 sm:py-3 px-3 sm:px-4 font-bold w-24 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-800">
+            <tbody className="text-xs sm:text-sm text-gray-800">
               {cargando ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500">
+                  <td colSpan="5" className="p-6 sm:p-8 text-center text-gray-500 text-sm sm:text-base">
                     <svg className="animate-spin h-6 w-6 mx-auto text-oltech-pink mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -205,7 +210,7 @@ function VistaInventario({ categoria, onVolver }) {
                 </tr>
               ) : setsFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500 bg-gray-50/50">
+                  <td colSpan="5" className="p-6 sm:p-8 text-center text-gray-500 bg-gray-50/50 text-sm sm:text-base">
                     No hay equipos registrados en esta categoría que coincidan con la búsqueda.
                   </td>
                 </tr>
@@ -216,19 +221,20 @@ function VistaInventario({ categoria, onVolver }) {
                   
                   return (
                     <tr key={set.id} className="border-b border-gray-200 hover:bg-blue-50/50 transition-colors even:bg-gray-50/50">
-                      <td className="py-2.5 px-4 border-r border-gray-200 text-center text-gray-400 font-medium">
+                      {/* RESPONSIVO: whitespace-nowrap en todas las celdas */}
+                      <td className="py-2.5 px-3 sm:px-4 border-r border-gray-200 text-center text-gray-400 font-medium whitespace-nowrap">
                         {set.id}
                       </td>
-                      <td className="py-2.5 px-4 border-r border-gray-200">
+                      <td className="py-2.5 px-3 sm:px-4 border-r border-gray-200 whitespace-nowrap">
                         <span className="font-mono font-bold text-oltech-blue bg-blue-50 px-2 py-1 rounded border border-blue-100 tracking-tight">
                           {set.codigo}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 border-r border-gray-200 font-medium">
+                      <td className="py-2.5 px-3 sm:px-4 border-r border-gray-200 font-medium whitespace-nowrap">
                         {set.descripcion}
                       </td>
-                      <td className="py-2.5 px-4 border-r border-gray-200 text-center">
-                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase tracking-wider border ${
+                      <td className="py-2.5 px-3 sm:px-4 border-r border-gray-200 text-center whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase tracking-wider border ${
                           esEstadoVerde
                             ? 'bg-green-50 text-green-700 border-green-200' 
                             : 'bg-red-50 text-red-700 border-red-200'
@@ -236,13 +242,13 @@ function VistaInventario({ categoria, onVolver }) {
                           {nombreEstado}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-center">
+                      <td className="py-2.5 px-3 sm:px-4 text-center whitespace-nowrap">
                         <button 
                           onClick={() => setSetSeleccionadoParaVer(set)}
-                          className="text-gray-400 hover:text-oltech-pink transition-colors p-1.5 rounded hover:bg-pink-50 shadow-sm border border-transparent hover:border-pink-200"
+                          className="text-gray-400 hover:text-oltech-pink transition-colors p-1.5 rounded-full hover:bg-pink-50 shadow-sm border border-transparent hover:border-pink-200"
                           title="Ver / Editar Contenido"
                         >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                           </svg>
                         </button>
@@ -256,16 +262,17 @@ function VistaInventario({ categoria, onVolver }) {
         </div>
 
         {/* CONTROLES DE PAGINACIÓN */}
+        {/* RESPONSIVO: p-4 sm:p-6 */}
         {!cargando && totalPaginas > 1 && (
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0">
-            <span className="text-sm text-gray-500 font-medium mb-4 sm:mb-0">
+          <div className="bg-gray-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between shrink-0">
+            <span className="text-xs sm:text-sm text-gray-500 font-medium mb-3 sm:mb-0 text-center sm:text-left">
               Mostrando página <span className="font-bold text-oltech-black">{paginaActual}</span> de <span className="font-bold text-oltech-black">{totalPaginas}</span>
             </span>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 w-full sm:w-auto justify-center sm:justify-end">
               <button 
                 onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
                 disabled={paginaActual === 1}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+                className="px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                 <span>Anterior</span>
@@ -273,7 +280,7 @@ function VistaInventario({ categoria, onVolver }) {
               <button 
                 onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
                 disabled={paginaActual === totalPaginas}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
+                className="px-3 sm:px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center space-x-1"
               >
                 <span>Siguiente</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>

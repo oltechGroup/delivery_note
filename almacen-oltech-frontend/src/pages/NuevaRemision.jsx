@@ -278,16 +278,18 @@ function NuevaRemision() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-4 animate-in fade-in duration-300">
+    // RESPONSIVO: px-2 sm:px-4
+    <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-2 sm:px-4 animate-in fade-in duration-300">
       
       {/* BARRA DE CONTROLES SUPERIOR */}
-      <div className="max-w-[22cm] mx-auto bg-white p-4 rounded-xl shadow-md border border-gray-200 flex justify-between items-center mb-6 sticky top-4 z-50">
-        <button onClick={() => navigate('/remisiones')} className="text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
+      {/* RESPONSIVO: flex-col sm:flex-row, gap-3, botones w-full sm:w-auto */}
+      <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 sticky top-2 sm:top-4 z-50 gap-3 sm:gap-0">
+        <button onClick={() => navigate('/remisiones')} className="w-full sm:w-auto justify-center sm:justify-start text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           Volver a Bandeja
         </button>
 
-        <h1 className="text-lg font-bold text-oltech-black flex items-center space-x-2">
+        <h1 className="text-base sm:text-lg font-bold text-oltech-black flex items-center space-x-2 text-center">
           <span>🚀</span>
           <span>Creador de Remisión (ISO 9001)</span>
         </h1>
@@ -295,7 +297,7 @@ function NuevaRemision() {
         <button 
           onClick={handleGuardarRemision} 
           disabled={cargando}
-          className="bg-oltech-pink text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-pink-700 flex items-center space-x-2 transition-transform active:scale-95 disabled:opacity-50"
+          className="w-full sm:w-auto justify-center bg-oltech-pink text-white px-6 py-2.5 sm:py-2 rounded-lg font-bold shadow-md hover:bg-pink-700 flex items-center space-x-2 transition-transform active:scale-95 disabled:opacity-50"
         >
           {cargando ? (
             <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -307,30 +309,36 @@ function NuevaRemision() {
       </div>
 
       {error && (
-        <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200 font-medium mb-6 shadow-sm">
+        <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-200 font-medium mb-4 sm:mb-6 shadow-sm">
           {error}
         </div>
       )}
 
       {/* CONTROLES DE BÚSQUEDA */}
-      <div className="max-w-[22cm] mx-auto bg-oltech-black p-5 rounded-xl shadow-lg border border-gray-800 mb-8 relative z-40">
-        <h3 className="text-white text-sm font-bold uppercase tracking-wide mb-3 flex items-center space-x-2">
+      {/* RESPONSIVO: p-4 sm:p-5 */}
+      <div className="max-w-[22cm] mx-auto bg-oltech-black p-4 sm:p-5 rounded-xl shadow-lg border border-gray-800 mb-6 sm:mb-8 relative z-40">
+        <h3 className="text-white text-xs sm:text-sm font-bold uppercase tracking-wide mb-3 flex items-center space-x-2">
           <span className="text-oltech-pink">Paso 1.</span> <span>Agrega material a la hoja</span>
         </h3>
         
+        {/* RESPONSIVO: flex-col en móvil, text-base en móvil para prevenir zoom iOS */}
         <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 relative">
-          <select value={tipoBusqueda} onChange={(e) => setTipoBusqueda(e.target.value)} className="px-4 py-2.5 border-none rounded-lg text-sm bg-gray-800 text-white outline-none font-bold shadow-inner focus:ring-2 focus:ring-oltech-pink cursor-pointer">
+          <select 
+            value={tipoBusqueda} 
+            onChange={(e) => setTipoBusqueda(e.target.value)} 
+            className="w-full sm:w-auto px-4 py-3 sm:py-2.5 border-none rounded-lg text-base sm:text-sm bg-gray-800 text-white outline-none font-bold shadow-inner focus:ring-2 focus:ring-oltech-pink cursor-pointer"
+          >
             <option value="set">📦 Buscar SET Completo</option>
             <option value="consumible">💉 Buscar Consumible Suelto</option>
           </select>
           
-          <div className="relative flex-1">
+          <div className="relative flex-1 w-full">
             <input 
               type="text" 
               value={busquedaTexto} 
               onChange={(e) => setBusquedaTexto(e.target.value)} 
               placeholder={tipoBusqueda === 'set' ? "Escribe código o nombre del Set..." : "Escribe código o nombre del Insumo..."}
-              className="w-full px-4 py-2.5 border-none rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-sm bg-white shadow-inner font-medium text-gray-800"
+              className="w-full px-4 py-3 sm:py-2.5 border-none rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-base sm:text-sm bg-white shadow-inner font-medium text-gray-800"
             />
             
             {busquedaTexto.length >= 3 && (
@@ -356,12 +364,12 @@ function NuevaRemision() {
                             className={`w-full text-left p-3 hover:bg-blue-50 transition-colors flex flex-col ${deshabilitado ? 'opacity-50 cursor-not-allowed bg-gray-50' : ''}`}
                           >
                             <div className="flex justify-between items-start w-full">
-                              <div className="flex flex-col">
+                              <div className="flex flex-col pr-2">
                                 <span className="text-xs font-bold text-oltech-blue">{esSet ? res.codigo : res.codigo_referencia}</span>
-                                <span className="text-sm font-bold text-gray-700 line-clamp-1 mt-0.5">{esSet ? res.descripcion : res.nombre}</span>
+                                <span className="text-xs sm:text-sm font-bold text-gray-700 line-clamp-1 mt-0.5">{esSet ? res.descripcion : res.nombre}</span>
                               </div>
 
-                              <div className="flex flex-col items-end space-y-1 shrink-0 ml-2">
+                              <div className="flex flex-col items-end space-y-1 shrink-0">
                                 {esSet ? (
                                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${estaNoDisponible ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                                     {res.estado_nombre || 'ACTIVO'}
@@ -372,9 +380,8 @@ function NuevaRemision() {
                                       Stock: {res.cantidad}
                                     </span>
                                     {(res.lote || res.fecha_caducidad) && (
-                                      <div className="flex flex-col items-end text-[10px] text-gray-500 font-medium">
+                                      <div className="flex flex-col items-end text-[9px] sm:text-[10px] text-gray-500 font-medium">
                                         {res.lote && <span>Lote: {res.lote}</span>}
-                                        {/* MODIFICADO: Solo imprimimos el string de la BD */}
                                         {res.fecha_caducidad && <span>Cad: {res.fecha_caducidad}</span>}
                                       </div>
                                     )}
@@ -392,10 +399,10 @@ function NuevaRemision() {
             )}
           </div>
 
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 w-full sm:w-auto">
             <button 
               onClick={agregarFilaTotal}
-              className="bg-gray-800 text-oltech-pink px-4 py-2.5 rounded-lg text-sm font-bold border border-oltech-pink/30 hover:bg-gray-700 transition-colors whitespace-nowrap shadow-md"
+              className="w-full sm:w-auto bg-gray-800 text-oltech-pink px-4 py-3 sm:py-2.5 rounded-lg text-sm font-bold border border-oltech-pink/30 hover:bg-gray-700 transition-colors whitespace-nowrap shadow-md"
             >
               + Fila Resumen
             </button>
@@ -405,230 +412,233 @@ function NuevaRemision() {
       </div>
 
       {/* LIENZO DE LA HOJA */}
-      <div className="bg-white w-full max-w-[21.5cm] mx-auto p-[1cm] pt-[0.5cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black text-xs font-sans relative flex flex-col border border-gray-300">
-        
-        {/* ENCABEZADO ISO 9001 */}
-        <table className="w-full border-collapse border border-gray-400 text-[10px] text-center mb-3 mt-2">
-          <tbody>
-            <tr>
-              <td rowSpan="6" className="border border-gray-400 w-[20%] p-1 align-middle">
-                <img src={LogoOltech} alt="OLTECH" className="mx-auto w-24 object-contain" />
-              </td>
-              <td rowSpan="2" className="border border-gray-400 w-[40%] p-2 font-black text-[12px] uppercase align-middle text-black tracking-wide">
-                REMISIÓN DE ENTRADA Y SALIDA DE ALMACÉN
-              </td>
-              <td className="border border-gray-400 w-[15%] p-1 text-left font-bold text-gray-800 bg-gray-50/50">Código:</td>
-              <td className="border border-gray-400 w-[25%] p-1 text-center text-gray-800 font-bold">MPA-05-R02</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Revisión:</td>
-              <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">01</td>
-            </tr>
-            <tr>
-              <td rowSpan="1" className="border border-gray-400 p-1 font-bold text-[11px] uppercase align-middle text-black">
-                OLTECH, S.A. DE C.V.
-              </td>
-              <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Emisión:</td>
-              <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">05/NOV/2023</td>
-            </tr>
-            <tr>
-              <td rowSpan="3" className="border border-gray-400 p-1 text-center text-[9px] text-gray-800 leading-tight">
-                <span className="font-bold text-black">SUSTITUYE A:</span> NUEVO<br/>
-                Referencia a la norma ISO 9001:2015<br/>
-                <span className="font-bold text-black">8.5.4 Preservación</span>
-              </td>
-              <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Vigencia:</td>
-              <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">05/NOV/2026</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Página:</td>
-              <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">1 de X</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Resp:</td>
-              <td className="border border-gray-400 p-1 text-center text-[9px] text-gray-800 font-bold">Coord. Almacén</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* FECHA Y DATOS DE CIRUGÍA */}
-        <div className="text-right font-bold mb-2 text-[10px] text-black">
-          FECHA: {formatearFechaCorto(new Date().toISOString())}
-        </div>
-
-        <table className="w-full border-collapse border border-gray-400 text-[10px] mb-4 bg-yellow-50/20">
-          <tbody>
-            <tr>
-              <td className="border border-gray-400 p-1.5 w-1/2 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">FECHA CX:</span>
-                  <input type="date" required value={fechaCirugia} onChange={e => setFechaCirugia(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold text-black" />
-                </div>
-              </td>
-              <td className="border border-gray-400 p-1.5 w-1/2 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2 text-black">No. SOLICITUD:</span>
-                  <input type="text" required value={noSolicitud} onChange={e => setNoSolicitud(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-black text-black uppercase" placeholder="Ej. OLTAL..." />
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-1.5 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">PACIENTE:</span>
-                  <input type="text" required value={paciente} onChange={e => setPaciente(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black" placeholder="Nombre del paciente" />
-                </div>
-              </td>
-              <td className="border border-gray-400 p-1.5 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">PROCEDIMIENTO:</span>
-                  <select required value={procedimientoId} onChange={e => setProcedimientoId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
-                    <option value="">Seleccionar...</option>
-                    {procedimientos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-                  </select>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-1.5 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">MÉDICO:</span>
-                  <select required value={medicoId} onChange={e => setMedicoId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
-                    <option value="">Seleccionar...</option>
-                    {medicos.map(m => <option key={m.id} value={m.id}>{m.nombre_completo}</option>)}
-                  </select>
-                </div>
-              </td>
-              <td className="border border-gray-400 p-1.5 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">UNIDAD MÉDICA:</span>
-                  <select required value={unidadMedicaId} onChange={e => setUnidadMedicaId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
-                    <option value="">Seleccionar...</option>
-                    {unidadesMedicas.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
-                  </select>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="2" className="border border-gray-400 p-1.5 font-bold align-middle">
-                <div className="flex items-center">
-                  <span className="mr-2">CLIENTE:</span>
-                  <input type="text" value={cliente} onChange={e => setCliente(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black" placeholder="Nombre del cliente (Opcional)" />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* TABLA DE MATERIALES */}
-        <div className="text-center font-bold text-sm mb-2 uppercase underline underline-offset-2 text-black">
-          MATERIAL A VISTAS
-        </div>
-
-        <div className="flex-1 border border-gray-400 pb-10">
-          <table className="w-full border-collapse text-[10px]">
-            <thead className="bg-gray-100 border-b border-gray-400">
-              <tr>
-                <th className="border-r border-gray-400 p-1.5 w-32 text-gray-800">LOTE / REF</th>
-                {mostrarColumnaCaducidad && (
-                  <th className="border-r border-gray-400 p-1.5 w-24 text-center text-gray-800 bg-pink-50">CADUCIDAD</th>
-                )}
-                <th className="border-r border-gray-400 p-1.5 text-gray-800">DESCRIPCION</th>
-                <th className="border-r border-gray-400 p-1.5 w-16 text-center text-gray-800">DESPACHO</th>
-                <th className="p-1.5 w-8 text-center text-gray-400">✖</th> 
-              </tr>
-            </thead>
+      {/* RESPONSIVO: PROTECCIÓN CRÍTICA. Contenedor con overflow-x-auto, y la hoja mantiene su min-w-[21.5cm] */}
+      <div className="w-full overflow-x-auto pb-6">
+        <div className="bg-white w-[21.5cm] min-w-[21.5cm] mx-auto p-[1cm] pt-[0.5cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black text-xs font-sans relative flex flex-col border border-gray-300">
+          
+          {/* ENCABEZADO ISO 9001 - INTACTO */}
+          <table className="w-full border-collapse border border-gray-400 text-[10px] text-center mb-3 mt-2">
             <tbody>
-              {detalles.length === 0 ? (
+              <tr>
+                <td rowSpan="6" className="border border-gray-400 w-[20%] p-1 align-middle">
+                  <img src={LogoOltech} alt="OLTECH" className="mx-auto w-24 object-contain" />
+                </td>
+                <td rowSpan="2" className="border border-gray-400 w-[40%] p-2 font-black text-[12px] uppercase align-middle text-black tracking-wide">
+                  REMISIÓN DE ENTRADA Y SALIDA DE ALMACÉN
+                </td>
+                <td className="border border-gray-400 w-[15%] p-1 text-left font-bold text-gray-800 bg-gray-50/50">Código:</td>
+                <td className="border border-gray-400 w-[25%] p-1 text-center text-gray-800 font-bold">MPA-05-R02</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Revisión:</td>
+                <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">01</td>
+              </tr>
+              <tr>
+                <td rowSpan="1" className="border border-gray-400 p-1 font-bold text-[11px] uppercase align-middle text-black">
+                  OLTECH, S.A. DE C.V.
+                </td>
+                <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Emisión:</td>
+                <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">05/NOV/2023</td>
+              </tr>
+              <tr>
+                <td rowSpan="3" className="border border-gray-400 p-1 text-center text-[9px] text-gray-800 leading-tight">
+                  <span className="font-bold text-black">SUSTITUYE A:</span> NUEVO<br/>
+                  Referencia a la norma ISO 9001:2015<br/>
+                  <span className="font-bold text-black">8.5.4 Preservación</span>
+                </td>
+                <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Vigencia:</td>
+                <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">05/NOV/2026</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Página:</td>
+                <td className="border border-gray-400 p-1 text-center text-gray-800 font-bold">1 de X</td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 p-1 text-left font-bold text-gray-800 bg-gray-50/50">Resp:</td>
+                <td className="border border-gray-400 p-1 text-center text-[9px] text-gray-800 font-bold">Coord. Almacén</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* FECHA Y DATOS DE CIRUGÍA - INTACTO */}
+          <div className="text-right font-bold mb-2 text-[10px] text-black">
+            FECHA: {formatearFechaCorto(new Date().toISOString())}
+          </div>
+
+          <table className="w-full border-collapse border border-gray-400 text-[10px] mb-4 bg-yellow-50/20">
+            <tbody>
+              <tr>
+                <td className="border border-gray-400 p-1.5 w-1/2 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">FECHA CX:</span>
+                    <input type="date" required value={fechaCirugia} onChange={e => setFechaCirugia(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold text-black" />
+                  </div>
+                </td>
+                <td className="border border-gray-400 p-1.5 w-1/2 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2 text-black">No. SOLICITUD:</span>
+                    <input type="text" required value={noSolicitud} onChange={e => setNoSolicitud(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-black text-black uppercase" placeholder="Ej. OLTAL..." />
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 p-1.5 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">PACIENTE:</span>
+                    <input type="text" required value={paciente} onChange={e => setPaciente(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black" placeholder="Nombre del paciente" />
+                  </div>
+                </td>
+                <td className="border border-gray-400 p-1.5 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">PROCEDIMIENTO:</span>
+                    <select required value={procedimientoId} onChange={e => setProcedimientoId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
+                      <option value="">Seleccionar...</option>
+                      {procedimientos.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+                    </select>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td className="border border-gray-400 p-1.5 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">MÉDICO:</span>
+                    <select required value={medicoId} onChange={e => setMedicoId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
+                      <option value="">Seleccionar...</option>
+                      {medicos.map(m => <option key={m.id} value={m.id}>{m.nombre_completo}</option>)}
+                    </select>
+                  </div>
+                </td>
+                <td className="border border-gray-400 p-1.5 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">UNIDAD MÉDICA:</span>
+                    <select required value={unidadMedicaId} onChange={e => setUnidadMedicaId(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black">
+                      <option value="">Seleccionar...</option>
+                      {unidadesMedicas.map(u => <option key={u.id} value={u.id}>{u.nombre}</option>)}
+                    </select>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td colSpan="2" className="border border-gray-400 p-1.5 font-bold align-middle">
+                  <div className="flex items-center">
+                    <span className="mr-2">CLIENTE:</span>
+                    <input type="text" value={cliente} onChange={e => setCliente(e.target.value)} className="flex-1 bg-transparent border-b border-gray-300 outline-none focus:border-oltech-pink text-xs font-bold uppercase text-black" placeholder="Nombre del cliente (Opcional)" />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* TABLA DE MATERIALES - INTACTO */}
+          <div className="text-center font-bold text-sm mb-2 uppercase underline underline-offset-2 text-black">
+            MATERIAL A VISTAS
+          </div>
+
+          <div className="flex-1 border border-gray-400 pb-10">
+            <table className="w-full border-collapse text-[10px]">
+              <thead className="bg-gray-100 border-b border-gray-400">
                 <tr>
-                  <td colSpan={mostrarColumnaCaducidad ? 5 : 4} className="p-10 text-center text-gray-400 italic font-medium">
-                    Utiliza el buscador de arriba para agregar piezas y sets a la remisión.
-                  </td>
+                  <th className="border-r border-gray-400 p-1.5 w-32 text-gray-800">LOTE / REF</th>
+                  {mostrarColumnaCaducidad && (
+                    <th className="border-r border-gray-400 p-1.5 w-24 text-center text-gray-800 bg-pink-50">CADUCIDAD</th>
+                  )}
+                  <th className="border-r border-gray-400 p-1.5 text-gray-800">DESCRIPCION</th>
+                  <th className="border-r border-gray-400 p-1.5 w-16 text-center text-gray-800">DESPACHO</th>
+                  <th className="p-1.5 w-8 text-center text-gray-400">✖</th> 
                 </tr>
-              ) : (
-                detalles.map((d) => {
-                  if (d.es_total) {
+              </thead>
+              <tbody>
+                {detalles.length === 0 ? (
+                  <tr>
+                    <td colSpan={mostrarColumnaCaducidad ? 5 : 4} className="p-10 text-center text-gray-400 italic font-medium">
+                      Utiliza el buscador de arriba para agregar piezas y sets a la remisión.
+                    </td>
+                  </tr>
+                ) : (
+                  detalles.map((d) => {
+                    if (d.es_total) {
+                      return (
+                        <tr key={d.id_temp} className="bg-gray-50 border-b border-gray-300 group">
+                          <td colSpan={mostrarColumnaCaducidad ? 3 : 2} className="border-r border-gray-400 p-1 pr-4 text-right">
+                            <input 
+                              type="text" 
+                              value={d.descripcion_custom} 
+                              onChange={(e) => actualizarCampoDetalle(d.id_temp, 'descripcion_custom', e.target.value.toUpperCase())}
+                              className="w-full text-right bg-transparent border-b border-gray-400 border-dashed outline-none focus:border-oltech-black font-black uppercase text-black"
+                              placeholder="Ej. TOTAL DE PLACAS"
+                            />
+                          </td>
+                          <td className="border-r border-gray-400 p-1 text-center font-bold">
+                            <input 
+                              type="number" 
+                              value={d.cantidad_despachada} 
+                              onChange={(e) => actualizarCampoDetalle(d.id_temp, 'cantidad_despachada', parseInt(e.target.value) || 0)}
+                              className="w-full text-center bg-white border border-gray-300 rounded outline-none focus:ring-1 focus:ring-oltech-black text-[10px] py-0.5 font-black text-black"
+                            />
+                          </td>
+                          <td className="p-1 text-center">
+                            <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 sm:opacity-100 group-hover:opacity-100 transition-opacity">✖</button>
+                          </td>
+                        </tr>
+                      );
+                    }
+
                     return (
-                      <tr key={d.id_temp} className="bg-gray-50 border-b border-gray-300 group">
-                        <td colSpan={mostrarColumnaCaducidad ? 3 : 2} className="border-r border-gray-400 p-1 pr-4 text-right">
-                          <input 
-                            type="text" 
-                            value={d.descripcion_custom} 
-                            onChange={(e) => actualizarCampoDetalle(d.id_temp, 'descripcion_custom', e.target.value.toUpperCase())}
-                            className="w-full text-right bg-transparent border-b border-gray-400 border-dashed outline-none focus:border-oltech-black font-black uppercase text-black"
-                            placeholder="Ej. TOTAL DE PLACAS"
-                          />
+                      <tr key={d.id_temp} className={`border-b border-gray-200 group hover:bg-blue-50/30 ${d.es_fila_set_padre ? 'bg-gray-50' : ''}`}>
+                        <td className={`border-r border-gray-400 p-1 text-center font-mono ${d.es_fila_set_padre ? 'font-black text-black' : 'font-bold text-gray-800'}`}>
+                          {d.codigo}
                         </td>
-                        <td className="border-r border-gray-400 p-1 text-center font-bold">
-                          <input 
-                            type="number" 
-                            value={d.cantidad_despachada} 
-                            onChange={(e) => actualizarCampoDetalle(d.id_temp, 'cantidad_despachada', parseInt(e.target.value) || 0)}
-                            className="w-full text-center bg-white border border-gray-300 rounded outline-none focus:ring-1 focus:ring-oltech-black text-[10px] py-0.5 font-black text-black"
-                          />
+                        {mostrarColumnaCaducidad && (
+                          <td className="border-r border-gray-400 p-1 text-center align-middle bg-pink-50/10">
+                            {d.tiene_caducidad_bd ? (
+                              <div className="flex items-center justify-center space-x-1">
+                                <input 
+                                  type="checkbox"
+                                  checked={d.imprimir_caducidad}
+                                  onChange={(e) => actualizarCampoDetalle(d.id_temp, 'imprimir_caducidad', e.target.checked)}
+                                  className="w-3 h-3 text-oltech-pink"
+                                />
+                                <span className={`text-[9px] font-bold ${d.imprimir_caducidad ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
+                                  {d.fecha_caducidad}
+                               </span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-300 font-bold">-</span>
+                            )}
+                          </td>
+                        )}
+                        <td className={`border-r border-gray-400 p-1 pl-2 uppercase flex flex-col justify-center ${d.es_fila_set_padre ? 'font-black text-black' : 'font-semibold text-gray-800'}`}>
+                          {d.descripcion}
                         </td>
-                        <td className="p-1 text-center">
-                          <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✖</button>
+                        <td className="border-r border-gray-400 p-1 text-center align-middle">
+                          {d.es_fila_set_padre ? (
+                              <span className="font-black text-[10px] text-black">{d.cantidad_despachada}</span>
+                          ) : (
+                            <input 
+                              type="number" 
+                              min="1" max={d.cantidad_maxima} 
+                              value={d.cantidad_despachada} 
+                              onChange={(e) => actualizarCampoDetalle(d.id_temp, 'cantidad_despachada', parseInt(e.target.value) || 0)}
+                              className="w-12 mx-auto text-center bg-white border border-blue-200 rounded outline-none focus:ring-1 focus:ring-oltech-pink text-[10px] py-0.5 font-bold text-gray-900"
+                            />
+                          )}
+                        </td>
+                        <td className="p-1 text-center align-middle">
+                          <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 sm:opacity-100 group-hover:opacity-100 transition-opacity">
+                            ✖
+                          </button>
                         </td>
                       </tr>
                     );
-                  }
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                  return (
-                    <tr key={d.id_temp} className={`border-b border-gray-200 group hover:bg-blue-50/30 ${d.es_fila_set_padre ? 'bg-gray-50' : ''}`}>
-                      <td className={`border-r border-gray-400 p-1 text-center font-mono ${d.es_fila_set_padre ? 'font-black text-black' : 'font-bold text-gray-800'}`}>
-                        {d.codigo}
-                      </td>
-                      {mostrarColumnaCaducidad && (
-                        <td className="border-r border-gray-400 p-1 text-center align-middle bg-pink-50/10">
-                          {d.tiene_caducidad_bd ? (
-                            <div className="flex items-center justify-center space-x-1">
-                              <input 
-                                type="checkbox"
-                                checked={d.imprimir_caducidad}
-                                onChange={(e) => actualizarCampoDetalle(d.id_temp, 'imprimir_caducidad', e.target.checked)}
-                                className="w-3 h-3 text-oltech-pink"
-                              />
-                              {/* MODIFICADO: Ya no intentamos parsear, mostramos el string */}
-                              <span className={`text-[9px] font-bold ${d.imprimir_caducidad ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
-                                {d.fecha_caducidad}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 font-bold">-</span>
-                          )}
-                        </td>
-                      )}
-                      <td className={`border-r border-gray-400 p-1 pl-2 uppercase flex flex-col justify-center ${d.es_fila_set_padre ? 'font-black text-black' : 'font-semibold text-gray-800'}`}>
-                        {d.descripcion}
-                      </td>
-                      <td className="border-r border-gray-400 p-1 text-center align-middle">
-                        {d.es_fila_set_padre ? (
-                            <span className="font-black text-[10px] text-black">{d.cantidad_despachada}</span>
-                        ) : (
-                          <input 
-                            type="number" 
-                            min="1" max={d.cantidad_maxima} 
-                            value={d.cantidad_despachada} 
-                            onChange={(e) => actualizarCampoDetalle(d.id_temp, 'cantidad_despachada', parseInt(e.target.value) || 0)}
-                            className="w-12 mx-auto text-center bg-white border border-blue-200 rounded outline-none focus:ring-1 focus:ring-oltech-pink text-[10px] py-0.5 font-bold text-gray-900"
-                          />
-                        )}
-                      </td>
-                      <td className="p-1 text-center align-middle">
-                        <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          ✖
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
         </div>
-
       </div>
+
     </div>
   );
 }

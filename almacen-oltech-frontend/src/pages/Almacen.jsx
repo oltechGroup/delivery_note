@@ -12,9 +12,11 @@ function Almacen() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    // RESPONSIVO: Ajuste del margen global (menor en móviles)
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
       {/* Navegación Principal (Pestañas Superiores Estilo Switch) */}
+      {/* Este contenedor ya era responsivo gracias a tu flex-col sm:flex-row */}
       <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
         <button
           onClick={() => setSeccionActiva('sets')}
@@ -40,20 +42,7 @@ function Almacen() {
 
       {/* Contenido Dinámico dependiendo de la pestaña */}
       {seccionActiva === 'sets' ? (
-        // MUNDO 1: LOS SETS Y CATEGORÍAS (Lo que ya construimos)
-        !categoriaSeleccionada ? (
-          <VistaCategorias onSelectCategoria={setCategoriaSeleccionada} />
-        ) : (
-          <VistaInventario 
-            categoria={categoriaSeleccionada} 
-            onVolver={() => setCategoriaSeleccionada(null)} 
-          />
-        )
-      ) : (
-        // MUNDO 2: EL INVENTARIO DE INSUMOS A GRANEL (En construcción...)
-        <div className="bg-white p-10 rounded-xl shadow-sm border border-gray-100 text-center animate-in zoom-in duration-300">
-    {/* Contenido Dinámico dependiendo de la pestaña */}
-      {seccionActiva === 'sets' ? (
+        // MUNDO 1: LOS SETS Y CATEGORÍAS
         !categoriaSeleccionada ? (
           <VistaCategorias onSelectCategoria={setCategoriaSeleccionada} />
         ) : (
@@ -64,9 +53,8 @@ function Almacen() {
         )
       ) : (
         // MUNDO 2: EL INVENTARIO DE INSUMOS A GRANEL
-        <VistaConsumibles /> // <--- REEMPLAZA EL LETRERO TEMPORAL CON ESTO
-      )}    
-        </div>
+        // Se limpió el bloque duplicado, mostrando directamente el componente
+        <VistaConsumibles /> 
       )}
 
     </div>

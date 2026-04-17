@@ -9,7 +9,9 @@ function VistaConsumibles() {
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState(null);
 
   return (
-    <div className="animate-in fade-in duration-300">
+    // RESPONSIVO: Se agrega w-full para garantizar que el contenedor siempre ocupe el 100% en cualquier dispositivo.
+    // Los paddings y márgenes reales para móvil ya se gestionan dentro de los componentes hijos.
+    <div className="w-full animate-in fade-in duration-300">
       {/* Si no hay categoría seleccionada, mostramos las tarjetas */}
       {!categoriaSeleccionada ? (
         <VistaCategoriasConsumibles onSelectCategoria={setCategoriaSeleccionada} />

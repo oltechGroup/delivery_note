@@ -1,4 +1,4 @@
-//almacen-oltech-frontend/src/components/catalogos/ModalCatalogo.jsx
+// almacen-oltech-frontend/src/components/catalogos/ModalCatalogo.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
@@ -103,29 +103,32 @@ function ModalCatalogo({ isOpen, onClose, onGuardado, pestanaActiva, itemEditand
   // Textos dinámicos para el título
   const tituloModal = itemEditando ? 'Editar Registro' : 'Nuevo Registro';
   const subtituloModal = pestanaActiva === 'unidades' ? 'Unidad Médica' 
-                       : pestanaActiva === 'medicos' ? 'Médico Especialista' 
-                       : 'Procedimiento Quirúrgico';
+                         : pestanaActiva === 'medicos' ? 'Médico Especialista' 
+                         : 'Procedimiento Quirúrgico';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+      {/* RESPONSIVO: max-h-[90vh] y flex-col aseguran que el modal pueda escrollear si el teclado lo tapa */}
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado */}
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center">
+        {/* RESPONSIVO: shrink-0 protege el header y ajuste de paddings */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-white">{tituloModal}</h2>
-            <p className="text-oltech-pink text-sm font-medium">{subtituloModal}</p>
+            <h2 className="text-lg sm:text-xl font-bold text-white">{tituloModal}</h2>
+            <p className="text-oltech-pink text-xs sm:text-sm font-medium">{subtituloModal}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors shrink-0 ml-2">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {/* RESPONSIVO: overflow-y-auto habilitado en el cuerpo del form */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto">
           {error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-              <p className="text-sm text-red-700 font-medium">{error}</p>
+            <div className="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 rounded-md">
+              <p className="text-xs sm:text-sm text-red-700 font-medium">{error}</p>
             </div>
           )}
 
@@ -136,7 +139,7 @@ function ModalCatalogo({ isOpen, onClose, onGuardado, pestanaActiva, itemEditand
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
               <input type="text" name="nombre" required value={formData.nombre} onChange={handleChange}
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" 
+                className="w-full px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm" 
                 placeholder={`Ej. ${pestanaActiva === 'unidades' ? 'Hospital Ángeles' : 'Artroscopia de rodilla'}`} 
               />
             </div>
@@ -148,26 +151,27 @@ function ModalCatalogo({ isOpen, onClose, onGuardado, pestanaActiva, itemEditand
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo *</label>
                 <input type="text" name="nombre_completo" required value={formData.nombre_completo} onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" placeholder="Ej. Dr. Juan Pérez" />
+                  className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm" placeholder="Ej. Dr. Juan Pérez" />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              {/* RESPONSIVO: grid-cols-1 en móvil para que los campos no queden muy angostos, grid-cols-2 en PC */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
                   <input type="text" name="telefono" value={formData.telefono} onChange={handleChange}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" placeholder="Opcional" />
+                    className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm" placeholder="Opcional" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input type="email" name="email" value={formData.email} onChange={handleChange}
-                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" placeholder="Opcional" />
+                    className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm" placeholder="Opcional" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hospital (Unidad Médica)</label>
                 <select name="unidad_medica_id" value={formData.unidad_medica_id} onChange={handleChange}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none bg-white">
+                  className="w-full px-4 py-2.5 sm:py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none bg-white text-base sm:text-sm">
                   <option value="">-- Sin asignar --</option>
                   {unidades.map(u => (
                     <option key={u.id} value={u.id}>{u.nombre}</option>
@@ -178,13 +182,14 @@ function ModalCatalogo({ isOpen, onClose, onGuardado, pestanaActiva, itemEditand
           )}
 
           {/* Botones */}
-          <div className="pt-4 border-t border-gray-100 flex justify-end space-x-3">
+          {/* RESPONSIVO: Apilado vertical (flex-col-reverse) en móviles, w-full para los botones */}
+          <div className="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-4 mt-auto">
             <button type="button" onClick={onClose} disabled={cargando}
-              className="px-6 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors">
+              className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors flex justify-center items-center">
               Cancelar
             </button>
             <button type="submit" disabled={cargando}
-              className="px-6 py-2 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
+              className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70 flex justify-center items-center">
               {cargando ? 'Guardando...' : 'Guardar Datos'}
             </button>
           </div>

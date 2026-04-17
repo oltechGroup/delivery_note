@@ -159,48 +159,53 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-sm transition-opacity">
+      {/* El contenedor principal ya tiene flex-col y max-h, ideal para no desbordar */}
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[95vw] max-h-[95vh] flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* ENCABEZADO */}
-        <div className="bg-oltech-black px-6 py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
+        {/* RESPONSIVO: p-4 en móvil para ahorrar espacio */}
+        <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0 rounded-t-2xl">
           <div>
-            <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
               <span>📥</span>
-              <span>Recepción de Mercancía (Inbound)</span>
+              <span>Recepción de Mercancía</span>
             </h2>
-            <p className="text-gray-400 text-sm mt-1">Usuario receptor: <span className="text-oltech-pink font-bold">{usuario?.nombre}</span></p>
+            <p className="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">Usuario receptor: <span className="text-oltech-pink font-bold">{usuario?.nombre}</span></p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors bg-gray-800 p-2 rounded-lg">
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors bg-gray-800 p-2 rounded-lg shrink-0 ml-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-50 flex flex-col lg:flex-row gap-6">
+        {/* CUERPO: Se apila lg:flex-row */}
+        {/* RESPONSIVO: Reducción de padding en móvil p-3 sm:p-6 */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-gray-50 flex flex-col lg:flex-row gap-4 sm:gap-6">
           
           {/* LADO IZQUIERDO: Buscador y Detalles */}
           <div className="w-full lg:w-1/4 flex flex-col space-y-4">
             
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 relative" ref={buscadorRef}>
+            <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-200 relative" ref={buscadorRef}>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-bold text-gray-800">1. Buscar producto</label>
                 {modoHistorico && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold animate-pulse">MODO HISTÓRICO ACTIVO</span>}
               </div>
               
               <div className="relative">
+                {/* RESPONSIVO: text-base en móvil para prevenir zoom en iOS, sm:text-sm en escritorio */}
                 <input 
                   type="text" 
                   value={busqueda} 
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 outline-none text-sm transition-colors ${modoHistorico ? 'border-blue-400 focus:ring-blue-400 bg-blue-50/30' : 'border-gray-300 focus:ring-oltech-pink'}`}
+                  className={`w-full pl-10 pr-4 py-2.5 sm:py-3 border rounded-lg focus:ring-2 outline-none text-base sm:text-sm transition-colors ${modoHistorico ? 'border-blue-400 focus:ring-blue-400 bg-blue-50/30' : 'border-gray-300 focus:ring-oltech-pink'}`}
                   placeholder={modoHistorico ? "Buscando en todos los lotes..." : "Código o nombre..."}
                 />
-                <svg className={`w-5 h-5 absolute left-3 top-3 ${modoHistorico ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <svg className={`w-5 h-5 absolute left-3 top-3 sm:top-3.5 ${modoHistorico ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
               </div>
 
-              {/* Sugerencias Flotantes con Lógica Histórica */}
+              {/* Sugerencias Flotantes */}
               {mostrarSugerencias && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 left-0 bg-white border border-gray-200 rounded-lg shadow-xl max-h-72 overflow-y-auto">
                   {resultados.map(prod => (
                     <button 
                       key={prod.id} type="button"
@@ -250,46 +255,48 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
               </div>
             </div>
 
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex-1">
+            <div className="bg-white p-4 sm:p-5 rounded-xl shadow-sm border border-gray-200 flex-1">
               <label className="block text-sm font-bold text-gray-800 mb-2">2. Observaciones</label>
+              {/* RESPONSIVO: text-base en móvil para prevenir zoom */}
               <textarea 
                 value={observaciones}
                 onChange={(e) => setObservaciones(e.target.value)}
-                className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink resize-none text-sm"
-                rows="4"
+                className="w-full p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink resize-none text-base sm:text-sm"
+                rows="3"
                 placeholder="Ej. Factura #1234..."
               ></textarea>
             </div>
             
-            {error && <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-100 font-bold">{error}</div>}
+            {error && <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-sm border border-red-100 font-bold">{error}</div>}
           </div>
 
           {/* LADO DERECHO: Carrito */}
           <div className="w-full lg:w-3/4 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-              <h3 className="font-bold text-gray-800">3. Lista de Ingreso</h3>
-              <span className="bg-oltech-blue text-white text-xs font-bold px-3 py-1 rounded-full">{carrito.length} productos</span>
+            <div className="p-3 sm:p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center shrink-0">
+              <h3 className="font-bold text-gray-800 text-sm sm:text-base">3. Lista de Ingreso</h3>
+              <span className="bg-oltech-blue text-white text-[10px] sm:text-xs font-bold px-3 py-1 rounded-full">{carrito.length} productos</span>
             </div>
 
-            <div className="flex-1 overflow-x-auto overflow-y-auto max-h-[600px]">
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
               {carrito.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center p-12 text-gray-400 text-center">
-                  <p className="text-lg font-medium">El carrito está vacío</p>
-                  <p className="text-sm">Busca productos a la izquierda para comenzar.</p>
+                <div className="h-full flex flex-col items-center justify-center p-8 sm:p-12 text-gray-400 text-center min-h-[300px]">
+                  <p className="text-base sm:text-lg font-medium">El carrito está vacío</p>
+                  <p className="text-xs sm:text-sm mt-1">Busca productos a la izquierda para comenzar.</p>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead>
-                    <tr className="bg-gray-100 border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-600">
-                      <th className="p-3 font-bold w-44">Producto</th>
-                      <th className="p-3 font-bold text-center w-16">Stock</th>
-                      <th className="p-3 font-bold text-center w-24 bg-blue-50 text-blue-800">+ Ingreso</th>
-                      <th className="p-3 font-bold text-center w-24 bg-green-50 text-green-800">= Final</th>
-                      <th className="p-3 font-bold w-24">Precio</th>
-                      <th className="p-3 font-bold w-36">Nombre Com.</th>
-                      <th className="p-3 font-bold w-32">Lote</th>
-                      <th className="p-3 font-bold w-36">Caducidad</th>
-                      <th className="p-3 font-bold w-10"></th>
+                    {/* RESPONSIVO: whitespace-nowrap asegura que las columnas no se aplasten */}
+                    <tr className="bg-gray-100 border-b border-gray-200 text-[10px] uppercase tracking-wider text-gray-600 whitespace-nowrap">
+                      <th className="p-2 sm:p-3 font-bold w-48">Producto</th>
+                      <th className="p-2 sm:p-3 font-bold text-center w-16">Stock</th>
+                      <th className="p-2 sm:p-3 font-bold text-center w-24 bg-blue-50 text-blue-800">+ Ingreso</th>
+                      <th className="p-2 sm:p-3 font-bold text-center w-20 bg-green-50 text-green-800">= Final</th>
+                      <th className="p-2 sm:p-3 font-bold w-24">Precio</th>
+                      <th className="p-2 sm:p-3 font-bold w-36">Nombre Com.</th>
+                      <th className="p-2 sm:p-3 font-bold w-32">Lote</th>
+                      <th className="p-2 sm:p-3 font-bold w-36">Caducidad</th>
+                      <th className="p-2 sm:p-3 font-bold w-12 text-center"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 text-xs">
@@ -298,68 +305,70 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
 
                       return (
                         <tr key={idx} className={`${item.esNuevo ? 'bg-blue-50/40' : 'hover:bg-gray-50'}`}>
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3 whitespace-nowrap">
                             <div className="font-bold text-oltech-blue truncate">{item.codigo}</div>
                             <div className="text-gray-800 truncate" title={item.nombre}>{item.nombre}</div>
                           </td>
                           
-                          <td className="p-3 text-center text-gray-500 font-medium bg-gray-50/50">{item.cantidad_actual}</td>
+                          <td className="p-2 sm:p-3 text-center text-gray-500 font-medium bg-gray-50/50 whitespace-nowrap">{item.cantidad_actual}</td>
 
-                          <td className="p-3 bg-blue-50/20">
+                          <td className="p-2 sm:p-3 bg-blue-50/20 whitespace-nowrap">
+                            {/* RESPONSIVO: text-base en móvil para inputs */}
                             <input 
                               type="number" min="1" required
                               value={item.cantidad_ingreso}
                               onChange={(e) => actualizarFila(idx, 'cantidad_ingreso', e.target.value)}
-                              className="w-full px-2 py-1.5 border border-blue-200 rounded text-center font-bold text-oltech-blue outline-none"
+                              className="w-full px-2 py-1.5 border border-blue-200 rounded text-center font-bold text-oltech-blue outline-none text-base sm:text-xs"
                             />
                           </td>
 
-                          <td className="p-3 text-center font-bold text-green-700 bg-green-50/20 text-sm">{stockFinal}</td>
+                          <td className="p-2 sm:p-3 text-center font-bold text-green-700 bg-green-50/20 text-sm whitespace-nowrap">{stockFinal}</td>
 
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3 whitespace-nowrap">
                             <input 
                               type="number" step="0.01" placeholder="0.00"
                               value={item.precio}
                               disabled={item.traiaPrecioOriginal}
                               onChange={(e) => actualizarFila(idx, 'precio', e.target.value)}
-                              className={`w-full px-2 py-1.5 border rounded outline-none font-bold ${item.traiaPrecioOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                              className={`w-full px-2 py-1.5 border rounded outline-none font-bold text-base sm:text-xs ${item.traiaPrecioOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
 
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3 whitespace-nowrap">
                             <input 
                               type="text" placeholder="Opcional"
                               value={item.nombre_comercial}
                               disabled={item.traiaNombreComercialOriginal}
                               onChange={(e) => actualizarFila(idx, 'nombre_comercial', e.target.value.toUpperCase())}
-                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase italic ${item.traiaNombreComercialOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase italic text-base sm:text-xs ${item.traiaNombreComercialOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
 
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3 whitespace-nowrap">
                             <input 
                               type="text" placeholder="Lote"
                               value={item.lote}
                               disabled={item.traiaLoteOriginal}
                               onChange={(e) => actualizarFila(idx, 'lote', e.target.value.toUpperCase())}
-                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase font-mono ${item.traiaLoteOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase font-mono text-base sm:text-xs ${item.traiaLoteOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
                           
-                          <td className="p-3">
-                            {/* MODIFICADO: De type="date" a type="text" con placeholder "MM/AA" */}
+                          <td className="p-2 sm:p-3 whitespace-nowrap">
                             <input 
                               type="text"
                               placeholder="Ej. MM/AA"
                               value={item.fecha_caducidad}
                               disabled={item.traiaCaducidadOriginal}
                               onChange={(e) => actualizarFila(idx, 'fecha_caducidad', e.target.value.toUpperCase())}
-                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
+                              className={`w-full px-2 py-1.5 border rounded outline-none uppercase text-base sm:text-xs ${item.traiaCaducidadOriginal ? 'bg-gray-100 border-gray-200 text-gray-500 cursor-not-allowed' : 'border-gray-300 focus:ring-1 focus:ring-oltech-pink'}`}
                             />
                           </td>
                           
-                          <td className="p-3 text-center">
-                            <button type="button" onClick={() => eliminarDelCarrito(idx)} className="text-gray-400 hover:text-red-600"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                          <td className="p-2 sm:p-3 text-center whitespace-nowrap">
+                            <button type="button" onClick={() => eliminarDelCarrito(idx)} className="text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-50">
+                              <svg className="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
                           </td>
                         </tr>
                       );
@@ -372,14 +381,15 @@ function ModalEntradaMasiva({ isOpen, onClose, onGuardado, categoriaId }) {
         </div>
 
         {/* PIE DEL MODAL */}
-        <div className="bg-white px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 shrink-0 rounded-b-2xl">
-          <button type="button" onClick={onClose} disabled={cargando} className="px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200">
+        {/* RESPONSIVO: flex-col-reverse en móvil, w-full para los botones */}
+        <div className="bg-white px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col-reverse sm:flex-row sm:justify-end gap-3 sm:gap-4 sm:space-x-0 shrink-0 rounded-b-2xl">
+          <button type="button" onClick={onClose} disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200 flex items-center justify-center text-sm sm:text-base">
             Cancelar
           </button>
           <button 
             type="button" onClick={handleSubmit} 
             disabled={cargando || carrito.length === 0} 
-            className="px-8 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center space-x-2 shadow-md"
+            className="w-full sm:w-auto px-8 py-2.5 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center space-x-2 shadow-md text-sm sm:text-base"
           >
             {cargando ? 'Procesando...' : 'Confirmar Ingreso a Stock'}
           </button>
