@@ -278,12 +278,11 @@ function NuevaRemision() {
   };
 
   return (
-    // RESPONSIVO: px-2 sm:px-4
     <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-2 sm:px-4 animate-in fade-in duration-300">
       
       {/* BARRA DE CONTROLES SUPERIOR */}
-      {/* RESPONSIVO: flex-col sm:flex-row, gap-3, botones w-full sm:w-auto */}
-      <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 sticky top-2 sm:top-4 z-50 gap-3 sm:gap-0">
+      {/* RESPONSIVO CORRECCIÓN 1: static en móvil, sm:sticky en tablet/PC para no comerse la pantalla */}
+      <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 static sm:sticky top-2 sm:top-4 z-50 gap-3 sm:gap-0">
         <button onClick={() => navigate('/remisiones')} className="w-full sm:w-auto justify-center sm:justify-start text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           Volver a Bandeja
@@ -315,13 +314,11 @@ function NuevaRemision() {
       )}
 
       {/* CONTROLES DE BÚSQUEDA */}
-      {/* RESPONSIVO: p-4 sm:p-5 */}
       <div className="max-w-[22cm] mx-auto bg-oltech-black p-4 sm:p-5 rounded-xl shadow-lg border border-gray-800 mb-6 sm:mb-8 relative z-40">
         <h3 className="text-white text-xs sm:text-sm font-bold uppercase tracking-wide mb-3 flex items-center space-x-2">
           <span className="text-oltech-pink">Paso 1.</span> <span>Agrega material a la hoja</span>
         </h3>
         
-        {/* RESPONSIVO: flex-col en móvil, text-base en móvil para prevenir zoom iOS */}
         <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 relative">
           <select 
             value={tipoBusqueda} 
@@ -412,7 +409,6 @@ function NuevaRemision() {
       </div>
 
       {/* LIENZO DE LA HOJA */}
-      {/* RESPONSIVO: PROTECCIÓN CRÍTICA. Contenedor con overflow-x-auto, y la hoja mantiene su min-w-[21.5cm] */}
       <div className="w-full overflow-x-auto pb-6">
         <div className="bg-white w-[21.5cm] min-w-[21.5cm] mx-auto p-[1cm] pt-[0.5cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black text-xs font-sans relative flex flex-col border border-gray-300">
           
@@ -577,7 +573,8 @@ function NuevaRemision() {
                             />
                           </td>
                           <td className="p-1 text-center">
-                            <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 sm:opacity-100 group-hover:opacity-100 transition-opacity">✖</button>
+                            {/* RESPONSIVO CORRECCIÓN 2: opacity-100 sm:opacity-0 para que el tache sea siempre visible en móvil y funcione con hover en PC */}
+                            <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">✖</button>
                           </td>
                         </tr>
                       );
@@ -600,7 +597,7 @@ function NuevaRemision() {
                                 />
                                 <span className={`text-[9px] font-bold ${d.imprimir_caducidad ? 'text-gray-800' : 'text-gray-400 line-through'}`}>
                                   {d.fecha_caducidad}
-                               </span>
+                                </span>
                               </div>
                             ) : (
                               <span className="text-gray-300 font-bold">-</span>
@@ -624,7 +621,8 @@ function NuevaRemision() {
                           )}
                         </td>
                         <td className="p-1 text-center align-middle">
-                          <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-0 sm:opacity-100 group-hover:opacity-100 transition-opacity">
+                          {/* RESPONSIVO CORRECCIÓN 2: opacity-100 sm:opacity-0 para que el tache sea siempre visible en móvil y funcione con hover en PC */}
+                          <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             ✖
                           </button>
                         </td>

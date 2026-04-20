@@ -47,8 +47,8 @@ function VistaCategorias({ onSelectCategoria }) {
           <p className="text-gray-500 text-xs sm:text-sm mt-1">Selecciona una categoría para ver o editar su inventario.</p>
         </div>
         
-        {/* RESPONSIVO: w-full para que el buscador y el botón no se aprieten */}
-        <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
+        {/* CORRECCIÓN: flex-col en móvil para que el botón baje y ocupe todo el ancho, igual que en Consumibles */}
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
           <Buscador 
             valor={busqueda} 
             onBuscar={setBusqueda} 
@@ -56,10 +56,11 @@ function VistaCategorias({ onSelectCategoria }) {
           />
           <button 
             onClick={() => setModalAbierto(true)}
-            className="bg-oltech-black text-white p-2.5 sm:p-2.5 rounded-lg hover:bg-gray-800 transition-colors shadow-md shrink-0 flex items-center justify-center"
+            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
             title="Nueva Categoría"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+            <span>Nueva Categoría</span>
           </button>
         </div>
       </div>
