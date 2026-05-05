@@ -13,11 +13,18 @@ function NuevaCotizacion() {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   
+  // ESTADO DE FECHA (Modificable)
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+  
   const [clienteTexto, setClienteTexto] = useState('');
   const [firmaSeleccionada, setFirmaSeleccionada] = useState('');
   const [firmas, setFirmas] = useState([]);
   const [detalles, setDetalles] = useState([]);
+
+  // ESTADOS PARA SOBRESCRIBIR TOTALES (Modo Natural)
+  const [subtotalEscrito, setSubtotalEscrito] = useState('');
+  const [ivaEscrito, setIvaEscrito] = useState('');
+  const [totalEscrito, setTotalEscrito] = useState('');
 
   useEffect(() => {
     const cargarFirmas = async () => {
@@ -64,15 +71,37 @@ function NuevaCotizacion() {
     setDetalles(prev => prev.filter(d => d.id_temp !== id_temp));
   };
 
-  const subtotal = detalles.reduce((sum, item) => sum + (parseFloat(item.importe) || 0), 0);
-  const iva = subtotal * 0.16;
-  const totalCotizacion = subtotal + iva;
+  // CÁLCULOS AUTOMÁTICOS
+  const subtotalAuto = detalles.reduce((sum, item) => sum + (parseFloat(item.importe) || 0), 0);
+  const ivaAuto = subtotalAuto * 0.16;
+  const totalAuto = subtotalAuto + ivaAuto;
+
+  // LÓGICA DE TOTALES: Si el usuario escribió algo, usamos lo escrito. Si no, mostramos el automático.
+  // Función auxiliar para convertir texto con formato de moneda de vuelta a número para la BD
+  const desformatearDinero = (textoMoneda) => {
+    if (!textoMoneda) return 0;
+    const num = parseFloat(textoMoneda.replace(/[^0-9.-]+/g, ""));
+    return isNaN(num) ? 0 : num;
+  };
+
+  // Valores a mostrar en los inputs
+  const subtotalMostrar = subtotalEscrito !== '' ? subtotalEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(subtotalAuto);
+  const ivaMostrar = ivaEscrito !== '' ? ivaEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(ivaAuto);
+  const totalMostrar = totalEscrito !== '' ? totalEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalAuto);
+
+  // Valores a mandar al backend (limpios)
+  const subtotalParaBD = subtotalEscrito !== '' ? desformatearDinero(subtotalEscrito) : subtotalAuto;
+  const ivaParaBD = ivaEscrito !== '' ? desformatearDinero(ivaEscrito) : ivaAuto;
+  const totalParaBD = totalEscrito !== '' ? desformatearDinero(totalEscrito) : totalAuto;
 
   const formatearDinero = (monto) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto);
+  
   const formatearFechaLarga = (fechaString) => {
     if (!fechaString) return '';
+    const [year, month, day] = fechaString.split('-');
+    const fechaObj = new Date(year, month - 1, day);
     const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(fechaString).toLocaleDateString('es-MX', opciones);
+    return fechaObj.toLocaleDateString('es-MX', opciones);
   };
 
   const handleGuardarCotizacion = async () => {
@@ -86,11 +115,11 @@ function NuevaCotizacion() {
 
     try {
       await axios.post('http://localhost:4000/api/cotizaciones', {
-        fecha,
+        fecha, 
         cliente_texto: clienteTexto.toUpperCase(),
-        subtotal,
-        iva,
-        total: totalCotizacion,
+        subtotal: subtotalParaBD, 
+        iva: ivaParaBD,
+        total: totalParaBD,
         firma_id: parseInt(firmaSeleccionada),
         detalles: detalles.map((d) => ({
           descripcion: d.descripcion.toUpperCase(), 
@@ -111,51 +140,145 @@ function NuevaCotizacion() {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-2 sm:px-4 animate-in fade-in duration-300">
+    <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-2 sm:px-4 animate-in fade-in duration-300 relative z-0">
       
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&display=swap');
           
-          /* Evitar cortes visuales en la pantalla */
+          /* Evitar cortes visuales en la pantalla al imprimir */
           .evitar-corte {
               break-inside: avoid;
+          }
+          
+          /* ESTILOS PARA VISUALIZACIÓN EN PANTALLA (NO IMPRESIÓN) */
+          /* Esta caja envuelve todo el documento para centrarlo */
+          .escritorio-vista {
+              display: flex;
+              justify-content: center;
+              width: 100%;
+              padding-bottom: 2rem;
+              position: relative;
+          }
+          
+          /* Este es el documento flotante */
+          .lienzo-documento {
+              width: 19.03cm;
+              min-height: 25.58cm;
+              background-color: transparent; /* Transparente para ver el fondo fijo */
+              position: relative;
+              z-index: 10;
+              text-align: left;
+              padding-bottom: 2rem;
+          }
+
+          /* ESTE ES EL TRUCO PARA LA PANTALLA: 
+             Un fondo clavado que no crece con la tabla */
+          .fondo-pantalla-fijo {
+              position: absolute;
+              top: 0;
+              left: 50%;
+              transform: translateX(-50%);
+              width: 19.03cm;
+              height: 25.58cm;
+              background-image: url(${bgCotizacion});
+              background-size: 19.03cm 25.58cm;
+              background-repeat: no-repeat;
+              box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+              z-index: 5;
+              pointer-events: none; /* Para que puedas dar clic a través de él si es necesario */
+          }
+          
+          /* Reglas exclusivas para el motor de impresión PDF (INTACTAS) */
+          @media print {
+            @page { 
+              margin: 0; 
+              size: 19.03cm 25.58cm; 
+            }
+            body {
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+              margin: 0;
+            }
+            .escritorio-vista { display: block !important; overflow: visible !important; }
+            
+            .fondo-pantalla-fijo { display: none !important; } /* Ocultamos el fondo falso de pantalla */
+
+            .lienzo-documento {
+              margin: 0 !important;
+              width: 19.03cm !important;
+              min-height: 100% !important; 
+              box-shadow: none !important;
+              background-image: none !important; 
+              background-color: transparent !important;
+            }
+            
+            /* EL SELLO MÁGICO DE IMPRESIÓN (Tu configuración original) */
+            .fondo-fijo-pdf {
+              display: block !important;
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 19.03cm;
+              height: 25.58cm;
+              background-image: url(${bgCotizacion});
+              background-size: 19.03cm 25.58cm;
+              background-repeat: no-repeat;
+              z-index: -1;
+            }
+
+            .no-print { display: none !important; }
           }
         `}
       </style>
 
-      {/* BARRA SUPERIOR */}
-      <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 static sm:sticky top-2 sm:top-4 z-50 gap-3 sm:gap-0">
+      {/* BARRA SUPERIOR CON FECHA MODIFICABLE */}
+      <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 static sm:sticky top-2 sm:top-4 z-50 gap-4 sm:gap-0">
         <button onClick={() => navigate('/cotizaciones')} className="w-full sm:w-auto text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
           Volver
         </button>
-        <h1 className="text-base sm:text-lg font-bold text-oltech-black">📝 Creador de Cotizaciones</h1>
-        <button onClick={handleGuardarCotizacion} disabled={cargando} className="w-full sm:w-auto bg-oltech-black text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-gray-800 disabled:opacity-50">
-          {cargando ? 'Guardando...' : 'Guardar Cotización'}
-        </button>
+        
+        <h1 className="text-base sm:text-lg font-bold text-oltech-black hidden sm:block">📝 Creador de Cotizaciones</h1>
+        
+        <div className="flex flex-col sm:flex-row items-center w-full sm:w-auto gap-3">
+          <div className="flex items-center space-x-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 w-full sm:w-auto justify-center">
+            <span className="text-xs font-bold text-gray-500 uppercase">Fecha:</span>
+            <input 
+              type="date" 
+              value={fecha} 
+              onChange={(e) => setFecha(e.target.value)} 
+              className="bg-transparent border-none outline-none text-sm font-bold text-gray-700 cursor-pointer"
+            />
+          </div>
+          <button onClick={handleGuardarCotizacion} disabled={cargando} className="w-full sm:w-auto bg-oltech-black text-white px-6 py-2 rounded-lg font-bold shadow-md hover:bg-gray-800 disabled:opacity-50">
+            {cargando ? 'Guardando...' : 'Guardar Cotización'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 font-medium mb-4">{error}</div>}
 
-      <div className="max-w-[22cm] mx-auto bg-gray-800 p-4 rounded-xl shadow-lg mb-6 flex justify-between items-center relative z-40">
-        <h3 className="text-white text-xs sm:text-sm font-bold uppercase text-oltech-pink">Paso 1. Agrega partidas</h3>
-        <button onClick={agregarFilaManual} className="bg-white text-oltech-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 shadow-sm">+ Agregar Fila Manual</button>
+      {/* BARRA DE HERRAMIENTAS - PASO 1 (MÁS LIMPIA) */}
+      <div className="max-w-[22cm] mx-auto bg-gray-800 p-4 rounded-xl shadow-lg mb-6 flex flex-col sm:flex-row justify-between items-center relative z-40 gap-4 sm:gap-0">
+        <div className="flex items-center space-x-4">
+          <h3 className="text-white text-xs sm:text-sm font-bold uppercase text-oltech-pink">Paso 1. Agrega partidas</h3>
+        </div>
+        <button onClick={agregarFilaManual} className="w-full sm:w-auto bg-white text-oltech-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 shadow-sm">+ Agregar Fila Manual</button>
       </div>
 
-      <div className="w-full overflow-x-auto pb-8 flex justify-center">
-        {/* Contenedor sin overflow:hidden para vista previa expansible */}
-        <div 
-          className="w-[19.03cm] min-h-[25.58cm] shadow-[0_20px_50px_rgba(0,0,0,0.15)] text-black font-['Lato',_sans-serif] leading-tight relative bg-white"
-          style={{ 
-            backgroundImage: `url(${bgCotizacion})`, 
-            backgroundSize: '19.03cm 25.58cm', 
-            backgroundRepeat: 'repeat-y' 
-          }}
-        >
-          {/* ESQUELETO MAESTRO: Mantiene la proporción de los logos */}
+      {/* CONTENEDOR DE VISTA PREVIA */}
+      <div className="escritorio-vista">
+        
+        {/* EL FONDO FALSO PARA PANTALLA: Se queda fijo y no se estira ni repite */}
+        <div className="fondo-pantalla-fijo"></div>
+
+        <div className="lienzo-documento text-black font-['Lato',_sans-serif] leading-tight">
+          
+          {/* EL SELLO FIJO REAL PARA IMPRESIÓN (Oculto en pantalla) */}
+          <div className="fondo-fijo-pdf" style={{ display: 'none' }}></div>
+
           <table className="w-full h-full border-collapse">
-            
             <thead className="bg-transparent border-0">
                 <tr><td className="h-[2.8cm] border-0 p-0 m-0"></td></tr>
             </thead>
@@ -166,9 +289,11 @@ function NuevaCotizacion() {
 
             <tbody className="border-0">
                 <tr>
-                    <td className="border-0 px-[1.5cm] align-top">
+                    <td className="border-0 px-[1.5cm] align-top bg-white/60 backdrop-blur-[2px] rounded-lg">
+                        {/* Agregué un sutil fondo blanco semi-transparente al cuerpo del documento para que 
+                            si la tabla crece mucho, el texto siga siendo legible aunque baje. */}
                         
-                        <div className="text-right mb-2 text-[9pt] font-medium">Ixtapaluca, Estado de México a {formatearFechaLarga(fecha)}</div>
+                        <div className="text-right mb-2 text-[9pt] font-medium pt-2">Ixtapaluca, Estado de México a {formatearFechaLarga(fecha)}</div>
 
                         <div className="mb-2">
                             <textarea value={clienteTexto} onChange={(e) => setClienteTexto(e.target.value)}
@@ -180,7 +305,7 @@ function NuevaCotizacion() {
 
                         {/* TABLA PRODUCTOS */}
                         <div className="mb-1">
-                            <table className="w-full border-collapse border border-black text-[8pt] bg-white/80">
+                            <table className="w-full border-collapse border border-black text-[8pt] bg-white/95">
                                 <thead className="font-bold bg-[#b4c6e7]">
                                     <tr>
                                         <th className="border border-black p-1 w-10">PARTIDA</th>
@@ -193,10 +318,10 @@ function NuevaCotizacion() {
                                 </thead>
                                 <tbody>
                                     {detalles.length === 0 ? (
-                                        <tr><td colSpan="6" className="border border-black p-4 text-center italic text-gray-500">Agrega filas para comenzar...</td></tr>
+                                        <tr><td colSpan="6" className="border border-black p-4 text-center italic text-gray-500 bg-white">Agrega filas para comenzar...</td></tr>
                                     ) : (
                                         detalles.map((d, index) => (
-                                            <tr key={d.id_temp} className="group bg-white/50 evitar-corte">
+                                            <tr key={d.id_temp} className="group bg-white evitar-corte">
                                                 <td className="border border-black p-1 text-center font-bold">{index + 1}</td>
                                                 <td className="border border-black p-1 uppercase">
                                                     <textarea value={d.descripcion} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'descripcion', e.target.value)}
@@ -212,7 +337,7 @@ function NuevaCotizacion() {
                                                     <div className="flex items-center justify-end mt-1.5"><span>$</span><input type="number" step="0.01" value={d.precio_unitario} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'precio_unitario', e.target.value)} className="w-[80%] text-right bg-transparent outline-none" /></div>
                                                 </td>
                                                 <td className="border border-black p-1 text-right align-top"><div className="mt-1">{formatearDinero(d.importe)}</div></td>
-                                                <td className="border-0 p-1 absolute right-[-30px]"><button onClick={() => quitarFila(d.id_temp)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100">✖</button></td>
+                                                <td className="border-0 p-1 absolute right-[-30px]"><button onClick={() => quitarFila(d.id_temp)} className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 bg-white rounded-full">✖</button></td>
                                             </tr>
                                         ))
                                     )}
@@ -220,19 +345,52 @@ function NuevaCotizacion() {
                             </table>
                         </div>
 
-                        {/* TOTALES */}
+                        {/* TOTALES CON EDICIÓN NATURAL DIRECTA */}
                         <div className="flex justify-end w-full mb-4 evitar-corte">
-                            <table className="border-collapse border border-black text-[8pt] bg-white/80 w-[40%] mt-[-1px]">
+                            <table className="border-collapse border border-black text-[8pt] bg-white/95 w-[40%] mt-[-1px]">
                                 <tbody>
-                                    <tr><td className="border border-black p-1.5 text-center font-bold">SUBTOTAL</td><td className="border border-black p-1.5 text-right font-bold">{formatearDinero(subtotal)}</td></tr>
-                                    <tr><td className="border border-black p-1.5 text-center font-bold">IVA</td><td className="border border-black p-1.5 text-right font-bold">{formatearDinero(iva)}</td></tr>
-                                    <tr><td className="border border-black p-1.5 text-center font-bold">TOTAL</td><td className="border border-black p-1.5 text-right font-bold">{formatearDinero(totalCotizacion)}</td></tr>
+                                    <tr>
+                                      <td className="border border-black p-1 text-center font-bold">SUBTOTAL</td>
+                                      <td className="border border-black p-0 text-right font-bold hover:bg-yellow-50 transition-colors">
+                                        <input 
+                                          type="text" 
+                                          value={subtotalMostrar} 
+                                          onChange={e => setSubtotalEscrito(e.target.value)} 
+                                          placeholder={formatearDinero(subtotalAuto)}
+                                          className="w-full h-full p-1 text-right bg-transparent outline-none focus:ring-1 focus:ring-inset focus:ring-oltech-pink font-bold" 
+                                        />
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td className="border border-black p-1 text-center font-bold">IVA</td>
+                                      <td className="border border-black p-0 text-right font-bold hover:bg-yellow-50 transition-colors">
+                                        <input 
+                                          type="text" 
+                                          value={ivaMostrar} 
+                                          onChange={e => setIvaEscrito(e.target.value)} 
+                                          placeholder={formatearDinero(ivaAuto)}
+                                          className="w-full h-full p-1 text-right bg-transparent outline-none focus:ring-1 focus:ring-inset focus:ring-oltech-pink font-bold" 
+                                        />
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td className="border border-black p-1 text-center font-bold">TOTAL</td>
+                                      <td className="border border-black p-0 text-right font-bold hover:bg-yellow-50 transition-colors">
+                                        <input 
+                                          type="text" 
+                                          value={totalMostrar} 
+                                          onChange={e => setTotalEscrito(e.target.value)} 
+                                          placeholder={formatearDinero(totalAuto)}
+                                          className="w-full h-full p-1 text-right bg-transparent outline-none focus:ring-1 focus:ring-inset focus:ring-oltech-pink font-bold" 
+                                        />
+                                      </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
 
                         {/* CONDICIONES */}
-                        <div className="mb-8 evitar-corte">
+                        <div className="mb-8 evitar-corte bg-white/80 p-2 rounded">
                             <h4 className="font-bold text-[9pt] mb-1">CONDICIONES COMERCIALES</h4>
                             <ul className="text-[9pt] space-y-0 list-none ml-2 leading-tight">
                                 <li>- Condiciones de Pago. Según la LAAASP.</li>
@@ -247,10 +405,10 @@ function NuevaCotizacion() {
                         </div>
 
                         {/* FIRMA SELECTOR */}
-                        <div className="w-full flex flex-col items-center relative mt-4 evitar-corte">
+                        <div className="w-full flex flex-col items-center relative mt-4 evitar-corte bg-white/80 p-2 rounded">
                             <div className="absolute -top-10 right-0 bg-yellow-50/90 p-2 rounded border border-yellow-300 text-xs w-64 z-20 shadow-sm">
                                 <label className="block font-bold mb-1">Firma para este documento:</label>
-                                <select value={firmaSeleccionada} onChange={(e) => setFirmaSeleccionada(e.target.value)} className="w-full p-1 border border-gray-400 rounded outline-none">
+                                <select value={firmaSeleccionada} onChange={(e) => setFirmaSeleccionada(e.target.value)} className="w-full p-1 border border-gray-400 rounded outline-none cursor-pointer">
                                     <option value="">-- Seleccionar Firma --</option>
                                     {firmas.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
                                 </select>
