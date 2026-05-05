@@ -43,6 +43,7 @@ function NuevaCotizacion() {
   const agregarFilaManual = () => {
     const nuevoDetalle = {
       id_temp: Date.now() + Math.random(),
+      partida: detalles.length + 1, // Sugerimos un número consecutivo por defecto, pero ahora es editable
       descripcion: '', 
       unidad: 'PIEZA',
       cantidad: 1,
@@ -76,20 +77,17 @@ function NuevaCotizacion() {
   const ivaAuto = subtotalAuto * 0.16;
   const totalAuto = subtotalAuto + ivaAuto;
 
-  // LÓGICA DE TOTALES: Si el usuario escribió algo, usamos lo escrito. Si no, mostramos el automático.
-  // Función auxiliar para convertir texto con formato de moneda de vuelta a número para la BD
+  // LÓGICA DE TOTALES
   const desformatearDinero = (textoMoneda) => {
     if (!textoMoneda) return 0;
     const num = parseFloat(textoMoneda.replace(/[^0-9.-]+/g, ""));
     return isNaN(num) ? 0 : num;
   };
 
-  // Valores a mostrar en los inputs
   const subtotalMostrar = subtotalEscrito !== '' ? subtotalEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(subtotalAuto);
   const ivaMostrar = ivaEscrito !== '' ? ivaEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(ivaAuto);
   const totalMostrar = totalEscrito !== '' ? totalEscrito : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(totalAuto);
 
-  // Valores a mandar al backend (limpios)
   const subtotalParaBD = subtotalEscrito !== '' ? desformatearDinero(subtotalEscrito) : subtotalAuto;
   const ivaParaBD = ivaEscrito !== '' ? desformatearDinero(ivaEscrito) : ivaAuto;
   const totalParaBD = totalEscrito !== '' ? desformatearDinero(totalEscrito) : totalAuto;
@@ -121,7 +119,8 @@ function NuevaCotizacion() {
         iva: ivaParaBD,
         total: totalParaBD,
         firma_id: parseInt(firmaSeleccionada),
-        detalles: detalles.map((d) => ({
+        detalles: detalles.map((d, index) => ({
+          partida: parseInt(d.partida) || (index + 1), // Aseguramos mandar la partida escrita o un respaldo
           descripcion: d.descripcion.toUpperCase(), 
           unidad: d.unidad.toUpperCase(),
           cantidad: parseInt(d.cantidad) || 0,
@@ -146,13 +145,10 @@ function NuevaCotizacion() {
         {`
           @import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,400;0,700;1,400&display=swap');
           
-          /* Evitar cortes visuales en la pantalla al imprimir */
           .evitar-corte {
               break-inside: avoid;
           }
           
-          /* ESTILOS PARA VISUALIZACIÓN EN PANTALLA (NO IMPRESIÓN) */
-          /* Esta caja envuelve todo el documento para centrarlo */
           .escritorio-vista {
               display: flex;
               justify-content: center;
@@ -161,19 +157,16 @@ function NuevaCotizacion() {
               position: relative;
           }
           
-          /* Este es el documento flotante */
           .lienzo-documento {
               width: 19.03cm;
               min-height: 25.58cm;
-              background-color: transparent; /* Transparente para ver el fondo fijo */
+              background-color: transparent; 
               position: relative;
               z-index: 10;
               text-align: left;
               padding-bottom: 2rem;
           }
 
-          /* ESTE ES EL TRUCO PARA LA PANTALLA: 
-             Un fondo clavado que no crece con la tabla */
           .fondo-pantalla-fijo {
               position: absolute;
               top: 0;
@@ -186,10 +179,9 @@ function NuevaCotizacion() {
               background-repeat: no-repeat;
               box-shadow: 0 20px 50px rgba(0,0,0,0.15);
               z-index: 5;
-              pointer-events: none; /* Para que puedas dar clic a través de él si es necesario */
+              pointer-events: none; 
           }
           
-          /* Reglas exclusivas para el motor de impresión PDF (INTACTAS) */
           @media print {
             @page { 
               margin: 0; 
@@ -202,7 +194,7 @@ function NuevaCotizacion() {
             }
             .escritorio-vista { display: block !important; overflow: visible !important; }
             
-            .fondo-pantalla-fijo { display: none !important; } /* Ocultamos el fondo falso de pantalla */
+            .fondo-pantalla-fijo { display: none !important; } 
 
             .lienzo-documento {
               margin: 0 !important;
@@ -213,7 +205,6 @@ function NuevaCotizacion() {
               background-color: transparent !important;
             }
             
-            /* EL SELLO MÁGICO DE IMPRESIÓN (Tu configuración original) */
             .fondo-fijo-pdf {
               display: block !important;
               position: fixed;
@@ -259,7 +250,7 @@ function NuevaCotizacion() {
 
       {error && <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200 font-medium mb-4">{error}</div>}
 
-      {/* BARRA DE HERRAMIENTAS - PASO 1 (MÁS LIMPIA) */}
+      {/* BARRA DE HERRAMIENTAS */}
       <div className="max-w-[22cm] mx-auto bg-gray-800 p-4 rounded-xl shadow-lg mb-6 flex flex-col sm:flex-row justify-between items-center relative z-40 gap-4 sm:gap-0">
         <div className="flex items-center space-x-4">
           <h3 className="text-white text-xs sm:text-sm font-bold uppercase text-oltech-pink">Paso 1. Agrega partidas</h3>
@@ -270,12 +261,10 @@ function NuevaCotizacion() {
       {/* CONTENEDOR DE VISTA PREVIA */}
       <div className="escritorio-vista">
         
-        {/* EL FONDO FALSO PARA PANTALLA: Se queda fijo y no se estira ni repite */}
         <div className="fondo-pantalla-fijo"></div>
 
         <div className="lienzo-documento text-black font-['Lato',_sans-serif] leading-tight">
           
-          {/* EL SELLO FIJO REAL PARA IMPRESIÓN (Oculto en pantalla) */}
           <div className="fondo-fijo-pdf" style={{ display: 'none' }}></div>
 
           <table className="w-full h-full border-collapse">
@@ -290,8 +279,6 @@ function NuevaCotizacion() {
             <tbody className="border-0">
                 <tr>
                     <td className="border-0 px-[1.5cm] align-top bg-white/60 backdrop-blur-[2px] rounded-lg">
-                        {/* Agregué un sutil fondo blanco semi-transparente al cuerpo del documento para que 
-                            si la tabla crece mucho, el texto siga siendo legible aunque baje. */}
                         
                         <div className="text-right mb-2 text-[9pt] font-medium pt-2">Ixtapaluca, Estado de México a {formatearFechaLarga(fecha)}</div>
 
@@ -320,9 +307,17 @@ function NuevaCotizacion() {
                                     {detalles.length === 0 ? (
                                         <tr><td colSpan="6" className="border border-black p-4 text-center italic text-gray-500 bg-white">Agrega filas para comenzar...</td></tr>
                                     ) : (
-                                        detalles.map((d, index) => (
+                                        detalles.map((d) => (
                                             <tr key={d.id_temp} className="group bg-white evitar-corte">
-                                                <td className="border border-black p-1 text-center font-bold">{index + 1}</td>
+                                                {/* PARTIDA EDITABLE AQUÍ */}
+                                                <td className="border border-black p-1 text-center font-bold align-top">
+                                                    <input 
+                                                      type="number" 
+                                                      value={d.partida} 
+                                                      onChange={(e) => actualizarCampoDetalle(d.id_temp, 'partida', e.target.value)} 
+                                                      className="w-full text-center bg-transparent outline-none mt-1.5 font-bold" 
+                                                    />
+                                                </td>
                                                 <td className="border border-black p-1 uppercase">
                                                     <textarea value={d.descripcion} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'descripcion', e.target.value)}
                                                         className="w-full min-h-[35px] bg-transparent outline-none uppercase resize-none leading-tight" rows="2" />

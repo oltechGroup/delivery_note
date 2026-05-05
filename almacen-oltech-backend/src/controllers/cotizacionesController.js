@@ -120,7 +120,7 @@ const crearCotizacion = async (req, res) => {
                 const item = detalles[i];
                 await client.query(queryDetalle, [
                     nuevaCotizacion.id, 
-                    i + 1, // El número de partida secuencial (1, 2, 3...)
+                    item.partida || (i + 1), // Ahora tomamos la partida que envíe el frontend (Ej. 78, 80). Si no la envía, por seguridad usamos i + 1.
                     item.descripcion, 
                     item.unidad, 
                     item.cantidad,

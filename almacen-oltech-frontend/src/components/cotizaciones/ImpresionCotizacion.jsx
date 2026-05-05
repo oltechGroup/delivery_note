@@ -259,31 +259,34 @@ function ImpresionCotizacion({ cotizacionId, onClose }) {
                                 </table>
                             </div>
 
-                            <div className="mb-8 evitar-corte">
-                                <h4 className="font-bold text-[9pt] mb-1">CONDICIONES COMERCIALES</h4>
-                                <ul className="text-[9pt] space-y-0 list-none ml-2 leading-tight">
-                                    <li>- Condiciones de Pago. Según la LAAASP.</li>
-                                    <li>- Entrega y Envío. CDMX y Área Metropolitana</li>
-                                    <li>- Vigencia. 30 días naturales a partir de su fecha de emisión.</li>
-                                    <li>- Método de Pago. Transferencia bancaria</li>
-                                    <li>- Los precios en esta cotización están en M.N</li>
-                                    <li>- La entrega. 10 días hábiles posteriores a la confirmación</li>
-                                    <li>- Señalar en su caso, el porcentaje del anticipo (SIN ANTICIPO)</li>
-                                    <li className="text-justify">- El porcentaje de garantía de cumplimiento será del 10%. - Penas convencionales por atraso en la entrega de bienes y/o servicios y Deducciones por incumplimiento parcial o deficiente serán del 2.5 % - El archivo adjunto de especificaciones técnicas se hace consistir en 02 fojas</li>
-                                </ul>
-                            </div>
-
-                            <div className="w-full flex flex-col items-center relative mt-4 evitar-corte">
-                                <p className="font-bold text-[9pt] mb-6 text-center">Atentamente<br/>OLTECH S.A. DE C.V.</p>
-                                
-                                <div className="w-64 border-b border-black text-center flex flex-col items-center justify-end h-14 relative z-10">
-                                    {cotizacion.firmas_url && (
-                                    <img src={cotizacion.firmas_url} alt="Firma" className="absolute bottom-0 max-h-16 pointer-events-none" />
-                                    )}
+                            {/* NUEVO BLOQUE CONTENEDOR DE SEGURIDAD (Condiciones + Firma) */}
+                            <div className="evitar-corte">
+                                <div className="mb-8">
+                                    <h4 className="font-bold text-[9pt] mb-1">CONDICIONES COMERCIALES</h4>
+                                    <ul className="text-[9pt] space-y-0 list-none ml-2 leading-tight">
+                                        <li>- Condiciones de Pago. Según la LAAASP.</li>
+                                        <li>- Entrega y Envío. CDMX y Área Metropolitana</li>
+                                        <li>- Vigencia. 30 días naturales a partir de su fecha de emisión.</li>
+                                        <li>- Método de Pago. Transferencia bancaria</li>
+                                        <li>- Los precios en esta cotización están en M.N</li>
+                                        <li>- La entrega. 10 días hábiles posteriores a la confirmación</li>
+                                        <li>- Señalar en su caso, el porcentaje del anticipo (SIN ANTICIPO)</li>
+                                        <li className="text-justify">- El porcentaje de garantía de cumplimiento será del 10%. - Penas convencionales por atraso en la entrega de bienes y/o servicios y Deducciones por incumplimiento parcial o deficiente serán del 2.5 % - El archivo adjunto de especificaciones técnicas se hace consistir en 02 fojas</li>
+                                    </ul>
                                 </div>
-                                
-                                <p className="text-[9pt] font-bold mt-1 z-10">{cotizacion.firma_nombre || '___________________________'}</p>
-                                <p className="text-[9pt] font-bold z-10">REPRESENTANTE LEGAL</p>
+
+                                <div className="w-full flex flex-col items-center relative mt-4">
+                                    <p className="font-bold text-[9pt] mb-6 text-center">Atentamente<br/>OLTECH S.A. DE C.V.</p>
+                                    
+                                    <div className="w-64 border-b border-black text-center flex flex-col items-center justify-end h-14 relative z-10">
+                                        {cotizacion.firmas_url && (
+                                        <img src={cotizacion.firmas_url} alt="Firma" className="absolute bottom-0 max-h-16 pointer-events-none" />
+                                        )}
+                                    </div>
+                                    
+                                    <p className="text-[9pt] font-bold mt-1 z-10">{cotizacion.firma_nombre || '___________________________'}</p>
+                                    <p className="text-[9pt] font-bold z-10">REPRESENTANTE LEGAL</p>
+                                </div>
                             </div>
 
                         </td>
