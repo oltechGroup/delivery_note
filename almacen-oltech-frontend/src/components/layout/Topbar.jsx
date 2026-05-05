@@ -27,6 +27,9 @@ function Topbar({ abrirMenu }) {
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'Almacén':
         return 'bg-gray-100 text-gray-700 border-gray-200';
+      // NUEVO: Color específico para el rol de Cotizaciones
+      case 'Cotizaciones':
+        return 'bg-cyan-100 text-cyan-700 border-cyan-200';
       default:
         return 'bg-oltech-pink/10 text-oltech-pink border-oltech-pink/20'; 
     }

@@ -118,6 +118,8 @@ function ModalUsuario({ isOpen, onClose, onUsuarioGuardado }) {
               <option value="1">Almacén (Operativo básico)</option>
               <option value="5">Encargado de almacén (Supervisión y Remisiones)</option>
               <option value="2">Biomédicos (Crear Remisiones)</option>
+              {/* NUEVO ROL AÑADIDO AQUÍ */}
+              <option value="7">Cotizaciones (Creación y gestión de cotizaciones)</option>
               <option value="3">Operaciones (Auditoría Total)</option>
               <option value="4">Sistemas (Administración IT)</option>
               <option value="6">Ventas (Auditoría de Efectivo)</option>

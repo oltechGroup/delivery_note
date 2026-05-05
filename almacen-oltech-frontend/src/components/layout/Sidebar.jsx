@@ -68,7 +68,7 @@ function Sidebar({ menuAbierto, cerrarMenu }) {
       )
     },
     // ==========================================
-    // NUEVO MÓDULO: EFECTIVO
+    // MÓDULO: EFECTIVO
     // ==========================================
     {
       nombre: 'Reportar Efectivo',
@@ -91,7 +91,30 @@ function Sidebar({ menuAbierto, cerrarMenu }) {
       )
     },
     // ==========================================
-    // FIN NUEVO MÓDULO
+    // NUEVO MÓDULO: COTIZACIONES Y FIRMAS
+    // ==========================================
+    {
+      nombre: 'Gestión de Firmas',
+      ruta: '/firmas',
+      rolesPermitidos: ['Sistemas'],
+      icono: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+        </svg>
+      )
+    },
+    {
+      nombre: 'Cotizaciones',
+      ruta: '/cotizaciones',
+      rolesPermitidos: ['Sistemas', 'Biomédicos', 'Cotizaciones'],
+      icono: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      )
+    },
+    // ==========================================
+    // ADMINISTRACIÓN
     // ==========================================
     {
       nombre: 'Usuarios',
@@ -137,8 +160,8 @@ function Sidebar({ menuAbierto, cerrarMenu }) {
           </button>
         </div>
 
-        {/* Links de Navegación */}
-        <nav className="flex-1 py-6 space-y-2 px-4 overflow-y-auto">
+        {/* Links de Navegación (Se agregó el ocultamiento visual del scrollbar sin afectar la funcionalidad) */}
+        <nav className="flex-1 py-6 space-y-2 px-4 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {menusVisibles.map((item) => (
             <NavLink
               key={item.nombre}

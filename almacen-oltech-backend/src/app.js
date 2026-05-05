@@ -51,5 +51,8 @@ app.use('/api/remisiones', require('./routes/remisionRoutes'));
 // Conectamos el nuevo módulo de ingresos de efectivo
 app.use('/api/ingresos-efectivo', require('./routes/ingresosEfectivoRoutes'));
 
+//Se conecta el nuevo modulo de cotizacion
+app.use('/api/cotizaciones', require('./routes/cotizacionesRoutes'));
+
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;

@@ -16,10 +16,15 @@ import NuevaRemision from './pages/NuevaRemision';
 import ReportarEfectivo from './pages/ReportarEfectivo';
 import AuditoriaEfectivo from './pages/AuditoriaEfectivo';
 
+// NUEVAS PÁGINAS (Módulo Cotizaciones)
+import Cotizaciones from './pages/Cotizaciones';
+import NuevaCotizacion from './pages/NuevaCotizacion';
+import Firmas from './pages/Firmas'; // <-- Importamos la nueva página de firmas
+
 // Componentes de Estructura
 import Layout from './components/layout/Layout';
 
-// Función auxiliar para limpiar la codificación de la base de datos (igual que en Sidebar)
+// Función auxiliar para limpiar la codificación de la base de datos
 const limpiarRol = (texto) => {
   if (!texto) return '';
   return texto.replace(/‚/g, 'é');
@@ -40,10 +45,12 @@ const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
     
     // Si el rol del usuario no está en la lista de invitados a esta ruta...
     if (!rolesPermitidos.includes(rolActual)) {
-      // REDIRECCIÓN INTELIGENTE: 
-      // Si es Ventas, su inicio seguro es auditoria, para los demás es el dashboard
+      // REDIRECCIÓN INTELIGENTE
       if (rolActual === 'Ventas') {
         return <Navigate to="/auditoria-efectivo" replace />;
+      }
+      if (rolActual === 'Cotizaciones') {
+        return <Navigate to="/cotizaciones" replace />;
       }
       return <Navigate to="/dashboard" replace />;
     }
@@ -54,13 +61,15 @@ const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
 };
 
 // COMPONENTE DE REDIRECCIÓN INICIAL
-// Decide a dónde mandarte cuando entras a la raíz "/" de la página
 const RedireccionInicial = () => {
   const { usuario } = useAuth();
   const rolActual = limpiarRol(usuario?.rol);
   
   if (rolActual === 'Ventas') {
     return <Navigate to="/auditoria-efectivo" replace />;
+  }
+  if (rolActual === 'Cotizaciones') {
+    return <Navigate to="/cotizaciones" replace />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -71,27 +80,26 @@ function App() {
       {/* Ruta Pública */}
       <Route path="/login" element={<Login />} />
 
-      {/* Rutas Privadas: Envolvemos todo en el Layout para que tengan el Sidebar y Topbar */}
+      {/* Rutas Privadas: Envolvemos todo en el Layout */}
       <Route path="/" element={<RutaProtegida><Layout /></RutaProtegida>}>
         
-        {/* Aquí usamos la redirección inteligente en lugar de ir ciegamente al dashboard */}
         <Route index element={<RedireccionInicial />} />
         
-        {/* Nivel 1: Acceso Universal (EXCEPTO VENTAS) */}
+        {/* Nivel 1: Acceso Universal */}
         <Route path="dashboard" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén']}>
             <Dashboard />
           </RutaProtegida>
         } />
         
-        {/* Nivel 2: Acceso de Almacén (Inventario general) */}
+        {/* Nivel 2: Acceso de Almacén */}
         <Route path="almacen" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén']}>
             <Almacen />
           </RutaProtegida>
         } />
 
-        {/* Nivel 3: Acceso de Remisiones (Creación y gestión) */}
+        {/* Nivel 3: Acceso de Remisiones */}
         <Route path="remisiones" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén']}>
             <Remisiones />
@@ -104,7 +112,7 @@ function App() {
           </RutaProtegida>
         } />
 
-        {/* Nivel 4: Acceso Administrativo (Gerencia y TI) */}
+        {/* Nivel 4: Acceso Administrativo */}
         <Route path="historial-remisiones" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones']}>
             <HistorialRemisiones />
@@ -124,7 +132,7 @@ function App() {
         } />
 
         {/* ========================================== */}
-        {/* NUEVO NIVEL 5: MÓDULO DE EFECTIVO          */}
+        {/* NIVEL 5: MÓDULO DE EFECTIVO                */}
         {/* ========================================== */}
         <Route path="reportar-efectivo" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos']}>
@@ -138,9 +146,31 @@ function App() {
           </RutaProtegida>
         } />
 
+        {/* ========================================== */}
+        {/* NUEVO NIVEL 6: MÓDULO DE COTIZACIONES      */}
+        {/* ========================================== */}
+        <Route path="cotizaciones" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Biomédicos', 'Cotizaciones']}>
+            <Cotizaciones />
+          </RutaProtegida>
+        } />
+        
+        <Route path="cotizaciones/nueva" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Biomédicos', 'Cotizaciones']}>
+            <NuevaCotizacion />
+          </RutaProtegida>
+        } />
+
+        {/* NUEVA RUTA: GESTIÓN DE FIRMAS (Exclusivo Sistemas) */}
+        <Route path="firmas" element={
+          <RutaProtegida rolesPermitidos={['Sistemas']}>
+            <Firmas />
+          </RutaProtegida>
+        } />
+
       </Route>
 
-      {/* Ruta Comodín: Si escriben cualquier cosa rara, los manda al inicio seguro */}
+      {/* Ruta Comodín */}
       <Route path="*" element={<RedireccionInicial />} />
     </Routes>
   );
