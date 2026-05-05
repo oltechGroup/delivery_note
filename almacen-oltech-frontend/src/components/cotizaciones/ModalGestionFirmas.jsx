@@ -90,7 +90,7 @@ function ModalGestionFirmas({ isOpen, onClose }) {
                 type="text" 
                 value={nombreFirma} 
                 onChange={(e) => setNombreFirma(e.target.value)}
-                placeholder="Ej. ANA KAREN ZAVALETA"
+                placeholder=""
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-oltech-pink outline-none uppercase font-medium"
               />
             </div>
