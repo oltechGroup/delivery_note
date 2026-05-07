@@ -21,6 +21,10 @@ import Cotizaciones from './pages/Cotizaciones';
 import NuevaCotizacion from './pages/NuevaCotizacion';
 import Firmas from './pages/Firmas'; // <-- Importamos la nueva página de firmas
 
+// NUEVAS PÁGINAS (Módulo Tickets / Help Desk)
+import TicketsUsuario from './pages/TicketsUsuario';
+import DashboardTickets from './pages/DashboardTickets';
+
 // Componentes de Estructura
 import Layout from './components/layout/Layout';
 
@@ -161,10 +165,27 @@ function App() {
           </RutaProtegida>
         } />
 
-        {/* NUEVA RUTA: GESTIÓN DE FIRMAS (Exclusivo Sistemas) */}
         <Route path="firmas" element={
           <RutaProtegida rolesPermitidos={['Sistemas']}>
             <Firmas />
+          </RutaProtegida>
+        } />
+
+        {/* ========================================== */}
+        {/* NUEVO NIVEL 7: SISTEMA DE TICKETS (Help Desk) */}
+        {/* ========================================== */}
+        
+        {/* Vista para cualquier usuario logueado */}
+        <Route path="mis-tickets" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén', 'Cotizaciones', 'Ventas']}>
+            <TicketsUsuario />
+          </RutaProtegida>
+        } />
+
+        {/* Vista exclusiva para el rol de Sistemas */}
+        <Route path="panel-tickets" element={
+          <RutaProtegida rolesPermitidos={['Sistemas']}>
+            <DashboardTickets />
           </RutaProtegida>
         } />
 

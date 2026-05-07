@@ -54,5 +54,9 @@ app.use('/api/ingresos-efectivo', require('./routes/ingresosEfectivoRoutes'));
 //Se conecta el nuevo modulo de cotizacion
 app.use('/api/cotizaciones', require('./routes/cotizacionesRoutes'));
 
+// NUEVO MÓDULO: Sistema de Tickets IT
+// Todas las rutas dentro de ticketsRoutes tendrán el prefijo /api/tickets
+app.use('/api/tickets', require('./routes/ticketsRoutes'));
+
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;
