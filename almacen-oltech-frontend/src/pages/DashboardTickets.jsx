@@ -48,13 +48,13 @@ function DashboardTickets() {
   };
 
   const handleTomarTicket = async (id) => {
-    if (!window.confirm('¿Deseas tomar este ticket y pasarlo a estado "En Revisión"? Te será asignado automáticamente.')) return;
+    if (!window.confirm('¿Deseas tomar este ticket y pasarlo a estado "En Revision"? Te será asignado automáticamente.')) return;
     
     setProcesandoAccion(true);
     try {
       await axios.patch(`http://localhost:4000/api/tickets/${id}/estado`, {
-        estado_id: 2, // 2 = En Revisión
-        detalles: `El ticket ha sido tomado por el técnico de Sistemas: ${usuario.user_name}`
+        estado_id: 2, // 2 = En Revision
+        detalles: `El ticket ha sido tomado por el técnico de Sistemas: ${usuario.nombre}` // <-- CORREGIDO: de user_name a nombre
       }, { headers: { Authorization: `Bearer ${token}` } });
       
       cargarTodosLosTickets();
@@ -114,7 +114,7 @@ function DashboardTickets() {
   const getBadgeEstado = (estado) => {
     switch (estado) {
       case 'Abierto': return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'En Revisión': return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case 'En Revision': return 'bg-yellow-50 text-yellow-700 border-yellow-200'; // <-- CORREGIDO SIN ACENTO
       case 'Resuelto': return 'bg-green-50 text-green-700 border-green-200';
       case 'Cancelado': return 'bg-gray-100 text-gray-700 border-gray-300';
       default: return 'bg-gray-50 text-gray-700 border-gray-200';
@@ -126,7 +126,7 @@ function DashboardTickets() {
       case 'Baja': return 'text-green-600 bg-green-50';
       case 'Media': return 'text-yellow-600 bg-yellow-50';
       case 'Alta': return 'text-orange-600 bg-orange-50';
-      case 'Crítica': return 'text-red-600 bg-red-50 font-bold';
+      case 'Critica': return 'text-red-600 bg-red-50 font-bold'; // <-- CORREGIDO SIN ACENTO
       default: return 'text-gray-600 bg-gray-50';
     }
   };
@@ -202,8 +202,8 @@ function DashboardTickets() {
                           </button>
                         )}
 
-                        {/* Botón Resolver (Solo si está En Revisión o Abierto) */}
-                        {(ticket.estado_nombre === 'Abierto' || ticket.estado_nombre === 'En Revisión') && (
+                        {/* Botón Resolver (Solo si está En Revision o Abierto) */}
+                        {(ticket.estado_nombre === 'Abierto' || ticket.estado_nombre === 'En Revision') && ( // <-- CORREGIDO LA CONDICIÓN
                           <button onClick={() => abrirModalResolver(ticket.id)} disabled={procesandoAccion} className="text-green-600 hover:text-green-700 p-1 rounded-full hover:bg-green-50 transition-colors" title="Marcar como Resuelto">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                           </button>

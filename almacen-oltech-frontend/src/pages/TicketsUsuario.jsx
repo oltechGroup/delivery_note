@@ -48,7 +48,7 @@ function TicketsUsuario() {
     switch (estado) {
       case 'Abierto':
         return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'En Revisión':
+      case 'En Revision': // <-- CORREGIDO SIN ACENTO
         return 'bg-yellow-50 text-yellow-700 border-yellow-200';
       case 'Resuelto':
         return 'bg-green-50 text-green-700 border-green-200';
@@ -65,7 +65,7 @@ function TicketsUsuario() {
       case 'Baja': return 'text-green-600 bg-green-50';
       case 'Media': return 'text-yellow-600 bg-yellow-50';
       case 'Alta': return 'text-orange-600 bg-orange-50';
-      case 'Crítica': return 'text-red-600 bg-red-50 font-bold';
+      case 'Critica': return 'text-red-600 bg-red-50 font-bold'; // <-- CORREGIDO SIN ACENTO
       default: return 'text-gray-600 bg-gray-50';
     }
   };
