@@ -1,7 +1,9 @@
 // almacen-oltech-frontend/src/components/remisiones/ModalContestarRemision.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+// IMPORTANTE: Este componente lo crearemos en el siguiente paso.
+import ModalSurtirPiezaRetorno from './ModalSurtirPiezaRetorno';
 
 function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   const { token } = useAuth();
@@ -10,18 +12,26 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
   
   const [remision, setRemision] = useState(null);
   const [detalles, setDetalles] = useState([]);
-  // NUEVO: Estado para las observaciones de la remisión
   const [observaciones, setObservaciones] = useState('');
   
+  // Estado para el input del escáner en el retorno
+  const [codigoEscaneadoRetorno, setCodigoEscaneadoRetorno] = useState('');
+  const inputEscanerRef = useRef(null);
+
   // Estados para el Paso 2 (Reposición de Sets)
   const [paso, setPaso] = useState(1); 
-  const [consumibles, setConsumibles] = useState([]);
-  const [busqueda, setBusqueda] = useState('');
-  const [consumibleSeleccionado, setConsumibleSeleccionado] = useState(null);
-  const [cantidadReposicion, setCantidadReposicion] = useState(1);
+  
+  // NUEVO: Estado para abrir el modal de reposición individual
+  const [modalSurtirAbierto, setModalSurtirAbierto] = useState(false);
+  const [piezaAReponer, setPiezaAReponer] = useState(null);
+
+  // NUEVO: El estado 'reposiciones' ahora es un array de objetos con formato exacto para el backend:
+  // [{ detalle_id: 123, consumible_id: 45, cantidad_a_surtir: 1, tipo: 'consumible' }, ...]
   const [reposiciones, setReposiciones] = useState([]);
 
   const isCompletada = remision?.estado_nombre?.toLowerCase().includes('finalizada') || remision?.estado_nombre?.toLowerCase().includes('completad') || remision?.estado_nombre?.toLowerCase().includes('cerrad');
+  
+  // Solo consideramos como "necesita reposición" a las piezas que pertenezcan a un SET
   const piezasSetConsumidas = detalles.filter(d => d.set_id && d.cantidad_consumo > 0);
   const necesitaReposicion = piezasSetConsumidas.length > 0;
 
@@ -30,11 +40,16 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       cargarDatosRemision();
       setPaso(1);
       setReposiciones([]);
-      setBusqueda('');
-      setConsumibleSeleccionado(null);
-      setObservaciones(''); // Limpiamos observaciones al abrir nueva
+      setObservaciones(''); 
+      setCodigoEscaneadoRetorno('');
     }
   }, [isOpen, remisionId, token]);
+
+  useEffect(() => {
+    if (isOpen && !isCompletada && paso === 1 && inputEscanerRef.current) {
+        setTimeout(() => inputEscanerRef.current.focus(), 100);
+    }
+  }, [isOpen, isCompletada, paso]);
 
   const cargarDatosRemision = async () => {
     setCargando(true);
@@ -44,7 +59,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRemision(resRemision.data);
-      // NUEVO: Cargar observaciones si la remisión ya las tiene
       if (resRemision.data.observaciones) {
         setObservaciones(resRemision.data.observaciones);
       }
@@ -55,12 +69,14 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       
       const esCerrada = resRemision.data.estado_nombre?.toLowerCase().includes('finalizada') || resRemision.data.estado_nombre?.toLowerCase().includes('completad') || resRemision.data.estado_nombre?.toLowerCase().includes('cerrad');
       
-      const detallesReales = resDetalles.data.filter(d => !d.es_total && (d.pieza_id || d.consumible_id));
+      // Filtramos la fila de totales
+      const detallesReales = resDetalles.data.filter(d => !d.es_total);
 
       const detallesFormateados = detallesReales.map(d => ({
         ...d,
-        cantidad_consumo: esCerrada ? d.cantidad_consumo : 0,
-        cantidad_retorno: esCerrada ? d.cantidad_retorno : d.cantidad_despachada
+        // Si no está cerrada, asumimos que no ha retornado nada.
+        cantidad_consumo: esCerrada ? d.cantidad_consumo : d.cantidad_despachada, 
+        cantidad_retorno: esCerrada ? d.cantidad_retorno : 0 
       }));
       setDetalles(detallesFormateados);
 
@@ -69,18 +85,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
       setError('No se pudo cargar la información de la remisión.');
     } finally {
       setCargando(false);
-    }
-  };
-
-  const cargarConsumibles = async () => {
-    try {
-      const res = await axios.get('http://localhost:4000/api/almacen/consumibles', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setConsumibles(res.data);
-    } catch (err) {
-      console.error("Error al cargar consumibles:", err);
-      setError('Error al cargar el inventario a granel para la reposición.');
     }
   };
 
@@ -104,52 +108,110 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     }));
   };
 
+  // ==========================================
+  // LÓGICA DEL ESCÁNER EN RETORNO (INCLUYE SET COMPLETO)
+  // ==========================================
+  const handleKeyDownEscaneoRetorno = (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        setError('');
+        const codigoBuscado = codigoEscaneadoRetorno.trim().toLowerCase();
+
+        if (!codigoBuscado) return;
+
+        // 1. ¿ES EL CÓDIGO DE UN SET PADRE?
+        const setEncontrado = detalles.find(d => !d.pieza_id && !d.consumible_id && d.set_codigo && d.set_codigo.toLowerCase() === codigoBuscado);
+        
+        if (setEncontrado) {
+            if (window.confirm(`¿El Set "${setEncontrado.set_codigo}" llegó completamente lleno (Sin faltantes)?`)) {
+                // CORRECCIÓN CLAVE: Marcar TODAS las filas de este Set como retornadas, 
+                // incluyendo la fila "Padre" (la caja misma) y las filas "Hijas" (las piezas).
+                setDetalles(prev => prev.map(d => {
+                    if (d.set_id === setEncontrado.set_id) {
+                        return {
+                            ...d,
+                            cantidad_retorno: d.cantidad_despachada,
+                            cantidad_consumo: 0
+                        };
+                    }
+                    return d;
+                }));
+            }
+            setCodigoEscaneadoRetorno('');
+            return;
+        }
+
+        // 2. ES EL CÓDIGO DE UNA PIEZA INDIVIDUAL O CONSUMIBLE SUELTO
+        const indicesFilas = [];
+        detalles.forEach((d, idx) => {
+            if ((d.pieza_codigo && d.pieza_codigo.toLowerCase() === codigoBuscado) || 
+                (d.consumible_codigo && d.consumible_codigo.toLowerCase() === codigoBuscado)) {
+                indicesFilas.push(idx);
+            }
+        });
+
+        if (indicesFilas.length > 0) {
+            // Buscamos una fila de este código que aún no se haya retornado por completo
+            let filaActualizada = false;
+            const nuevosDetalles = [...detalles];
+
+            for (let idx of indicesFilas) {
+                const fila = nuevosDetalles[idx];
+                if (fila.cantidad_retorno < fila.cantidad_despachada) {
+                    nuevosDetalles[idx] = {
+                        ...fila,
+                        cantidad_retorno: fila.cantidad_retorno + 1,
+                        cantidad_consumo: fila.cantidad_consumo - 1
+                    };
+                    filaActualizada = true;
+                    break; 
+                }
+            }
+
+            if (filaActualizada) {
+                setDetalles(nuevosDetalles);
+            } else {
+                setError(`El código ${codigoBuscado.toUpperCase()} ya fue retornado completamente en todas sus filas.`);
+            }
+        } else {
+            setError(`El código escaneado (${codigoBuscado.toUpperCase()}) NO pertenece a esta remisión.`);
+        }
+
+        setCodigoEscaneadoRetorno('');
+    }
+  };
+
   const handleSiguientePaso = () => {
-    if (necesitaReposicion) {
-      cargarConsumibles();
-      setPaso(2);
-    } else {
-      // Si no hubo consumo en sets, pasamos directamente a poner observaciones si se quiere
-      setPaso(2); 
-    }
+    // Limpiamos las reposiciones previas por si cambió de opinión y modificó algo
+    setReposiciones([]);
+    setPaso(2); 
   };
 
-  const consumiblesFiltrados = consumibles.filter(c => 
-    c.codigo_referencia.toLowerCase().includes(busqueda.toLowerCase()) ||
-    c.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-    (c.nombre_comercial && c.nombre_comercial.toLowerCase().includes(busqueda.toLowerCase()))
-  ).slice(0, 5); 
-
-  const agregarAReposicion = () => {
-    if (!consumibleSeleccionado) return;
-    if (cantidadReposicion <= 0 || cantidadReposicion > consumibleSeleccionado.cantidad) {
-      setError(`Cantidad inválida. Solo tienes ${consumibleSeleccionado.cantidad} en stock.`);
-      return;
-    }
-
-    setReposiciones(prev => [...prev, {
-      id_temp: Date.now(),
-      consumible_id: consumibleSeleccionado.id,
-      codigo: consumibleSeleccionado.codigo_referencia,
-      nombre: consumibleSeleccionado.nombre,
-      nombre_comercial: consumibleSeleccionado.nombre_comercial,
-      cantidad_a_surtir: parseInt(cantidadReposicion)
-    }]);
-
-    setBusqueda('');
-    setConsumibleSeleccionado(null);
-    setCantidadReposicion(1);
-    setError('');
+  // NUEVO: Funciones para el Modal de Surtido Individual
+  const abrirSurtidoPieza = (pieza) => {
+      setPiezaAReponer(pieza);
+      setModalSurtirAbierto(true);
   };
 
-  const quitarDeReposicion = (id_temp) => {
-    setReposiciones(prev => prev.filter(r => r.id_temp !== id_temp));
+  const handleGuardarReposicion = (datosReposicion) => {
+      // datosReposicion = { detalle_id, consumible_id, cantidad_a_surtir, tipo ('consumible' | 'instrumental') }
+      setReposiciones(prev => [...prev, datosReposicion]);
+      setModalSurtirAbierto(false);
+      setPiezaAReponer(null);
+  };
+
+  const quitarReposicion = (detalle_id) => {
+      setReposiciones(prev => prev.filter(r => r.detalle_id !== detalle_id));
   };
 
   const handleConciliarGuardar = async () => {
     let mensajeConfirmacion = '¿Estás seguro de finalizar? El inventario se ajustará y la remisión se cerrará.';
-    if (necesitaReposicion && reposiciones.length === 0) {
-        mensajeConfirmacion = 'No has repuesto el material consumido. Los Sets afectados se marcarán como INCOMPLETOS. ¿Deseas continuar?';
+    
+    // Verificamos si dejaron alguna pieza sin reponer
+    const piezasSinReponer = piezasSetConsumidas.filter(p => !reposiciones.some(r => r.detalle_id === p.id));
+    
+    if (necesitaReposicion && piezasSinReponer.length > 0) {
+        mensajeConfirmacion = 'Hay material faltante que NO has repuesto. Los Sets afectados quedarán marcados como INCOMPLETOS. ¿Deseas continuar?';
     }
 
     if (!window.confirm(mensajeConfirmacion)) {
@@ -160,13 +222,14 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
     setError('');
 
     try {
+      // NOTA: El backend actual en conciliarRemision usa el consumible_id y "adivina" el set_id
+      // Como ahora tenemos lógica exacta, mandaremos la lista tal cual la espera el backend, 
+      // pero esto requerirá una pequeña actualización en el backend más adelante para ser perfecto.
+      // Por ahora mandamos el formato esperado:
       await axios.post(`http://localhost:4000/api/remisiones/${remisionId}/conciliar`, {
         detalles: detalles,
-        observaciones: observaciones, // <--- NUEVO: Mandamos observaciones al backend
-        reposiciones: reposiciones.map(r => ({
-          consumible_id: r.consumible_id,
-          cantidad_a_surtir: r.cantidad_a_surtir
-        }))
+        observaciones: observaciones,
+        reposiciones: reposiciones // Mandamos el array exacto
       }, { headers: { Authorization: `Bearer ${token}` } });
 
       alert('¡Remisión conciliada con éxito!');
@@ -185,11 +248,9 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      {/* RESPONSIVO: max-h-[90vh] asegura scroll */}
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* ENCABEZADO */}
-        {/* RESPONSIVO: p-4 sm:px-6 */}
         <div className={`px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-start sm:items-center shrink-0 ${isCompletada ? 'bg-green-700' : 'bg-oltech-black'}`}>
           <div className="pr-4">
             <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
@@ -210,8 +271,9 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
         {/* CONTENIDO PRINCIPAL */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 flex flex-col">
           {error && (
-            <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-100 font-medium mb-4 sm:mb-6 shrink-0">
-              {error}
+            <div className="bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-100 font-medium mb-4 sm:mb-6 shrink-0 flex justify-between items-center">
+              <span>{error}</span>
+              <button onClick={() => setError('')} className="text-red-500 font-bold ml-2">✖</button>
             </div>
           )}
 
@@ -223,7 +285,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
           ) : paso === 1 ? (
             <div className="space-y-4 sm:space-y-6">
               
-              {/* RESPONSIVO: flex-col en móvil para apilar info del paciente */}
               <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                 <div className="w-full sm:w-auto">
                   <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-bold tracking-wide">Paciente</p>
@@ -245,7 +306,27 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                 </div>
               )}
 
-              {/* RESPONSIVO: overflow-x-auto y whitespace-nowrap */}
+              {/* BARRA DE ESCANEO DE RETORNO (Solo visible si no está completada) */}
+              {!isCompletada && (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row items-center gap-4">
+                  <div className="bg-green-100 p-2.5 rounded-lg shrink-0">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                  </div>
+                  <div className="w-full flex-1">
+                    <p className="text-xs font-bold text-green-800 mb-1 uppercase tracking-wide">Pistola Escáner Lista</p>
+                    <input 
+                      ref={inputEscanerRef}
+                      type="text" 
+                      value={codigoEscaneadoRetorno}
+                      onChange={(e) => setCodigoEscaneadoRetorno(e.target.value)}
+                      onKeyDown={handleKeyDownEscaneoRetorno}
+                      placeholder="Escanea la caja completa o pieza por pieza..."
+                      className="w-full px-4 py-2 border border-green-300 rounded-lg outline-none focus:ring-2 focus:ring-green-500 bg-white font-mono text-sm shadow-inner text-gray-800"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -261,39 +342,43 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                     <tbody className="text-xs text-gray-700 divide-y divide-gray-100">
                       {detalles.map((d) => {
                         const esConsumible = d.consumible_id && !d.set_id;
+                        const esSetPadre = !d.pieza_id && !d.consumible_id && d.set_codigo;
+                        const filaCompletada = !isCompletada && d.cantidad_retorno === d.cantidad_despachada && !esSetPadre;
+
                         return (
-                          <tr key={d.id} className="hover:bg-gray-50">
+                          <tr key={d.id} className={`${filaCompletada ? 'bg-green-50/40' : 'hover:bg-gray-50'} ${esSetPadre ? 'bg-gray-100' : ''} transition-colors`}>
                             <td className="p-2 sm:p-3 whitespace-nowrap">
-                              <span className="font-bold text-oltech-blue block">{d.pieza_codigo || d.consumible_codigo}</span>
-                              <div className="text-[9px] text-gray-400 mt-0.5">
-                                {esConsumible ? 'Consumible Extra' : `De Set: ${d.set_codigo || ''}`}
+                              <span className={`font-bold text-oltech-blue block ${esSetPadre ? 'text-sm' : ''}`}>{d.pieza_codigo || d.consumible_codigo || d.set_codigo}</span>
+                              <div className="text-[9px] text-gray-400 mt-0.5 font-bold">
+                                {esSetPadre ? '📦 CAJA / SET' : esConsumible ? 'Consumible Extra' : `De Set: ${d.set_codigo || ''}`}
                               </div>
                             </td>
-                            <td className="p-2 sm:p-3 font-medium text-gray-800 whitespace-nowrap">
-                              {d.pieza_descripcion || d.consumible_nombre}
+                            <td className={`p-2 sm:p-3 font-medium text-gray-800 whitespace-nowrap ${esSetPadre ? 'font-black uppercase' : ''}`}>
+                              {d.pieza_descripcion || d.consumible_nombre || d.set_descripcion}
                             </td>
                             
-                            <td className="p-2 sm:p-3 bg-blue-50/30 border-l border-blue-100 text-center font-bold text-blue-700 text-sm whitespace-nowrap">
-                              {d.cantidad_despachada}
+                            <td className={`p-2 sm:p-3 bg-blue-50/30 border-l border-blue-100 text-center font-bold text-blue-700 whitespace-nowrap ${esSetPadre ? 'text-transparent bg-transparent border-transparent' : 'text-sm'}`}>
+                              {!esSetPadre && d.cantidad_despachada}
                             </td>
                             
-                            <td className="p-2 sm:p-3 bg-red-50/50 border-l border-red-100 text-center whitespace-nowrap">
-                              {isCompletada ? (
-                                <span className="font-bold text-red-600 text-sm">{d.cantidad_consumo}</span>
-                              ) : (
-                                /* RESPONSIVO: text-base en móvil para prevenir auto-zoom iOS */
-                                <input 
-                                  type="number" 
-                                  min="0" max={d.cantidad_despachada}
-                                  value={d.cantidad_consumo}
-                                  onChange={(e) => handleConsumoChange(d.id, e.target.value)}
-                                  className="w-14 sm:w-16 px-1 sm:px-2 py-1 sm:py-1.5 text-center border border-red-200 rounded font-bold text-red-600 focus:ring-2 focus:ring-red-400 outline-none bg-white shadow-inner text-base sm:text-xs"
-                                />
+                            <td className={`p-2 sm:p-3 bg-red-50/50 border-l border-red-100 text-center whitespace-nowrap ${esSetPadre ? 'bg-transparent border-transparent' : ''}`}>
+                              {!esSetPadre && (
+                                isCompletada ? (
+                                    <span className="font-bold text-red-600 text-sm">{d.cantidad_consumo}</span>
+                                ) : (
+                                    <input 
+                                    type="number" 
+                                    min="0" max={d.cantidad_despachada}
+                                    value={d.cantidad_consumo}
+                                    onChange={(e) => handleConsumoChange(d.id, e.target.value)}
+                                    className={`w-14 sm:w-16 px-1 sm:px-2 py-1 sm:py-1.5 text-center border rounded font-bold outline-none shadow-inner text-base sm:text-xs transition-colors ${d.cantidad_consumo > 0 ? 'border-red-400 text-red-600 bg-red-50 focus:ring-red-400' : 'border-gray-200 text-gray-400 bg-white focus:ring-gray-300'}`}
+                                    />
+                                )
                               )}
                             </td>
 
-                            <td className="p-2 sm:p-3 bg-green-50/30 border-l border-green-100 text-center font-bold text-green-700 text-sm whitespace-nowrap">
-                              {d.cantidad_retorno}
+                            <td className={`p-2 sm:p-3 border-l text-center font-bold text-sm whitespace-nowrap transition-colors ${esSetPadre ? 'bg-transparent border-transparent text-transparent' : d.cantidad_retorno > 0 ? 'bg-green-100/50 border-green-200 text-green-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}>
+                              {!esSetPadre && d.cantidad_retorno}
                             </td>
                           </tr>
                         );
@@ -303,7 +388,6 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                 </div>
               </div>
 
-              {/* NUEVO: Campo de Observaciones en Modo Lectura (Si ya está completada) */}
               {isCompletada && (
                 <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm mt-4">
                   <p className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase mb-2">Observaciones de la Cirugía:</p>
@@ -317,15 +401,69 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
           ) : (
             <div className="space-y-4 sm:space-y-6 flex-1 flex flex-col">
               
+              <div className="bg-white p-3 sm:p-4 rounded-xl border border-gray-200 shadow-sm">
+                 <h4 className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase mb-2">Observaciones Generales (Opcional):</h4>
+                 <textarea 
+                    rows="2"
+                    placeholder="Ej. Se perdió una pinza Kelly..."
+                    value={observaciones}
+                    onChange={(e) => setObservaciones(e.target.value)}
+                    className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-base sm:text-sm text-gray-800 bg-gray-50"
+                 />
+              </div>
+
               {necesitaReposicion ? (
-                <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-md">
-                  <h3 className="font-bold text-amber-800 flex items-center space-x-2 text-sm sm:text-base">
-                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                    <span>Sets Incompletos Detectados</span>
-                  </h3>
-                  <p className="text-xs sm:text-sm text-amber-700 mt-1">
-                    Se ha detectado consumo en los Sets. Puedes reponer el material ahora o continuar y los Sets quedarán en estado "Incompleto".
-                  </p>
+                <div className="flex flex-col space-y-4">
+                  <div className="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-md">
+                    <h3 className="font-bold text-amber-800 flex items-center space-x-2 text-sm sm:text-base">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                      <span>Sets Incompletos - Reposición Fila por Fila</span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-amber-700 mt-1">
+                      Selecciona cómo vas a reponer cada material faltante.
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 flex-1">
+                    <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
+                      {piezasSetConsumidas.map(p => {
+                        const reposicionHecha = reposiciones.find(r => r.detalle_id === p.id);
+
+                        return (
+                          <li key={p.id} className={`p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 ${reposicionHecha ? 'bg-green-50/30' : 'bg-red-50/30'}`}>
+                            <div className="min-w-0">
+                              <p className="text-[10px] sm:text-xs font-bold text-oltech-blue truncate">{p.pieza_codigo}</p>
+                              <p className="text-sm sm:text-base font-bold text-gray-800 truncate">{p.pieza_descripcion}</p>
+                              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">Pertenece al Set: <span className="font-bold">{p.set_codigo}</span></p>
+                            </div>
+                            
+                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                              <div className="bg-white border border-red-200 text-red-700 px-3 py-1.5 rounded-lg font-bold text-xs sm:text-sm whitespace-nowrap shadow-sm text-center">
+                                Faltan {p.cantidad_consumo}
+                              </div>
+                              
+                              {reposicionHecha ? (
+                                <div className="flex items-center gap-2 bg-green-100 border border-green-300 px-3 py-1.5 rounded-lg w-full sm:w-auto">
+                                    <span className="text-xs sm:text-sm font-bold text-green-800">
+                                        ✓ Repuesto ({reposicionHecha.tipo === 'instrumental' ? 'Directo' : 'Inventario'})
+                                    </span>
+                                    <button onClick={() => quitarReposicion(p.id)} className="text-green-600 hover:text-red-500 font-bold ml-2">✖</button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => abrirSurtidoPieza(p)}
+                                  className="flex-1 sm:flex-none px-4 py-2 bg-oltech-black text-white text-xs sm:text-sm font-bold rounded-lg hover:bg-gray-800 shadow-md transition-all active:scale-95"
+                                >
+                                  Reponer
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
                 </div>
               ) : (
                 <div className="bg-blue-50 border-l-4 border-blue-500 p-3 sm:p-4 rounded-md">
@@ -334,141 +472,23 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                     <span>Todo Completo</span>
                   </h3>
                   <p className="text-xs sm:text-sm text-blue-700 mt-1">
-                    No hubo consumo de piezas pertenecientes a Sets. Puedes agregar observaciones (opcional) y finalizar.
+                    No hubo consumo de piezas pertenecientes a Sets. Puedes finalizar el retorno.
                   </p>
                 </div>
               )}
 
-              <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-                
-                {/* LADO IZQUIERDO: Resumen Faltantes o Cero Consumo */}
-                <div className="w-full lg:w-1/2 flex flex-col space-y-4">
-                  {necesitaReposicion && (
-                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 flex-1">
-                      <h4 className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase mb-2 sm:mb-3">Piezas Faltantes:</h4>
-                      <ul className="divide-y divide-gray-100 border border-gray-100 rounded-lg overflow-hidden">
-                        {piezasSetConsumidas.map(p => (
-                          <li key={p.id} className="p-2 sm:p-3 bg-red-50/30 flex justify-between items-center gap-2">
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-xs font-bold text-oltech-blue truncate">{p.pieza_codigo}</p>
-                              <p className="text-xs sm:text-sm text-gray-700 truncate">{p.pieza_descripcion}</p>
-                            </div>
-                            <div className="bg-red-100 text-red-700 px-2 py-1 rounded font-bold text-xs sm:text-sm whitespace-nowrap shrink-0">Faltan {p.cantidad_consumo}</div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {/* NUEVO: Cajita de texto para las observaciones de la cirugía */}
-                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4">
-                     <h4 className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase mb-2">Observaciones Generales (Opcional):</h4>
-                     <textarea 
-                        rows="3"
-                        placeholder="Ej. Se perdió una pinza Kelly..."
-                        value={observaciones}
-                        onChange={(e) => setObservaciones(e.target.value)}
-                        className="w-full p-2.5 sm:p-3 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-base sm:text-sm text-gray-800 bg-gray-50"
-                     />
-                  </div>
-                </div>
-
-                {/* LADO DERECHO: Reposición de Inventario (Solo si aplica) */}
-                {necesitaReposicion && (
-                  <div className="w-full lg:w-1/2 bg-white rounded-xl border border-gray-200 shadow-sm p-3 sm:p-4 flex flex-col">
-                    <h4 className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase mb-2 sm:mb-3">Surtido desde Inventario:</h4>
-                    
-                    {!consumibleSeleccionado ? (
-                      <div className="relative mb-3 sm:mb-4">
-                        <input 
-                          type="text" 
-                          value={busqueda} 
-                          onChange={(e) => setBusqueda(e.target.value)} 
-                          className="w-full px-3 sm:px-4 py-2 sm:py-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-base sm:text-sm"
-                          placeholder="Buscar código o nombre..."
-                        />
-                        {busqueda.length >= 3 && (
-                          <div className="absolute top-full left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl z-10 overflow-hidden divide-y divide-gray-100">
-                            {consumiblesFiltrados.length === 0 ? (
-                              <div className="p-3 text-center text-xs text-gray-500">Sin resultados disponibles.</div>
-                            ) : (
-                              consumiblesFiltrados.map(c => (
-                                <button 
-                                  key={c.id} type="button" onClick={() => setConsumibleSeleccionado(c)}
-                                  className="w-full text-left p-2.5 sm:p-3 hover:bg-pink-50 transition-colors flex justify-between items-center"
-                                >
-                                  <div className="min-w-0 flex-1 pr-2">
-                                    <div className="text-[10px] sm:text-xs font-bold text-oltech-blue truncate">{c.codigo_referencia}</div>
-                                    <div className="text-xs sm:text-sm font-medium text-gray-800 truncate">{c.nombre}</div>
-                                    {c.nombre_comercial && <div className="text-[9px] sm:text-[10px] text-gray-500 italic truncate">{c.nombre_comercial}</div>}
-                                  </div>
-                                  <div className="text-[10px] sm:text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700 shrink-0">Stock: {c.cantidad}</div>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="bg-blue-50 border border-blue-200 p-2.5 sm:p-3 rounded-lg mb-3 sm:mb-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="min-w-0 flex-1 pr-2">
-                            <div className="text-[10px] sm:text-xs font-bold text-oltech-blue truncate">{consumibleSeleccionado.codigo_referencia}</div>
-                            <div className="text-xs sm:text-sm font-medium text-gray-800 truncate">{consumibleSeleccionado.nombre}</div>
-                            {consumibleSeleccionado.nombre_comercial && <div className="text-[9px] sm:text-[10px] text-gray-500 italic truncate">{consumibleSeleccionado.nombre_comercial}</div>}
-                          </div>
-                          <button type="button" onClick={() => setConsumibleSeleccionado(null)} className="text-[10px] sm:text-xs text-red-500 font-bold hover:underline shrink-0">Cambiar</button>
-                        </div>
-                        <div className="flex items-center justify-between sm:justify-start space-x-3 mt-2 sm:mt-3">
-                          <input 
-                            type="number" min="1" max={consumibleSeleccionado.cantidad} 
-                            value={cantidadReposicion} onChange={(e) => setCantidadReposicion(e.target.value)}
-                            className="w-20 sm:w-20 px-2 py-1 sm:py-1 text-center border border-blue-300 rounded font-bold focus:ring-2 focus:ring-oltech-pink outline-none text-base sm:text-sm"
-                          />
-                          <button type="button" onClick={agregarAReposicion} className="px-3 sm:px-3 py-1.5 sm:py-1 bg-oltech-pink text-white font-bold rounded text-xs sm:text-xs hover:bg-pink-700">Añadir</button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex-1 flex flex-col border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
-                      <div className="bg-gray-200 px-3 py-2 text-[9px] sm:text-[10px] font-bold text-gray-600 uppercase">Material a Extraer</div>
-                      <div className="flex-1 p-2 overflow-y-auto max-h-[150px] sm:max-h-none">
-                        {reposiciones.length === 0 ? (
-                          <div className="text-center text-[10px] sm:text-xs text-gray-400 mt-4 italic">No se han añadido reposiciones.</div>
-                        ) : (
-                          <ul className="space-y-2">
-                            {reposiciones.map(r => (
-                              <li key={r.id_temp} className="bg-white border border-green-200 p-2 rounded flex justify-between items-center shadow-sm gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-[9px] sm:text-[10px] font-bold text-green-700">Cantidad: {r.cantidad_a_surtir}</span>
-                                  <p className="text-[10px] sm:text-xs font-bold text-gray-800 truncate">{r.codigo}</p>
-                                  {r.nombre_comercial && <p className="text-[8px] sm:text-[9px] text-gray-500 italic truncate">{r.nombre_comercial}</p>}
-                                </div>
-                                <button type="button" onClick={() => quitarDeReposicion(r.id_temp)} className="text-gray-400 hover:text-red-500 shrink-0 p-1 rounded-full hover:bg-red-50"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-
-              </div>
             </div>
           )}
         </div>
 
         {/* FOOTER - BOTONES DE ACCIÓN */}
-        {/* RESPONSIVO: flex-col en móvil, w-full para botones */}
         <div className="bg-white px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row justify-between items-center shrink-0 gap-3 sm:gap-4">
           <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto ml-auto">
             {isCompletada ? (
               <button type="button" onClick={onClose} className="w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-2.5 bg-oltech-black text-white rounded-lg font-bold shadow-md hover:bg-gray-800 transition-colors text-sm">Cerrar Ventana</button>
             ) : (
               <>
-                <button type="button" onClick={paso === 2 ? () => setPaso(1) : onClose} disabled={cargando} className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200 text-sm flex items-center justify-center">
+                <button type="button" onClick={paso === 2 ? handleSiguientePaso : onClose} disabled={cargando} className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition-colors border border-gray-200 text-sm flex items-center justify-center">
                   {paso === 2 ? 'Regresar' : 'Cancelar'}
                 </button>
                 {paso === 1 ? (
@@ -477,9 +497,9 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
                     <svg className="w-4 h-4 ml-1 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path></svg>
                   </button>
                 ) : (
-                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando} className={`w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2.5 text-white rounded-lg font-bold shadow-md transition-colors flex items-center justify-center space-x-2 text-sm ${reposiciones.length === 0 && necesitaReposicion ? 'bg-amber-600 hover:bg-amber-700' : 'bg-oltech-pink hover:bg-pink-700'}`}>
+                  <button type="button" onClick={handleConciliarGuardar} disabled={cargando} className={`w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-2.5 text-white rounded-lg font-bold shadow-md transition-colors flex items-center justify-center space-x-2 text-sm ${piezasSetConsumidas.some(p => !reposiciones.some(r => r.detalle_id === p.id)) ? 'bg-amber-600 hover:bg-amber-700' : 'bg-oltech-pink hover:bg-pink-700'}`}>
                     {cargando && <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                    <span>{reposiciones.length === 0 && necesitaReposicion ? 'Cerrar Faltantes' : 'Confirmar'}</span>
+                    <span>{piezasSetConsumidas.some(p => !reposiciones.some(r => r.detalle_id === p.id)) ? 'Cerrar con Faltantes' : 'Finalizar Retorno'}</span>
                   </button>
                 )}
               </>
@@ -488,6 +508,15 @@ function ModalContestarRemision({ isOpen, onClose, remisionId, onGuardado }) {
         </div>
 
       </div>
+
+      {/* NUEVO: MODAL DE SURTIDO INDIVIDUAL */}
+      <ModalSurtirPiezaRetorno 
+        isOpen={modalSurtirAbierto}
+        onClose={() => setModalSurtirAbierto(false)}
+        pieza={piezaAReponer}
+        onGuardado={handleGuardarReposicion}
+      />
+
     </div>
   );
 }

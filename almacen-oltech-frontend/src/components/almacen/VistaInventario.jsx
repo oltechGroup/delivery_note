@@ -5,7 +5,9 @@ import { useAuth } from '../../hooks/useAuth';
 import Buscador from './Buscador';
 import ModalSet from './ModalSet';
 import ModalDetalleSet from './ModalDetalleSet';
-import ReporteSets from './impresion/ReporteSets'; // Importamos la nueva vista de impresión
+import ReporteSets from './impresion/ReporteSets'; 
+// NUEVO: Importamos el nuevo componente de impresión de etiquetas para Sets
+import EtiquetasSets from './impresion/EtiquetasSets'; 
 
 function VistaInventario({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -24,10 +26,13 @@ function VistaInventario({ categoria, onVolver }) {
   const [paginaActual, setPaginaActual] = useState(1);
   const ITEMS_POR_PAGINA = 15; 
 
-  // NUEVO: Estados para manejar la apertura del modal de impresión
+  // Estados para manejar la apertura del modal de impresión (Formato de conteo)
   const [preparandoReporte, setPreparandoReporte] = useState(false);
   const [dataParaImprimir, setDataParaImprimir] = useState(null);
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
+
+  // NUEVO: Estado para mostrar las etiquetas de códigos de barras
+  const [mostrarModalEtiquetas, setMostrarModalEtiquetas] = useState(false);
 
   // FUNCIÓN: Obtener composiciones y abrir la vista previa
   const prepararYAbrirImpresion = async () => {
@@ -133,19 +138,31 @@ function VistaInventario({ categoria, onVolver }) {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto">
-          <Buscador 
-            valor={busqueda} 
-            onBuscar={setBusqueda} 
-            placeholder="Buscar código o descripción..." 
-          />
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full md:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="w-full sm:w-auto">
+            <Buscador 
+              valor={busqueda} 
+              onBuscar={setBusqueda} 
+              placeholder="Buscar código o descripción..." 
+            />
+          </div>
           
+          {/* NUEVO BOTÓN: Imprimir Etiquetas para Sets */}
+          <button 
+            onClick={() => setMostrarModalEtiquetas(true)}
+            disabled={setsFiltrados.length === 0}
+            className="w-full sm:w-auto bg-white border-2 border-oltech-pink text-oltech-pink px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-pink-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
+            title="Generar Etiquetas de Código de Barras"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+            <span>Generar Etiquetas</span>
+          </button>
+
           {/* BOTÓN VISIBLE: Lanza la preparación y ABRE LA VISTA PREVIA */}
-          {/* RESPONSIVO: w-full y justify-center en móvil */}
           <button 
             onClick={prepararYAbrirImpresion}
             disabled={setsFiltrados.length === 0 || preparandoReporte}
-            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
             title="Generar formato de conteo con desglose de piezas"
           >
             {preparandoReporte ? (
@@ -167,7 +184,7 @@ function VistaInventario({ categoria, onVolver }) {
           {/* RESPONSIVO: w-full y justify-center en móvil */}
           <button 
             onClick={() => setModalAbierto(true)}
-            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 sm:py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
@@ -297,6 +314,15 @@ function VistaInventario({ categoria, onVolver }) {
           categoria={categoria}
           dataReporte={dataParaImprimir}
           onClose={() => setMostrarModalImpresion(false)}
+        />
+      )}
+
+      {/* NUEVO: COMPONENTE DE ETIQUETAS PARA SETS */}
+      {mostrarModalEtiquetas && (
+        <EtiquetasSets 
+          categoria={categoria} 
+          sets={setsFiltrados} 
+          onClose={() => setMostrarModalEtiquetas(false)}
         />
       )}
 

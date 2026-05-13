@@ -1,5 +1,5 @@
 // almacen-oltech-frontend/src/pages/NuevaRemision.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../hooks/useAuth';
@@ -34,10 +34,18 @@ function NuevaRemision() {
   // Opciones de configuración de la fila que se va a agregar
   const [tipoBusqueda, setTipoBusqueda] = useState('set'); 
   
+  // NUEVO: Referencia para el Input del Buscador
+  const inputBusquedaRef = useRef(null);
+  
   // Inicialización
   useEffect(() => {
     cargarCatalogosBase();
     generarFolioAutomatico();
+    
+    // Enfocar automáticamente el buscador si no es un dispositivo móvil táctil
+    if (window.innerWidth > 768 && inputBusquedaRef.current) {
+        inputBusquedaRef.current.focus();
+    }
   }, [token]);
 
   const generarFolioAutomatico = () => {
@@ -110,6 +118,42 @@ function NuevaRemision() {
   }, [busquedaTexto, tipoBusqueda, token]);
 
   // ==========================================
+  // NUEVO: LÓGICA DEL ESCÁNER DE CÓDIGO DE BARRAS
+  // ==========================================
+  const handleKeyDownScanner = async (e) => {
+    // Si la tecla es Enter, asumimos que es el escáner finalizando la lectura
+    if (e.key === 'Enter' && busquedaTexto.trim().length > 0) {
+      e.preventDefault(); // Evitamos que envíe el formulario accidentalmente
+      
+      const codigoEscaneado = busquedaTexto.trim().toLowerCase();
+      
+      // Buscamos si tenemos resultados cargados que coincidan EXACTAMENTE con el código
+      const coincidenciaExacta = resultadosBusqueda.find(res => {
+        const codigo = tipoBusqueda === 'set' ? res.codigo : res.codigo_referencia;
+        return codigo.toLowerCase() === codigoEscaneado;
+      });
+
+      if (coincidenciaExacta) {
+        // Validación de Stock/Disponibilidad antes de agregarlo
+        const esSet = tipoBusqueda === 'set';
+        const estaNoDisponible = esSet && coincidenciaExacta.estado_nombre && !['activo', 'disponible'].includes(coincidenciaExacta.estado_nombre.toLowerCase());
+        const sinStock = !esSet && coincidenciaExacta.cantidad <= 0;
+
+        if (estaNoDisponible || sinStock) {
+           setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no está disponible o no tiene stock.`);
+           setBusquedaTexto('');
+           return;
+        }
+
+        // Si todo está bien, lo agregamos como si le hubieran dado clic
+        await agregarAlTicket(coincidenciaExacta);
+      } else {
+        setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no existe o pertenece a otro tipo de búsqueda (Set / Consumible).`);
+      }
+    }
+  };
+
+  // ==========================================
   // FUNCIONES PARA AGREGAR FILAS A LA TABLA
   // ==========================================
 
@@ -119,27 +163,47 @@ function NuevaRemision() {
 
     if (tipoBusqueda === 'consumible') {
       // 1. Agregar Consumible Suelto
-      const tieneCaducidadEnBD = !!item.fecha_caducidad;
-
-      const nuevoDetalle = {
-        id_temp: Date.now() + Math.random(),
-        es_total: false,
-        set_id: null,
-        pieza_id: null,
-        consumible_id: item.id,
-        codigo: item.codigo_referencia,
-        descripcion: item.nombre,
-        cantidad_maxima: item.cantidad,
-        cantidad_despachada: 1,
-        lote: item.lote || '', 
-        fecha_caducidad: tieneCaducidadEnBD ? item.fecha_caducidad : '',
-        tiene_caducidad_bd: tieneCaducidadEnBD,
-        imprimir_caducidad: tieneCaducidadEnBD
-      };
-      setDetalles(prev => [...prev, nuevoDetalle]);
+      // NUEVO: Revisar si ya existe en la tabla para solo sumarle 1 a la cantidad en lugar de duplicar la fila
+      const indiceExistente = detalles.findIndex(d => d.consumible_id === item.id && !d.set_id);
+      
+      if (indiceExistente >= 0) {
+          // Ya existe, verificamos si tenemos stock suficiente para sumarle 1
+          const fila = detalles[indiceExistente];
+          if (fila.cantidad_despachada + 1 > fila.cantidad_maxima) {
+              setError(`Solo tienes ${fila.cantidad_maxima} unidades de ${fila.codigo} en stock.`);
+          } else {
+              actualizarCampoDetalle(fila.id_temp, 'cantidad_despachada', fila.cantidad_despachada + 1);
+          }
+      } else {
+          // No existe en la tabla, lo agregamos nuevo
+          const tieneCaducidadEnBD = !!item.fecha_caducidad;
+          const nuevoDetalle = {
+            id_temp: Date.now() + Math.random(),
+            es_total: false,
+            set_id: null,
+            pieza_id: null,
+            consumible_id: item.id,
+            codigo: item.codigo_referencia,
+            descripcion: item.nombre,
+            cantidad_maxima: item.cantidad,
+            cantidad_despachada: 1,
+            lote: item.lote || '', 
+            fecha_caducidad: tieneCaducidadEnBD ? item.fecha_caducidad : '',
+            tiene_caducidad_bd: tieneCaducidadEnBD,
+            imprimir_caducidad: tieneCaducidadEnBD
+          };
+          setDetalles(prev => [...prev, nuevoDetalle]);
+      }
 
     } else {
       // 2. Agregar Set Completo (Primero la fila del Set, luego sus piezas)
+      // NUEVO: Validar si el Set ya fue agregado (Los sets no se pueden duplicar en la misma remisión)
+      const setYaAgregado = detalles.some(d => d.set_id === item.id && d.es_fila_set_padre);
+      if (setYaAgregado) {
+          setError(`El Set ${item.codigo} ya está agregado a esta remisión.`);
+          return;
+      }
+
       try {
         setCargando(true);
         const res = await axios.get(`http://localhost:4000/api/almacen/sets/${item.id}/composicion`, {
@@ -183,6 +247,11 @@ function NuevaRemision() {
         setCargando(false);
       }
     }
+
+    // Regresar el foco al input después de agregar algo exitosamente
+    if (inputBusquedaRef.current) {
+        inputBusquedaRef.current.focus();
+    }
   };
 
   const agregarFilaTotal = () => {
@@ -218,7 +287,13 @@ function NuevaRemision() {
   };
 
   const quitarFila = (id_temp) => {
-    setDetalles(prev => prev.filter(d => d.id_temp !== id_temp));
+    // Si quitamos un Set Padre, debemos quitar también todas sus piezas hijas
+    const filaAQuitar = detalles.find(d => d.id_temp === id_temp);
+    if (filaAQuitar && filaAQuitar.es_fila_set_padre) {
+        setDetalles(prev => prev.filter(d => d.set_id !== filaAQuitar.set_id));
+    } else {
+        setDetalles(prev => prev.filter(d => d.id_temp !== id_temp));
+    }
   };
 
   const mostrarColumnaCaducidad = detalles.some(d => d.imprimir_caducidad);
@@ -281,7 +356,6 @@ function NuevaRemision() {
     <div className="bg-gray-100 min-h-screen pb-12 pt-4 px-2 sm:px-4 animate-in fade-in duration-300">
       
       {/* BARRA DE CONTROLES SUPERIOR */}
-      {/* RESPONSIVO CORRECCIÓN 1: static en móvil, sm:sticky en tablet/PC para no comerse la pantalla */}
       <div className="max-w-[22cm] mx-auto bg-white p-3 sm:p-4 rounded-xl shadow-md border border-gray-200 flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 static sm:sticky top-2 sm:top-4 z-50 gap-3 sm:gap-0">
         <button onClick={() => navigate('/remisiones')} className="w-full sm:w-auto justify-center sm:justify-start text-gray-500 hover:text-oltech-black font-bold text-sm flex items-center transition-colors">
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
@@ -308,8 +382,9 @@ function NuevaRemision() {
       </div>
 
       {error && (
-        <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-200 font-medium mb-4 sm:mb-6 shadow-sm">
-          {error}
+        <div className="max-w-[22cm] mx-auto bg-red-50 text-red-600 p-3 sm:p-4 rounded-lg text-xs sm:text-sm border border-red-200 font-medium mb-4 sm:mb-6 shadow-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-500 font-bold ml-4">✖</button>
         </div>
       )}
 
@@ -317,12 +392,20 @@ function NuevaRemision() {
       <div className="max-w-[22cm] mx-auto bg-oltech-black p-4 sm:p-5 rounded-xl shadow-lg border border-gray-800 mb-6 sm:mb-8 relative z-40">
         <h3 className="text-white text-xs sm:text-sm font-bold uppercase tracking-wide mb-3 flex items-center space-x-2">
           <span className="text-oltech-pink">Paso 1.</span> <span>Agrega material a la hoja</span>
+          <span className="ml-auto text-[10px] text-gray-400 border border-gray-600 px-2 py-0.5 rounded-full flex items-center">
+            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            Compatible con Pistola Escáner
+          </span>
         </h3>
         
         <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 relative">
           <select 
             value={tipoBusqueda} 
-            onChange={(e) => setTipoBusqueda(e.target.value)} 
+            onChange={(e) => {
+              setTipoBusqueda(e.target.value);
+              setBusquedaTexto('');
+              if (inputBusquedaRef.current) inputBusquedaRef.current.focus();
+            }} 
             className="w-full sm:w-auto px-4 py-3 sm:py-2.5 border-none rounded-lg text-base sm:text-sm bg-gray-800 text-white outline-none font-bold shadow-inner focus:ring-2 focus:ring-oltech-pink cursor-pointer"
           >
             <option value="set">📦 Buscar SET Completo</option>
@@ -331,10 +414,12 @@ function NuevaRemision() {
           
           <div className="relative flex-1 w-full">
             <input 
+              ref={inputBusquedaRef}
               type="text" 
               value={busquedaTexto} 
               onChange={(e) => setBusquedaTexto(e.target.value)} 
-              placeholder={tipoBusqueda === 'set' ? "Escribe código o nombre del Set..." : "Escribe código o nombre del Insumo..."}
+              onKeyDown={handleKeyDownScanner}
+              placeholder={tipoBusqueda === 'set' ? "Escanea el código de barras o escribe el nombre del Set..." : "Escanea el código de barras o escribe el nombre del Insumo..."}
               className="w-full px-4 py-3 sm:py-2.5 border-none rounded-lg outline-none focus:ring-2 focus:ring-oltech-pink text-base sm:text-sm bg-white shadow-inner font-medium text-gray-800"
             />
             

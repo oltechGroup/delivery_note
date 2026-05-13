@@ -270,13 +270,12 @@ const actualizarCantidadesRetorno = async (req, res) => {
 };
 
 // ==========================================
-// NUEVA SÚPER FUNCIÓN: CONCILIAR REMISIÓN (LÓGICA INCOMPLETO Y RESTA EN CAJA PERFECCIONADA)
+// SÚPER FUNCIÓN: CONCILIAR REMISIÓN (ACTUALIZADO A REPOSICIÓN EXACTA)
 // ==========================================
 const conciliarRemision = async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
-        // ACTUALIZADO: Recibimos observaciones desde el body
         const { detalles, reposiciones, observaciones } = req.body; 
         const usuario_conciliador_id = req.usuario.id; 
 
@@ -326,7 +325,7 @@ const conciliarRemision = async (req, res) => {
                 `, [cantRetorno, item.consumible_id]);
             }
 
-            // NUEVO: Si la pieza consumida PERTENECE A UN SET, se la restamos físicamente a la caja.
+            // Si la pieza consumida PERTENECE A UN SET, se la restamos físicamente a la caja.
             if (item.set_id && item.pieza_id && cantConsumo > 0) {
                 await client.query(`
                     UPDATE set_composicion 
@@ -336,51 +335,60 @@ const conciliarRemision = async (req, res) => {
                 
                 setsActualizados.add(item.set_id);
             }
-            // Por si acaso no hubo consumo, pero necesitamos recordar el set para cambiarle el estado al final
             else if (item.set_id) {
                  setsActualizados.add(item.set_id);
             }
         }
 
-        // 4. Procesar Reposiciones (Lo que hayan metido a la caja EN ESTE MOMENTO en el Modal)
-        // Usamos un objeto para llevar la cuenta de cuánto repusieron POR CADA SET, y no revuelto.
+        // 4. Procesar Reposiciones (Lógica EXACTA por fila y tipo)
         let reposicionPorSet = {};
         
         if (reposiciones && reposiciones.length > 0) {
             for (let repo of reposiciones) {
                 const cantSurtir = parseInt(repo.cantidad_a_surtir) || 0;
-                
-                // Restamos del inventario a granel (para rellenar la caja física)
-                const resConsumible = await client.query(`
-                    UPDATE consumible 
-                    SET cantidad = cantidad - $1 
-                    WHERE id = $2 AND cantidad >= $1
-                    RETURNING id
-                `, [cantSurtir, repo.consumible_id]);
+                if (cantSurtir <= 0) continue;
 
-                if (resConsumible.rows.length === 0) {
-                    throw new Error(`Stock insuficiente en inventario para reponer (ID Consumible: ${repo.consumible_id}).`);
+                // 4.1 Encontrar exactamente qué pieza de qué set se está reponiendo
+                const detalleOriginal = detalles.find(d => d.id === repo.detalle_id);
+                
+                if (!detalleOriginal || !detalleOriginal.set_id) {
+                    throw new Error('Reposición inválida: No se pudo enlazar con una caja válida.');
                 }
 
-                // Aquí "adivinamos" para qué set era la reposición buscando si ese consumible/pieza
-                // coincide con alguna deuda en los detalles de la remision de este mismo set.
-                let setIdDestino = null;
-                for (let d of detalles) {
-                    if (d.set_id && d.cantidad_consumo > 0) {
-                        setIdDestino = d.set_id;
-                        break;
+                const setIdDestino = detalleOriginal.set_id;
+                const piezaIdDestino = detalleOriginal.pieza_id;
+
+                // 4.2 Si eligió surtir mediante 'consumible', descontamos del inventario a granel
+                if (repo.tipo === 'consumible') {
+                    const resConsumible = await client.query(`
+                        UPDATE consumible 
+                        SET cantidad = cantidad - $1 
+                        WHERE id = $2 AND cantidad >= $1
+                        RETURNING id
+                    `, [cantSurtir, repo.consumible_id]);
+
+                    if (resConsumible.rows.length === 0) {
+                        throw new Error(`Stock insuficiente en almacén general para reponer la pieza seleccionada.`);
                     }
                 }
+                // Si tipo === 'instrumental', omitimos el descuento de granel.
 
-                if (setIdDestino) {
-                    reposicionPorSet[setIdDestino] = (reposicionPorSet[setIdDestino] || 0) + cantSurtir;
+                // 4.3 Físicamente regresamos la pieza al interior de la caja (set_composicion)
+                if (piezaIdDestino) {
+                    await client.query(`
+                        UPDATE set_composicion 
+                        SET cantidad_pieza = cantidad_pieza + $1 
+                        WHERE set_id = $2 AND pieza_id = $3
+                    `, [cantSurtir, setIdDestino, piezaIdDestino]);
                 }
+
+                // 4.4 Sumamos al contador del Set para decidir su estado final
+                reposicionPorSet[setIdDestino] = (reposicionPorSet[setIdDestino] || 0) + cantSurtir;
             }
         }
 
         // 5. Liberar los Sets (Disponible o Incompleto)
         for (let setId of setsActualizados) {
-            // Sumamos todo el consumo registrado para este set específico en esta remisión
             const totalConsumoDelSet = detalles
                 .filter(d => d.set_id === setId && !d.es_total)
                 .reduce((acc, curr) => acc + (parseInt(curr.cantidad_consumo) || 0), 0);
@@ -389,8 +397,7 @@ const conciliarRemision = async (req, res) => {
 
             let estadoFinalSet = estadoSetDisponibleId;
 
-            // REGLA INDIVIDUAL: Si el set tuvo consumo y el total repuesto en esta transacción 
-            // no cubre el total consumido de ESTE SET, queda como INCOMPLETO.
+            // REGLA INDIVIDUAL: Si la caja sufrió pérdidas y no se repusieron TODAS en este instante, queda incompleto.
             if (totalConsumoDelSet > 0 && totalRepuestoAEsteSet < totalConsumoDelSet) {
                 estadoFinalSet = estadoSetIncompletoId;
             }

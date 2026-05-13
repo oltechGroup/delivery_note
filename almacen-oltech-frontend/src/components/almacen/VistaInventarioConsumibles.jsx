@@ -8,6 +8,8 @@ import ModalAjusteStock from './ModalAjusteStock';
 import ModalEntradaMasiva from './carga-masiva/ModalEntradaMasiva';
 import ReporteConsumibles from './impresion/ReporteConsumibles';
 import ModalEditarConsumible from './ModalEditarConsumible'; 
+// NUEVO: Importamos el nuevo componente de impresión de etiquetas (que crearemos en el siguiente paso)
+import EtiquetasConsumibles from './impresion/EtiquetasConsumibles'; 
 
 function VistaInventarioConsumibles({ categoria, onVolver }) {
   const { token } = useAuth();
@@ -24,8 +26,10 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
   // NUEVOS ESTADOS: Edición y Eliminación
   const [modalEditar, setModalEditar] = useState({ abierto: false, consumible: null });
 
-  // NUEVO: Estado para controlar la Vista Previa de Impresión
+  // Estados para controlar las Vistas Previas de Impresión
   const [mostrarModalImpresion, setMostrarModalImpresion] = useState(false);
+  // NUEVO: Estado para abrir la vista previa de etiquetas
+  const [mostrarModalEtiquetas, setMostrarModalEtiquetas] = useState(false);
 
   // Paginación y Ordenamiento
   const [paginaActual, setPaginaActual] = useState(1);
@@ -153,17 +157,30 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
         </div>
 
         {/* RESPONSIVO: Botones al 100% de ancho en móvil y apilados con gap */}
-        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full xl:w-auto">
-          <Buscador 
-            valor={busqueda} 
-            onBuscar={setBusqueda} 
-            placeholder="Buscar por código, nombre o lote..." 
-          />
+        <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3 w-full xl:w-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="w-full sm:w-auto">
+            <Buscador 
+              valor={busqueda} 
+              onBuscar={setBusqueda} 
+              placeholder="Buscar por código, nombre o lote..." 
+            />
+          </div>
           
+          {/* NUEVO BOTÓN: Imprimir Etiquetas */}
+          <button 
+            onClick={() => setMostrarModalEtiquetas(true)}
+            disabled={consumiblesOrdenados.length === 0}
+            className="w-full sm:w-auto bg-white border-2 border-oltech-pink text-oltech-pink px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-pink-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
+            title="Generar Etiquetas de Código de Barras"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>
+            <span>Generar Etiquetas</span>
+          </button>
+
           <button 
             onClick={() => setMostrarModalImpresion(true)}
             disabled={consumiblesOrdenados.length === 0}
-            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-white border-2 border-oltech-blue text-oltech-blue px-4 py-2.5 sm:py-2 rounded-lg text-sm font-bold hover:bg-blue-50 disabled:opacity-50 transition-colors shadow-sm flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
             title="Generar formato de Impresión (Vista Previa)"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
@@ -172,7 +189,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
 
           <button 
             onClick={() => setModalEntradaAbierto(true)}
-            className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-green-600 text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
             <span>Ingreso</span>
@@ -180,7 +197,7 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
 
           <button 
             onClick={() => setModalNuevoAbierto(true)}
-            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap"
+            className="w-full sm:w-auto bg-oltech-black text-white px-4 py-2.5 sm:py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2 whitespace-nowrap shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
@@ -321,6 +338,15 @@ function VistaInventarioConsumibles({ categoria, onVolver }) {
           categoria={categoria} 
           consumibles={consumiblesOrdenados} 
           onClose={() => setMostrarModalImpresion(false)}
+        />
+      )}
+
+      {/* NUEVO: COMPONENTE DE ETIQUETAS */}
+      {mostrarModalEtiquetas && (
+        <EtiquetasConsumibles 
+          categoria={categoria} 
+          consumibles={consumiblesOrdenados} 
+          onClose={() => setMostrarModalEtiquetas(false)}
         />
       )}
 
