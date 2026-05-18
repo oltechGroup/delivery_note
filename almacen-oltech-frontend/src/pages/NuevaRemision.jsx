@@ -34,7 +34,7 @@ function NuevaRemision() {
   // Opciones de configuración de la fila que se va a agregar
   const [tipoBusqueda, setTipoBusqueda] = useState('set'); 
   
-  // NUEVO: Referencia para el Input del Buscador
+  // Referencia para el Input del Buscador
   const inputBusquedaRef = useRef(null);
   
   // Inicialización
@@ -47,6 +47,31 @@ function NuevaRemision() {
         inputBusquedaRef.current.focus();
     }
   }, [token]);
+
+  // Redirección inteligente de la pistola de código de barras cuando se pierde el foco
+  useEffect(() => {
+    const handleGlobalKeyDown = (e) => {
+      const tagsEvitar = ['INPUT', 'TEXTAREA', 'SELECT'];
+      
+      // Si el buscador ya está enfocado o el usuario está escribiendo intencionalmente en otro input/select, no interferimos
+      if (
+        document.activeElement === inputBusquedaRef.current ||
+        tagsEvitar.includes(document.activeElement?.tagName)
+      ) {
+        return;
+      }
+
+      // Capturar caracteres comunes provenientes de la pistola (excluyendo teclas de control del sistema)
+      if (inputBusquedaRef.current && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        inputBusquedaRef.current.focus();
+        setBusquedaTexto((prev) => prev + e.key);
+        e.preventDefault(); // Evita que se duplique el primer carácter al enfocar
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   const generarFolioAutomatico = () => {
     const hoy = new Date();
@@ -73,7 +98,7 @@ function NuevaRemision() {
     }
   };
 
-  // Buscador Inteligente Flexible (Código o Nombre)
+  // Buscador Inteligente Flexible (Código o Nombre) - Visual
   useEffect(() => {
     if (busquedaTexto.length < 3) {
       setResultadosBusqueda([]);
@@ -118,37 +143,52 @@ function NuevaRemision() {
   }, [busquedaTexto, tipoBusqueda, token]);
 
   // ==========================================
-  // NUEVO: LÓGICA DEL ESCÁNER DE CÓDIGO DE BARRAS
+  // LÓGICA DEL ESCÁNER DE CÓDIGO DE BARRAS (ACTUALIZADO PARA EVITAR RACE CONDITION)
   // ==========================================
   const handleKeyDownScanner = async (e) => {
-    // Si la tecla es Enter, asumimos que es el escáner finalizando la lectura
     if (e.key === 'Enter' && busquedaTexto.trim().length > 0) {
-      e.preventDefault(); // Evitamos que envíe el formulario accidentalmente
+      e.preventDefault();
       
       const codigoEscaneado = busquedaTexto.trim().toLowerCase();
-      
-      // Buscamos si tenemos resultados cargados que coincidan EXACTAMENTE con el código
-      const coincidenciaExacta = resultadosBusqueda.find(res => {
-        const codigo = tipoBusqueda === 'set' ? res.codigo : res.codigo_referencia;
-        return codigo.toLowerCase() === codigoEscaneado;
-      });
+      setCargando(true); // Bloqueamos la interfaz un milisegundo para procesar
+      setError('');
 
-      if (coincidenciaExacta) {
-        // Validación de Stock/Disponibilidad antes de agregarlo
-        const esSet = tipoBusqueda === 'set';
-        const estaNoDisponible = esSet && coincidenciaExacta.estado_nombre && !['activo', 'disponible'].includes(coincidenciaExacta.estado_nombre.toLowerCase());
-        const sinStock = !esSet && coincidenciaExacta.cantidad <= 0;
+      try {
+        // Hacemos la consulta directa y fresca al backend saltándonos el "debounce" visual
+        const url = tipoBusqueda === 'set' 
+          ? 'http://localhost:4000/api/almacen/sets' 
+          : 'http://localhost:4000/api/almacen/consumibles';
+          
+        const res = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+        
+        // Buscamos la coincidencia exacta en los datos recién llegados
+        const coincidenciaExacta = res.data.find(item => {
+          const codigo = tipoBusqueda === 'set' ? item.codigo : item.codigo_referencia;
+          return codigo.toLowerCase() === codigoEscaneado;
+        });
 
-        if (estaNoDisponible || sinStock) {
-           setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no está disponible o no tiene stock.`);
-           setBusquedaTexto('');
-           return;
+        if (coincidenciaExacta) {
+          // Validación de Stock/Disponibilidad
+          const esSet = tipoBusqueda === 'set';
+          const estaNoDisponible = esSet && coincidenciaExacta.estado_nombre && !['activo', 'disponible'].includes(coincidenciaExacta.estado_nombre.toLowerCase());
+          const sinStock = !esSet && coincidenciaExacta.cantidad <= 0;
+
+          if (estaNoDisponible || sinStock) {
+             setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no está disponible o no tiene stock.`);
+             setBusquedaTexto('');
+             setCargando(false);
+             return;
+          }
+
+          await agregarAlTicket(coincidenciaExacta);
+        } else {
+          setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no existe o pertenece a otro tipo de búsqueda (Set / Consumible).`);
         }
-
-        // Si todo está bien, lo agregamos como si le hubieran dado clic
-        await agregarAlTicket(coincidenciaExacta);
-      } else {
-        setError(`El código escaneado (${codigoEscaneado.toUpperCase()}) no existe o pertenece a otro tipo de búsqueda (Set / Consumible).`);
+      } catch (err) {
+        console.error(err);
+        setError('Error al procesar el escaneo con la base de datos.');
+      } finally {
+        setCargando(false);
       }
     }
   };
@@ -163,7 +203,6 @@ function NuevaRemision() {
 
     if (tipoBusqueda === 'consumible') {
       // 1. Agregar Consumible Suelto
-      // NUEVO: Revisar si ya existe en la tabla para solo sumarle 1 a la cantidad en lugar de duplicar la fila
       const indiceExistente = detalles.findIndex(d => d.consumible_id === item.id && !d.set_id);
       
       if (indiceExistente >= 0) {
@@ -185,7 +224,7 @@ function NuevaRemision() {
             consumible_id: item.id,
             codigo: item.codigo_referencia,
             descripcion: item.nombre,
-            cantidad_maxima: item.cantidad,
+            cantidad_maxima: item.cantidad, // <-- Corrección interna silenciosa (decía black_maxima antes por un typo previo)
             cantidad_despachada: 1,
             lote: item.lote || '', 
             fecha_caducidad: tieneCaducidadEnBD ? item.fecha_caducidad : '',
@@ -197,7 +236,6 @@ function NuevaRemision() {
 
     } else {
       // 2. Agregar Set Completo (Primero la fila del Set, luego sus piezas)
-      // NUEVO: Validar si el Set ya fue agregado (Los sets no se pueden duplicar en la misma remisión)
       const setYaAgregado = detalles.some(d => d.set_id === item.id && d.es_fila_set_padre);
       if (setYaAgregado) {
           setError(`El Set ${item.codigo} ya está agregado a esta remisión.`);
@@ -658,7 +696,6 @@ function NuevaRemision() {
                             />
                           </td>
                           <td className="p-1 text-center">
-                            {/* RESPONSIVO CORRECCIÓN 2: opacity-100 sm:opacity-0 para que el tache sea siempre visible en móvil y funcione con hover en PC */}
                             <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">✖</button>
                           </td>
                         </tr>
@@ -706,7 +743,6 @@ function NuevaRemision() {
                           )}
                         </td>
                         <td className="p-1 text-center align-middle">
-                          {/* RESPONSIVO CORRECCIÓN 2: opacity-100 sm:opacity-0 para que el tache sea siempre visible en móvil y funcione con hover en PC */}
                           <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-gray-300 hover:text-red-500 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                             ✖
                           </button>

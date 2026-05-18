@@ -1,3 +1,4 @@
+//almacen-oltech-frontend/src/components/almacen/impresion/EtiquetasConsumibles.jsx
 import { useMemo, useRef } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import Barcode from 'react-barcode';
@@ -87,20 +88,24 @@ function EtiquetasConsumibles({ categoria, consumibles, onClose }) {
                         {/* Cuadrícula de Etiquetas */}
                         <div className="grid grid-cols-3 gap-x-4 gap-y-4 h-full content-start">
                             {paginaItems.map((item) => (
-                                <div key={item.id} className="border border-dashed border-gray-300 p-2 flex flex-col items-center justify-center text-center h-[2.8cm]">
-                                    <p className="text-[10px] font-bold text-gray-800 leading-tight line-clamp-1 w-full mb-1">
+                                <div key={item.id} className="border-2 border-dashed border-gray-500 p-2 flex flex-col items-center justify-center text-center h-[2.8cm] overflow-hidden">
+                                    <p className="text-[10px] font-bold text-gray-800 leading-tight line-clamp-1 w-full mb-1 shrink-0">
                                         {item.nombre}
                                     </p>
-                                    <Barcode 
-                                        value={item.codigo_referencia} 
-                                        width={1.2} 
-                                        height={35} 
-                                        fontSize={10} 
-                                        margin={0}
-                                        displayValue={true} 
-                                    />
+                                    
+                                    <div className="w-full flex justify-center items-center overflow-hidden [&>svg]:max-w-full [&>svg]:h-auto">
+                                        <Barcode 
+                                            value={item.codigo_referencia} 
+                                            width={1.2} 
+                                            height={35} 
+                                            fontSize={10} 
+                                            margin={0}
+                                            displayValue={true} 
+                                        />
+                                    </div>
+
                                     {item.lote && (
-                                      <p className="text-[8px] text-gray-500 mt-0.5">
+                                      <p className="text-[8px] text-gray-500 mt-0.5 font-bold shrink-0">
                                           LOTE: {item.lote}
                                       </p>
                                     )}
