@@ -6,6 +6,9 @@ const cotizacionesController = require('../controllers/cotizacionesController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
+// NUEVO: Importamos el middleware de multer
+const upload = require('../middlewares/uploadMiddleware');
+
 // Definición de permisos según lo que acordamos
 const rolesCotizaciones = ['Cotizaciones', 'Biomédicos', 'Sistemas'];
 const rolesSistemas = ['Sistemas'];
@@ -17,7 +20,8 @@ const rolesSistemas = ['Sistemas'];
 router.get('/firmas', verificarToken, checkRole(rolesCotizaciones), cotizacionesController.obtenerFirmas);
 
 // SOLO Sistemas puede registrar nuevas firmas en el canvas
-router.post('/firmas', verificarToken, checkRole(rolesSistemas), cotizacionesController.crearFirma);
+// NUEVO: Agregamos upload.single('firma_url') para que multer procese la imagen
+router.post('/firmas', verificarToken, checkRole(rolesSistemas), upload.single('firma_url'), cotizacionesController.crearFirma);
 
 // ==========================================
 // RUTAS: COTIZACIONES

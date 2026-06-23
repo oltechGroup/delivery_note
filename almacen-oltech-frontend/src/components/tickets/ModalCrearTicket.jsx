@@ -1,5 +1,5 @@
 // almacen-oltech-frontend/src/components/tickets/ModalCrearTicket.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -15,8 +15,16 @@ function ModalCrearTicket({ isOpen, onClose, onTicketGuardado }) {
     prioridad_id: '1' // 1: Baja, 2: Media, 3: Alta, 4: Crítica
   });
 
-  // Estado para guardar las imágenes convertidas a Base64
-  const [imagenesBase64, setImagenesBase64] = useState([]);
+  // NUEVO: Estados separados para archivos reales y sus vistas previas
+  const [archivosFisicos, setArchivosFisicos] = useState([]);
+  const [vistasPrevias, setVistasPrevias] = useState([]);
+
+  // Limpiar recursos de memoria cuando se cierre el modal
+  useEffect(() => {
+    if (!isOpen) {
+      vistasPrevias.forEach(url => URL.revokeObjectURL(url));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -24,33 +32,29 @@ function ModalCrearTicket({ isOpen, onClose, onTicketGuardado }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Función para convertir archivo de imagen a Base64
-  const convertirABase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
-  // Manejador del input de archivos (Múltiples imágenes)
-  const handleArchivos = async (e) => {
-    const archivos = Array.from(e.target.files);
-    try {
-      const base64Array = await Promise.all(archivos.map(file => convertirABase64(file)));
-      // Agregamos las nuevas imágenes a las que ya estaban (por si selecciona en varias tandas)
-      setImagenesBase64(prev => [...prev, ...base64Array]);
-    } catch (err) {
-      console.error('Error al procesar imágenes:', err);
-      setError('Ocurrió un error al cargar las imágenes.');
-    }
+  // NUEVO: Manejador optimizado para atrapar archivos reales
+  const handleArchivos = (e) => {
+    const nuevosArchivos = Array.from(e.target.files);
+    
+    // Agregamos los archivos físicos al estado
+    setArchivosFisicos(prev => [...prev, ...nuevosArchivos]);
+    
+    // Generamos URLs temporales muy ligeras solo para mostrarlas en pantalla
+    const nuevasVistas = nuevosArchivos.map(file => URL.createObjectURL(file));
+    setVistasPrevias(prev => [...prev, ...nuevasVistas]);
   };
 
   const eliminarImagen = (index) => {
-    const nuevasImagenes = [...imagenesBase64];
-    nuevasImagenes.splice(index, 1);
-    setImagenesBase64(nuevasImagenes);
+    // Eliminamos el archivo físico
+    const nuevosArchivos = [...archivosFisicos];
+    nuevosArchivos.splice(index, 1);
+    setArchivosFisicos(nuevosArchivos);
+
+    // Eliminamos la vista previa y liberamos esa memoria
+    const nuevasVistas = [...vistasPrevias];
+    URL.revokeObjectURL(nuevasVistas[index]); 
+    nuevasVistas.splice(index, 1);
+    setVistasPrevias(nuevasVistas);
   };
 
   const handleSubmit = async (e) => {
@@ -59,20 +63,25 @@ function ModalCrearTicket({ isOpen, onClose, onTicketGuardado }) {
     setCargando(true);
 
     try {
-      await axios.post('http://localhost:4000/api/tickets', {
-        ...formData,
-        prioridad_id: parseInt(formData.prioridad_id),
-        imagenes: imagenesBase64
-      }, {
+      // NUEVO: Creamos el FormData para Multer
+      const dataAEnviar = new FormData();
+      dataAEnviar.append('asunto', formData.asunto);
+      dataAEnviar.append('descripcion', formData.descripcion);
+      dataAEnviar.append('prioridad_id', formData.prioridad_id);
+      
+      // Agregamos todos los archivos físicos bajo la misma llave 'imagenes'
+      for (let i = 0; i < archivosFisicos.length; i++) {
+        dataAEnviar.append('imagenes', archivosFisicos[i]);
+      }
+
+      await axios.post('http://localhost:4000/api/tickets', dataAEnviar, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       // Limpiamos todo al terminar con éxito
-      setFormData({ asunto: '', descripcion: '', prioridad_id: '1' });
-      setImagenesBase64([]);
-      
+      handleCerrarModal();
       onTicketGuardado(); 
-      onClose();
+      
     } catch (err) {
       setError(err.response?.data?.mensaje || 'Error al guardar el ticket. Verifica tu conexión.');
     } finally {
@@ -82,7 +91,10 @@ function ModalCrearTicket({ isOpen, onClose, onTicketGuardado }) {
 
   const handleCerrarModal = () => {
     setFormData({ asunto: '', descripcion: '', prioridad_id: '1' });
-    setImagenesBase64([]);
+    setArchivosFisicos([]);
+    // Liberar memoria de las vistas previas antes de limpiar el arreglo
+    vistasPrevias.forEach(url => URL.revokeObjectURL(url));
+    setVistasPrevias([]);
     setError('');
     onClose();
   };
@@ -158,11 +170,11 @@ function ModalCrearTicket({ isOpen, onClose, onTicketGuardado }) {
               </div>
 
               {/* Previsualización de imágenes cargadas */}
-              {imagenesBase64.length > 0 && (
+              {vistasPrevias.length > 0 && (
                 <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-3">
-                  {imagenesBase64.map((img, index) => (
+                  {vistasPrevias.map((url, index) => (
                     <div key={index} className="relative group">
-                      <img src={img} alt={`Evidencia ${index + 1}`} className="h-20 w-full object-cover rounded-md border border-gray-200" />
+                      <img src={url} alt={`Evidencia ${index + 1}`} className="h-20 w-full object-cover rounded-md border border-gray-200" />
                       <button type="button" onClick={() => eliminarImagen(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">

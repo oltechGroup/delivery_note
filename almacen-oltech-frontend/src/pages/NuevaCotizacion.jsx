@@ -40,10 +40,17 @@ function NuevaCotizacion() {
     cargarFirmas();
   }, [token]);
 
+  // NUEVO: Función para asegurar que las imágenes se carguen correctamente independientemente de si son Base64 o Rutas
+  const obtenerUrlImagen = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:image')) return url; // Formato viejo (Base64)
+    return `http://localhost:4000${url}`; // Formato nuevo (Ruta física)
+  };
+
   const agregarFilaManual = () => {
     const nuevoDetalle = {
       id_temp: Date.now() + Math.random(),
-      partida: detalles.length + 1, // Sugerimos un número consecutivo por defecto, pero ahora es editable
+      partida: detalles.length + 1, 
       descripcion: '', 
       unidad: 'PIEZA',
       cantidad: 1,
@@ -120,7 +127,7 @@ function NuevaCotizacion() {
         total: totalParaBD,
         firma_id: parseInt(firmaSeleccionada),
         detalles: detalles.map((d, index) => ({
-          partida: parseInt(d.partida) || (index + 1), // Aseguramos mandar la partida escrita o un respaldo
+          partida: parseInt(d.partida) || (index + 1),
           descripcion: d.descripcion.toUpperCase(), 
           unidad: d.unidad.toUpperCase(),
           cantidad: parseInt(d.cantidad) || 0,
@@ -309,13 +316,12 @@ function NuevaCotizacion() {
                                     ) : (
                                         detalles.map((d) => (
                                             <tr key={d.id_temp} className="group bg-white evitar-corte">
-                                                {/* PARTIDA EDITABLE AQUÍ */}
                                                 <td className="border border-black p-1 text-center font-bold align-top">
                                                     <input 
-                                                      type="number" 
-                                                      value={d.partida} 
-                                                      onChange={(e) => actualizarCampoDetalle(d.id_temp, 'partida', e.target.value)} 
-                                                      className="w-full text-center bg-transparent outline-none mt-1.5 font-bold" 
+                                                        type="number" 
+                                                        value={d.partida} 
+                                                        onChange={(e) => actualizarCampoDetalle(d.id_temp, 'partida', e.target.value)} 
+                                                        className="w-full text-center bg-transparent outline-none mt-1.5 font-bold" 
                                                     />
                                                 </td>
                                                 <td className="border border-black p-1 uppercase">
@@ -413,7 +419,7 @@ function NuevaCotizacion() {
                             
                             <div className="w-64 border-b border-black text-center flex flex-col items-center justify-end h-14 relative z-10">
                                 {firmaSeleccionada && firmas.find(f => f.id === parseInt(firmaSeleccionada))?.firmas_url && (
-                                <img src={firmas.find(f => f.id === parseInt(firmaSeleccionada)).firmas_url} alt="Firma" className="absolute bottom-0 max-h-16 pointer-events-none" />
+                                <img src={obtenerUrlImagen(firmas.find(f => f.id === parseInt(firmaSeleccionada)).firmas_url)} alt="Firma" className="absolute bottom-0 max-h-16 pointer-events-none" />
                                 )}
                             </div>
                             

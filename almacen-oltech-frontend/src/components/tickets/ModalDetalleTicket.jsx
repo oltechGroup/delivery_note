@@ -48,11 +48,18 @@ function ModalDetalleTicket({ isOpen, onClose, ticketId }) {
   const getBadgeEstado = (estado) => {
     switch (estado) {
       case 'Abierto': return 'bg-blue-100 text-blue-800';
-      case 'En Revision': return 'bg-yellow-100 text-yellow-800'; // <-- CORREGIDO SIN ACENTO
+      case 'En Revision': return 'bg-yellow-100 text-yellow-800'; 
       case 'Resuelto': return 'bg-green-100 text-green-800';
       case 'Cancelado': return 'bg-gray-200 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // NUEVO: Función para leer imágenes viejas (Base64) y nuevas (Rutas)
+  const obtenerUrlImagen = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:image')) return url; // Formato viejo (Base64)
+    return `http://localhost:4000${url}`; // Formato nuevo (Ruta física)
   };
 
   if (!isOpen) return null;
@@ -149,11 +156,11 @@ function ModalDetalleTicket({ isOpen, onClose, ticketId }) {
                         {detalle.imagenes.map((img, index) => (
                           <div 
                             key={img.id} 
-                            onClick={() => setImagenExpandida(img.imagen_base64)}
+                            onClick={() => setImagenExpandida(obtenerUrlImagen(img.imagen_base64))}
                             className="block cursor-pointer hover:opacity-80 transition-transform hover:scale-105"
                           >
                             <img 
-                              src={img.imagen_base64} 
+                              src={obtenerUrlImagen(img.imagen_base64)} 
                               alt={`Evidencia ${index + 1}`} 
                               className="w-full h-24 object-cover rounded-lg border border-gray-300 shadow-sm hover:border-oltech-pink"
                             />

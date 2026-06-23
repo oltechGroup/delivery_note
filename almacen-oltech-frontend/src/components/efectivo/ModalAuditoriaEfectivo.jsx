@@ -30,6 +30,13 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
   const limpiarTexto = (texto) => texto ? texto.replace(/‚/g, 'é') : '';
   const rolActual = limpiarTexto(usuario?.rol);
 
+  // NUEVO: Función para leer imágenes viejas (Base64) y nuevas (Rutas)
+  const obtenerUrlImagen = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:image')) return url; // Es formato viejo (Base64)
+    return `http://localhost:4000${url}`; // Es formato nuevo (Ruta física)
+  };
+
   const handleAutorizar = async () => {
     const nuevoEstadoId = 3; 
     setMensaje({ texto: '', tipo: '' });
@@ -169,11 +176,11 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                   <div className="space-y-1 sm:space-y-2">
                     <p className="font-medium text-gray-700 text-xs sm:text-sm">INE Pagador</p>
                     <div 
-                      onClick={() => ingreso.foto_ine_url && setImagenExpandida(ingreso.foto_ine_url)}
+                      onClick={() => ingreso.foto_ine_url && setImagenExpandida(obtenerUrlImagen(ingreso.foto_ine_url))}
                       className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-32 sm:h-40 flex items-center justify-center transition-transform ${ingreso.foto_ine_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
                     >
                       {ingreso.foto_ine_url ? (
-                        <img src={ingreso.foto_ine_url} alt="INE" className="max-h-full max-w-full object-contain" />
+                        <img src={obtenerUrlImagen(ingreso.foto_ine_url)} alt="INE" className="max-h-full max-w-full object-contain" />
                       ) : (
                         <p className="text-gray-400 italic text-xs sm:text-sm">Sin evidencia</p>
                       )}
@@ -184,11 +191,11 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                   <div className="space-y-1 sm:space-y-2">
                     <p className="font-medium text-gray-700 text-xs sm:text-sm">Firma</p>
                     <div 
-                      onClick={() => ingreso.firma_url && setImagenExpandida(ingreso.firma_url)}
+                      onClick={() => ingreso.firma_url && setImagenExpandida(obtenerUrlImagen(ingreso.firma_url))}
                       className={`border border-gray-200 rounded-lg overflow-hidden bg-white h-32 sm:h-40 flex items-center justify-center transition-transform ${ingreso.firma_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
                     >
                       {ingreso.firma_url ? (
-                        <img src={ingreso.firma_url} alt="Firma" className="max-h-full max-w-full object-contain" />
+                        <img src={obtenerUrlImagen(ingreso.firma_url)} alt="Firma" className="max-h-full max-w-full object-contain" />
                       ) : (
                         <p className="text-gray-400 italic text-xs sm:text-sm">Sin firma</p>
                       )}
@@ -199,11 +206,11 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                   <div className="space-y-1 sm:space-y-2">
                     <p className="font-medium text-gray-700 text-xs sm:text-sm">Evidencia Inicial (Dinero)</p>
                     <div 
-                      onClick={() => ingreso.foto_evidencia_url && setImagenExpandida(ingreso.foto_evidencia_url)}
+                      onClick={() => ingreso.foto_evidencia_url && setImagenExpandida(obtenerUrlImagen(ingreso.foto_evidencia_url))}
                       className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-32 sm:h-40 flex items-center justify-center transition-transform ${ingreso.foto_evidencia_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
                     >
                       {ingreso.foto_evidencia_url ? (
-                        <img src={ingreso.foto_evidencia_url} alt="Evidencia Inicial" className="max-h-full max-w-full object-contain" />
+                        <img src={obtenerUrlImagen(ingreso.foto_evidencia_url)} alt="Evidencia Inicial" className="max-h-full max-w-full object-contain" />
                       ) : (
                         <p className="text-gray-400 italic text-xs sm:text-sm">Sin foto inicial</p>
                       )}
@@ -214,11 +221,11 @@ function ModalAuditoriaEfectivo({ isOpen, onClose, ingreso, onAuditoriaCompletad
                   <div className="space-y-1 sm:space-y-2">
                     <p className="font-medium text-gray-700 text-xs sm:text-sm">Ticket Gastos</p>
                     <div 
-                      onClick={() => ingreso.foto_observaciones_url && setImagenExpandida(ingreso.foto_observaciones_url)}
+                      onClick={() => ingreso.foto_observaciones_url && setImagenExpandida(obtenerUrlImagen(ingreso.foto_observaciones_url))}
                       className={`border border-gray-200 rounded-lg overflow-hidden bg-gray-50 h-32 sm:h-40 flex items-center justify-center transition-transform ${ingreso.foto_observaciones_url ? 'cursor-pointer hover:scale-105 hover:shadow-md hover:border-oltech-pink' : ''}`}
                     >
                       {ingreso.foto_observaciones_url ? (
-                        <img src={ingreso.foto_observaciones_url} alt="Ticket Gastos" className="max-h-full max-w-full object-contain" />
+                        <img src={obtenerUrlImagen(ingreso.foto_observaciones_url)} alt="Ticket Gastos" className="max-h-full max-w-full object-contain" />
                       ) : (
                         <p className="text-gray-400 italic text-xs sm:text-sm">Sin ticket</p>
                       )}

@@ -6,10 +6,10 @@ const ingresosModel = require('../models/ingresosEfectivoModel');
  */
 const registrarIngreso = async (req, res) => {
     try {
+        // Con Multer, los campos de texto normales siguen llegando en req.body
         const {
             folio, nombre_quien_paga, razon,
-            monto_acordado, monto_recibido, diferencia,
-            firma_url, foto_evidencia_url, foto_ine_url
+            monto_acordado, monto_recibido, diferencia
         } = req.body;
 
         // 1. Validación básica: Que no nos manden datos vacíos importantes
@@ -18,8 +18,26 @@ const registrarIngreso = async (req, res) => {
         }
 
         // 2. Extraer el ID del usuario que está logueado (El Biomédico)
-        // Esto viene gracias a tu middleware 'verificarToken'
         const usuario_recibe_id = req.usuario.id;
+
+        // --- INICIO LÓGICA MULTER ---
+        // Extraemos las rutas de los archivos que Multer ya guardó físicamente
+        let firma_url = null;
+        let foto_evidencia_url = null;
+        let foto_ine_url = null;
+
+        if (req.files) {
+            if (req.files.firma_url && req.files.firma_url.length > 0) {
+                firma_url = `/uploads/firmas/${req.files.firma_url[0].filename}`;
+            }
+            if (req.files.foto_evidencia_url && req.files.foto_evidencia_url.length > 0) {
+                foto_evidencia_url = `/uploads/efectivo/${req.files.foto_evidencia_url[0].filename}`;
+            }
+            if (req.files.foto_ine_url && req.files.foto_ine_url.length > 0) {
+                foto_ine_url = `/uploads/efectivo/${req.files.foto_ine_url[0].filename}`;
+            }
+        }
+        // --- FIN LÓGICA MULTER ---
 
         const data = {
             folio, 
@@ -101,12 +119,20 @@ const cambiarEstadoIngreso = async (req, res) => {
 const registrarGastosRuta = async (req, res) => {
     try {
         const { id } = req.params;
-        const { observaciones, monto_gasto, foto_observaciones_url } = req.body;
+        const { observaciones, monto_gasto } = req.body;
 
         // Validamos que al menos venga alguna observación o gasto
         if (!observaciones && monto_gasto === undefined) {
              return res.status(400).json({ mensaje: 'Faltan datos de observaciones o monto del gasto.' });
         }
+
+        // --- INICIO LÓGICA MULTER ---
+        // Si viene un archivo adjunto, extraemos su ruta. Si no viene, pasamos null (el modelo ya sabe mantener la foto anterior gracias a COALESCE)
+        let foto_observaciones_url = null;
+        if (req.file) {
+            foto_observaciones_url = `/uploads/efectivo/${req.file.filename}`;
+        }
+        // --- FIN LÓGICA MULTER ---
 
         const ingresoActualizado = await ingresosModel.agregarGastosRuta(id, {
              observaciones,
@@ -133,5 +159,5 @@ module.exports = {
     registrarIngreso,
     obtenerHistorialIngresos,
     cambiarEstadoIngreso,
-    registrarGastosRuta // Exportamos la nueva función
+    registrarGastosRuta
 };

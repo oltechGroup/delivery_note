@@ -16,11 +16,15 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' });
 
+  // Textos y números
   const [formData, setFormData] = useState({
     observaciones: '',
-    monto_gasto: '',
-    foto_observaciones_url: null
+    monto_gasto: ''
   });
+
+  // NUEVO: Estados separados para manejar la imagen física y su vista previa
+  const [archivoTicket, setArchivoTicket] = useState(null);
+  const [vistaPreviaTicket, setVistaPreviaTicket] = useState(null);
 
   // CORRECCIÓN: Los Hooks (useEffect) siempre van antes de los "return null"
   useEffect(() => {
@@ -28,9 +32,13 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
     if (isOpen && ingreso) {
       setFormData({
         observaciones: ingreso.observaciones || '',
-        monto_gasto: parseFloat(ingreso.monto_gasto) > 0 ? parseFloat(ingreso.monto_gasto).toString() : '',
-        foto_observaciones_url: ingreso.foto_observaciones_url || null
+        monto_gasto: parseFloat(ingreso.monto_gasto) > 0 ? parseFloat(ingreso.monto_gasto).toString() : ''
       });
+      
+      // Si el ingreso ya tenía una foto guardada en el servidor, la mostramos en la vista previa
+      setVistaPreviaTicket(ingreso.foto_observaciones_url || null);
+      setArchivoTicket(null); // Limpiamos el archivo físico porque aún no han subido uno nuevo
+      
       setMensaje({ texto: '', tipo: '' });
     }
   }, [ingreso, isOpen]);
@@ -39,14 +47,13 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // NUEVO: Guardar el archivo físico y generar una vista previa temporal
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, foto_observaciones_url: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      setArchivoTicket(file);
+      // Creamos una URL temporal para que el usuario vea la foto que acaba de elegir
+      setVistaPreviaTicket(URL.createObjectURL(file));
     }
   };
 
@@ -61,14 +68,20 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
 
     setCargando(true);
     try {
+      // NUEVO: Creamos el FormData para Multer
+      const dataAEnviar = new FormData();
+      dataAEnviar.append('observaciones', formData.observaciones);
+      dataAEnviar.append('monto_gasto', formData.monto_gasto || 0);
+      
+      // Si el usuario subió un archivo nuevo, lo adjuntamos
+      if (archivoTicket) {
+        dataAEnviar.append('foto_observaciones_url', archivoTicket);
+      }
+
       await axios.post(
         `http://localhost:4000/api/ingresos-efectivo/${ingreso.id}/gastos`,
-        {
-          observaciones: formData.observaciones,
-          monto_gasto: parseFloat(formData.monto_gasto) || 0,
-          foto_observaciones_url: formData.foto_observaciones_url
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        dataAEnviar,
+        { headers: { Authorization: `Bearer ${token}` } } // axios pone el multipart/form-data automático
       );
 
       setMensaje({ texto: '¡Gastos guardados correctamente!', tipo: 'exito' });
@@ -149,9 +162,10 @@ function ModalGastosRuta({ isOpen, onClose, ingreso, onGuardadoExitoso }) {
                 type="file" accept="image/*" capture="environment" onChange={handleImageUpload} 
                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 border border-gray-200 rounded-lg p-2" 
               />
-              {formData.foto_observaciones_url && (
+              {/* Mostramos la vista previa usando la URL temporal o la ruta vieja */}
+              {vistaPreviaTicket && (
                 <div className="mt-2 h-24 w-24 border rounded-lg overflow-hidden bg-gray-50">
-                  <img src={formData.foto_observaciones_url} alt="Ticket" className="h-full w-full object-cover" />
+                  <img src={vistaPreviaTicket} alt="Ticket" className="h-full w-full object-cover" />
                 </div>
               )}
             </div>

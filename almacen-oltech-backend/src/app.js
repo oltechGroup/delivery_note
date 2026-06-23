@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const path = require('path'); // NUEVO: Importamos el módulo para manejar las rutas de las carpetas
 
 // Inicializamos la aplicación
 const app = express();
@@ -10,8 +11,14 @@ const app = express();
 // Permitir peticiones desde el frontend (React)
 app.use(cors()); 
 
+// NUEVO: LA "PUERTA" HACIA TUS IMÁGENES
+// Le decimos a Express: "Si alguien pide una URL que empiece con /uploads, 
+// ve a buscar ese archivo físico a la carpeta 'uploads' que está un nivel atrás de 'src'"
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // SOLUCIÓN AL ERROR 413: Parsear el cuerpo de las peticiones a JSON con límite ampliado
-// Aumentamos a 50mb para permitir recibir las imágenes en Base64 del INE y las firmas
+// (Nota: Como ahora usamos Multer, los archivos pesados ya no pasan por aquí, 
+// pero es una buena práctica dejar el límite alto por si envían textos muy largos en el futuro).
 app.use(express.json({ limit: '50mb' })); 
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

@@ -41,6 +41,13 @@ function Firmas() {
     }
   }, [modalAbierto]);
 
+  // NUEVO: Función para determinar cómo leer la imagen (Base64 vs Ruta física)
+  const obtenerUrlImagen = (url) => {
+    if (!url) return '';
+    if (url.startsWith('data:image')) return url; // Es formato viejo (Base64)
+    return `http://localhost:4000${url}`; // Es formato nuevo (Ruta física)
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
@@ -111,7 +118,8 @@ function Firmas() {
                       <div className="flex justify-center items-center h-16 w-48 mx-auto bg-gray-50 border border-gray-200 rounded p-1">
                         {firma.firmas_url ? (
                           <img 
-                            src={firma.firmas_url} 
+                            // NUEVO: Usamos la función para procesar la ruta de la imagen
+                            src={obtenerUrlImagen(firma.firmas_url)} 
                             alt={`Firma de ${firma.nombre}`} 
                             className="max-h-full max-w-full object-contain pointer-events-none"
                           />

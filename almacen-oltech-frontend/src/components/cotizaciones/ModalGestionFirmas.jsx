@@ -27,6 +27,19 @@ function ModalGestionFirmas({ isOpen, onClose }) {
     onClose();
   };
 
+  // NUEVO: Función para convertir el Base64 del Canvas a un Archivo Físico para Multer
+  const base64ToFile = (base64String, filename) => {
+    const arr = base64String.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
   const handleGuardarFirma = async (e) => {
     e.preventDefault();
     setError('');
@@ -43,10 +56,16 @@ function ModalGestionFirmas({ isOpen, onClose }) {
     setCargando(true);
 
     try {
-      await axios.post('http://localhost:4000/api/cotizaciones/firmas', {
-        nombre: nombreFirma.toUpperCase(),
-        firmas_url: firmaUrl
-      }, {
+      // NUEVO: Creamos el FormData para enviarlo a Multer
+      const formData = new FormData();
+      formData.append('nombre', nombreFirma.toUpperCase());
+      
+      // Convertimos el Base64 que nos dio el canvas a un archivo real y lo adjuntamos
+      const archivoFirma = base64ToFile(firmaUrl, 'firma.png');
+      formData.append('firma_url', archivoFirma);
+
+      // Enviamos el FormData (axios configura automáticamente el header multipart/form-data)
+      await axios.post('http://localhost:4000/api/cotizaciones/firmas', formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

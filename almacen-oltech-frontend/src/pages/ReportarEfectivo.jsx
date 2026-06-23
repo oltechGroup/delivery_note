@@ -29,20 +29,22 @@ function ReportarEfectivo() {
   const [modalGastosAbierto, setModalGastosAbierto] = useState(false);
   const [ingresoParaGastos, setIngresoParaGastos] = useState(null);
 
-  // Estado del formulario de nuevo reporte
+  // Estado del formulario de nuevo reporte (Mantenemos los valores de texto)
   const [formData, setFormData] = useState({
     folio: '',
     nombre_quien_paga: '',
     razon: '',
     monto_acordado: '',
     monto_recibido: '',
-    diferencia: 0,
-    firma_url: null,
-    foto_evidencia_url: null,
-    foto_ine_url: null
+    diferencia: 0
   });
 
-  // Generar un folio automático al cargar la página (Ej. EFEC-123456)
+  // NUEVO: Estados separados para los archivos físicos
+  const [archivoFirma, setArchivoFirma] = useState(null);
+  const [archivoIne, setArchivoIne] = useState(null);
+  const [archivoEvidencia, setArchivoEvidencia] = useState(null);
+
+  // Generar un folio automático al cargar la página
   useEffect(() => {
     const generarFolio = () => {
       const randomNum = Math.floor(100000 + Math.random() * 900000);
@@ -92,46 +94,77 @@ function ReportarEfectivo() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Convertir imágenes subidas (INE o Evidencia) a Base64
-  const handleImageUpload = (e, campo) => {
+  // NUEVO: Guardar el archivo directamente (Sin convertirlo a Base64)
+  const handleImageUpload = (e, setArchivoState) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, [campo]: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      setArchivoState(file);
     }
   };
 
-  // Recibir la firma
-  const handleFirmaLista = (firmaBase64) => {
-    setFormData(prev => ({ ...prev, firma_url: firmaBase64 }));
+  // NUEVO: Función para convertir el Base64 del Canvas a File
+  const base64ToFile = (base64String, filename) => {
+    const arr = base64String.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
   };
 
-  // Enviar el nuevo reporte al backend
+  // Recibir la firma del canvas
+  const handleFirmaLista = (firmaBase64) => {
+    if (firmaBase64) {
+      const archivoGenerado = base64ToFile(firmaBase64, 'firma_conformidad.png');
+      setArchivoFirma(archivoGenerado);
+    } else {
+      setArchivoFirma(null);
+    }
+  };
+
+  // Enviar el nuevo reporte al backend usando FormData para Multer
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje({ texto: '', tipo: '' });
 
-    if (!formData.firma_url) {
+    if (!archivoFirma) {
       setMensaje({ texto: 'Por favor, es necesario que el cliente firme de conformidad.', tipo: 'error' });
       return;
     }
-    if (!formData.foto_ine_url) {
+    if (!archivoIne) {
       setMensaje({ texto: 'Es obligatorio subir la foto del INE.', tipo: 'error' });
       return;
     }
 
     setCargando(true);
     try {
-      await axios.post('http://localhost:4000/api/ingresos-efectivo', formData, {
+      // Creamos el paquete físico (FormData)
+      const dataAEnviar = new FormData();
+      
+      // Agregamos los textos
+      dataAEnviar.append('folio', formData.folio);
+      dataAEnviar.append('nombre_quien_paga', formData.nombre_quien_paga);
+      dataAEnviar.append('razon', formData.razon);
+      dataAEnviar.append('monto_acordado', formData.monto_acordado);
+      dataAEnviar.append('monto_recibido', formData.monto_recibido);
+      dataAEnviar.append('diferencia', formData.diferencia);
+      
+      // Agregamos los archivos (usando los mismos nombres que espera Multer en las rutas)
+      dataAEnviar.append('firma_url', archivoFirma);
+      dataAEnviar.append('foto_ine_url', archivoIne);
+      if (archivoEvidencia) {
+        dataAEnviar.append('foto_evidencia_url', archivoEvidencia);
+      }
+
+      await axios.post('http://localhost:4000/api/ingresos-efectivo', dataAEnviar, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       setMensaje({ texto: '¡Ingreso reportado exitosamente! Ahora puedes añadir gastos en la pestaña "Mis Reportes".', tipo: 'exito' });
       
-      // Limpiamos y mandamos a la pestaña del historial después de 2 segundos
       setTimeout(() => {
         window.location.reload(); 
       }, 2000);
@@ -152,7 +185,6 @@ function ReportarEfectivo() {
   };
 
   return (
-    // RESPONSIVO: px-4 para no pegar a los bordes en celular
     <div className="max-w-5xl mx-auto space-y-4 sm:space-y-6 pb-12 px-0 sm:px-0">
       
       <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -163,7 +195,6 @@ function ReportarEfectivo() {
       </div>
 
       {/* Pestañas de Navegación */}
-      {/* RESPONSIVO: overflow-x-auto y whitespace-nowrap para deslizar en móviles */}
       <div className="flex border-b border-gray-200 overflow-x-auto whitespace-nowrap">
         <button 
           onClick={() => setPestanaActiva('nuevo')}
@@ -248,11 +279,12 @@ function ReportarEfectivo() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Foto del INE (Requerido) *</label>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(e, 'foto_ine_url')} className="w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-pink-50 file:text-oltech-pink hover:file:bg-pink-100 border border-gray-200 rounded-lg p-2" />
+                  {/* NUEVO: Llamamos a la función de guardado con su estado correspondiente */}
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(e, setArchivoIne)} className="w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-pink-50 file:text-oltech-pink hover:file:bg-pink-100 border border-gray-200 rounded-lg p-2" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Foto del Dinero / Recibo (Opcional)</label>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(e, 'foto_evidencia_url')} className="w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-lg p-2" />
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(e, setArchivoEvidencia)} className="w-full text-xs sm:text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs sm:file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-gray-200 rounded-lg p-2" />
                 </div>
               </div>
               <div>
@@ -264,7 +296,6 @@ function ReportarEfectivo() {
 
           {/* BOTÓN ENVIAR */}
           <div className="p-4 sm:p-6 bg-gray-50 flex sm:justify-end">
-            {/* RESPONSIVO: w-full y justify-center en móvil */}
             <button type="submit" disabled={cargando} className="w-full sm:w-auto px-8 py-3 bg-oltech-black text-white rounded-lg font-bold text-base sm:text-lg hover:bg-gray-800 transition-colors disabled:opacity-70 shadow-lg flex items-center justify-center space-x-2">
               {cargando ? <span>Procesando...</span> : <span>Guardar Reporte Inicial</span>}
             </button>
@@ -283,7 +314,6 @@ function ReportarEfectivo() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                {/* RESPONSIVO: whitespace-nowrap */}
                 <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-[10px] sm:text-xs uppercase tracking-wider whitespace-nowrap">
                   <th className="p-3 sm:p-4 font-semibold">Folio</th>
                   <th className="p-3 sm:p-4 font-semibold">Cliente</th>

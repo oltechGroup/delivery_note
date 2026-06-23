@@ -9,6 +9,9 @@ const ingresosController = require('../controllers/ingresosEfectivoController');
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
+// NUEVO: Importamos el middleware de multer
+const upload = require('../middlewares/uploadMiddleware');
+
 // ==========================================
 // DEFINICIÓN DE PERMISOS POR ROL
 // ==========================================
@@ -33,13 +36,28 @@ const rolesGastos = ['Biomédicos', 'Ventas', 'Sistemas', 'Operaciones'];
 router.get('/', verificarToken, checkRole(rolesLectura), ingresosController.obtenerHistorialIngresos);
 
 // 2. Registrar un nuevo ingreso de efectivo (POST /api/ingresos-efectivo)
-router.post('/', verificarToken, checkRole(rolesCreacion), ingresosController.registrarIngreso);
+// NUEVO: Usamos upload.fields para interceptar hasta 3 imágenes distintas de un solo golpe
+router.post('/', 
+    verificarToken, 
+    checkRole(rolesCreacion), 
+    upload.fields([
+        { name: 'firma_url', maxCount: 1 },
+        { name: 'foto_evidencia_url', maxCount: 1 },
+        { name: 'foto_ine_url', maxCount: 1 }
+    ]),
+    ingresosController.registrarIngreso
+);
 
 // 3. Cambiar el estado del ingreso (PATCH /api/ingresos-efectivo/:id/estado)
 router.patch('/:id/estado', verificarToken, checkRole(rolesAutorizacion), ingresosController.cambiarEstadoIngreso);
 
 // 4. NUEVO: Agregar gastos de ruta y observaciones (POST /api/ingresos-efectivo/:id/gastos)
-// Usamos POST porque estamos adjuntando archivos pesados (Base64) en el body
-router.post('/:id/gastos', verificarToken, checkRole(rolesGastos), ingresosController.registrarGastosRuta);
+// NUEVO: Usamos upload.single para interceptar solo el ticket del gasto extra
+router.post('/:id/gastos', 
+    verificarToken, 
+    checkRole(rolesGastos), 
+    upload.single('foto_observaciones_url'),
+    ingresosController.registrarGastosRuta
+);
 
 module.exports = router;

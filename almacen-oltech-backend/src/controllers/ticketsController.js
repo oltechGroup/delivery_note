@@ -18,7 +18,7 @@ const transporter = nodemailer.createTransport({
  */
 const crearTicket = async (req, res) => {
     try {
-        const { asunto, descripcion, prioridad_id, imagenes } = req.body;
+        const { asunto, descripcion, prioridad_id } = req.body;
         
         // El id y el username vienen del token gracias al middleware verificarToken
         const idUsuarioCreador = req.usuario.id;
@@ -28,10 +28,19 @@ const crearTicket = async (req, res) => {
             return res.status(400).json({ mensaje: 'El asunto, la descripción y la prioridad son obligatorios.' });
         }
 
+        // --- INICIO LÓGICA MULTER ---
+        // Multer deja los archivos procesados en el arreglo req.files
+        let rutasImagenes = [];
+        if (req.files && req.files.length > 0) {
+            // Mapeamos los archivos para guardar solo sus rutas públicas
+            rutasImagenes = req.files.map(file => `/uploads/tickets/${file.filename}`);
+        }
+        // --- FIN LÓGICA MULTER ---
+
         const datosTicket = { asunto, descripcion, prioridad_id };
         
-        // Llamamos al modelo pasándole el arreglo de imágenes (si es que hay)
-        const ticketId = await ticketModel.crearTicket(datosTicket, imagenes, idUsuarioCreador);
+        // Llamamos al modelo pasándole el arreglo de rutas (en lugar de Base64)
+        const ticketId = await ticketModel.crearTicket(datosTicket, rutasImagenes, idUsuarioCreador);
 
         // --- INICIO LÓGICA DE NOTIFICACIÓN POR CORREO ---
         try {

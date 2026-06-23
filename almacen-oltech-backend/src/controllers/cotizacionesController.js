@@ -18,13 +18,23 @@ const obtenerFirmas = async (req, res) => {
 
 const crearFirma = async (req, res) => {
     try {
-        const { nombre, firmas_url } = req.body;
+        // Con Multer, los textos vienen en req.body y los archivos en req.file
+        const { nombre } = req.body;
         
-        if (!nombre || !firmas_url) {
-            return res.status(400).json({ mensaje: 'El nombre y la imagen de la firma son obligatorios.' });
+        if (!nombre) {
+            return res.status(400).json({ mensaje: 'El nombre de la firma es obligatorio.' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ mensaje: 'La imagen de la firma es obligatoria.' });
         }
         
-        const nuevaFirma = await cotizacionesModel.createFirma(nombre, firmas_url);
+        // Construimos la ruta pública armando el texto con el nombre del archivo que generó multer
+        const rutaFirma = `/uploads/firmas/${req.file.filename}`;
+        
+        // Guardamos esa ruta corta en la base de datos
+        const nuevaFirma = await cotizacionesModel.createFirma(nombre, rutaFirma);
+        
         res.status(201).json({
             mensaje: 'Firma registrada exitosamente.',
             firma: nuevaFirma 

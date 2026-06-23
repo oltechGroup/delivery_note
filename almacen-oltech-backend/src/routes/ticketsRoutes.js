@@ -2,12 +2,15 @@
 const express = require('express');
 const router = express.Router();
 
-// Importamos el controlador que acabamos de crear
+// Importamos el controlador
 const ticketsController = require('../controllers/ticketsController');
 
-// Importamos los middlewares de seguridad que ya tienes en tu proyecto
+// Importamos los middlewares de seguridad
 const { verificarToken } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
+
+// NUEVO: Importamos el middleware de multer
+const upload = require('../middlewares/uploadMiddleware');
 
 // =========================================================================
 // RUTAS UNIVERSALES (Cualquier usuario logueado)
@@ -17,9 +20,14 @@ const { checkRole } = require('../middlewares/roleMiddleware');
 router.get('/mis-tickets', verificarToken, ticketsController.obtenerMisTickets);
 
 // Para que cualquier usuario pueda crear un nuevo ticket
-router.post('/', verificarToken, ticketsController.crearTicket);
+// NUEVO: Agregamos upload.array para manejar múltiples imágenes
+router.post('/', 
+    verificarToken, 
+    upload.array('imagenes', 10), // Acepta hasta 10 imágenes por ticket
+    ticketsController.crearTicket
+);
 
-// Para ver el detalle de un ticket (Lo usan todos para ver cómo va su reporte)
+// Para ver el detalle de un ticket
 router.get('/:id', verificarToken, ticketsController.verDetalleTicket);
 
 
