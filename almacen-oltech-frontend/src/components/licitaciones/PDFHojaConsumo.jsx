@@ -4,10 +4,19 @@ import axios from 'axios';
 import { useReactToPrint } from 'react-to-print';
 import { useAuth } from '../../hooks/useAuth';
 
-// IMPORTAMOS TUS NUEVAS IMÁGENES OFICIALES
+// IMPORTACIONES ESTÁTICAS DE IMÁGENES
 import LogoOltech from '../../assets/logo.svg';
 import FranjaLateral from '../../assets/franja-lateral.png';
-import FooterImg from '../../assets/footer.png'; // Si al final es .jpg, solo cámbialo aquí
+import FooterImg from '../../assets/footer.png';
+
+// Importamos los logos de los hospitales uno por uno para que Vite los detecte
+import Hosp1 from '../../assets/hospital-1.png';
+import Hosp2 from '../../assets/hospital-2.png';
+import Hosp3 from '../../assets/hospital-3.png';
+import Hosp4 from '../../assets/hospital-4.png';
+import Hosp5 from '../../assets/hospital-5.png';
+import Hosp6 from '../../assets/hospital-6.png';
+import Hosp7 from '../../assets/hospital-7.png';
 
 function PDFHojaConsumo({ hojaId, onClose }) {
   const { token } = useAuth();
@@ -63,19 +72,29 @@ function PDFHojaConsumo({ hojaId, onClose }) {
     );
   }
 
-  // Filtrar insumos externos: La licitación no debe ver materiales comprados por fuera.
+  // Filtrar insumos externos
   const insumosOficiales = hoja.detalles.filter(d => !d.es_insumo_externo);
 
-  // Formateador de moneda
+  // Formateadores
   const formatoMoneda = (monto) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto || 0);
-
-  // Formateador de fecha (Formato: DD/MM/YYYY para que coincida visualmente)
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return '';
     return new Date(fechaStr).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const totalCalculado = insumosOficiales.reduce((acc, curr) => acc + (parseFloat(curr.precio_unitario) * curr.cantidad_utilizada || 0), 0);
+
+  // Diccionario para asignar el logo correcto según el ID de la ciudad o unidad médica
+  const diccionarioLogos = {
+    1: Hosp1, 6: Hosp1, // Tapachula
+    2: Hosp2, 7: Hosp2, // Tuxtla
+    3: Hosp3, 8: Hosp3, // León
+    4: Hosp4, 9: Hosp4, // Ixtapaluca
+    5: Hosp5, 10: Hosp5, // Oaxaca
+    6: Hosp6, 11: Hosp6, // Victoria
+    7: Hosp7, 12: Hosp7  // Mérida
+  };
+  const logoHospital = diccionarioLogos[hoja.ciudad_id] || diccionarioLogos[hoja.unidad_medica_id] || null;
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/80 flex flex-col items-center overflow-y-auto pdf-main-overlay">
@@ -123,7 +142,7 @@ function PDFHojaConsumo({ hojaId, onClose }) {
           </button>
           <button onClick={handleImprimir} className="bg-oltech-pink text-white px-6 py-2.5 rounded-lg font-bold shadow-xl hover:bg-pink-700 flex items-center space-x-2 transition-transform active:scale-95">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-            <span>Imprimir Hoja HRAEI</span>
+            <span>Imprimir Hoja de Consumo</span>
           </button>
         </div>
       </div>
@@ -132,12 +151,17 @@ function PDFHojaConsumo({ hojaId, onClose }) {
       <div ref={componentRef} className="w-full flex flex-col items-center bg-gray-900 sm:bg-transparent overflow-x-auto">
         <div className="hoja-impresion text-black">
           
-          {/* BARRA LATERAL DE COLORES (USANDO TU IMAGEN) */}
+          {/* BARRA LATERAL DE COLORES */}
           <img 
             src={FranjaLateral} 
             alt="Diseño Lateral" 
             className="absolute right-0 top-0 bottom-0 h-full w-[35px] object-cover z-0" 
           />
+
+          {/* FOOTER ANCLADO ABAJO A LA IZQUIERDA */}
+          <div className="absolute bottom-[1.5cm] left-[1.5cm] z-0">
+             <img src={FooterImg} alt="Contacto y QR" className="h-16 object-contain" />
+          </div>
 
           <div className="contenido-hoja">
             
@@ -145,15 +169,9 @@ function PDFHojaConsumo({ hojaId, onClose }) {
             <div className="flex justify-between items-start mb-8">
               <div className="flex items-center space-x-4">
                 <img src={LogoOltech} alt="OLTECH" className="h-16 object-contain" />
-                
-                {/* LOGO DEL HOSPITAL DINÁMICO */}
-                {/* Oculta la imagen automáticamente si no encuentra el archivo en la carpeta public */}
-                <img 
-                  src={`/logos-hospitales/hospital-${hoja.unidad_medica_id}.png`} 
-                  alt="" 
-                  className="h-14 object-contain"
-                  onError={(e) => e.target.style.display = 'none'} 
-                />
+                {logoHospital && (
+                  <img src={logoHospital} alt="Hospital" className="h-14 object-contain" />
+                )}
               </div>
               <div className="text-right text-[12px] text-gray-800 leading-snug font-medium">
                 <p className="font-bold">MPM-01-R04</p>
@@ -219,10 +237,9 @@ function PDFHojaConsumo({ hojaId, onClose }) {
               </div>
             </div>
 
-            {/* FOOTER: Imagen de Contacto (QR) */}
-            <div className="mt-auto pt-6 flex items-end">
-               <img src={FooterImg} alt="Contacto y QR" className="h-12 object-contain" />
-            </div>
+            {/* El espacio para el footer ya está reservado por padding-bottom si es necesario, 
+                pero al ser absoluto no empuja el contenido. Simplemente dejamos el final aquí. */}
+            <div className="pb-16"></div> 
 
           </div>
         </div>
