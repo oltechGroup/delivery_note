@@ -10,12 +10,13 @@ const limpiarRol = (nombreRol) => {
     return nombreRol
         .replace(/‚/g, 'é') // Corrige Biom‚dicos -> Biomédicos
         .replace(/ß/g, 'á') // Corrige AlmacÚn o similares si aparecen
-        .trim(); // Quita espacios vacíos al principio o al final por si acaso
+        .trim();
 };
 
 /**
  * Busca un usuario por su nombre de usuario (user_name)
- * Hace un JOIN con roles y estado_usuario para traer la información completa
+ * Incluye la lista completa de sus roles asignados (Multi-rol)
+ * y las sedes/ciudades asignadas (Multi-tenant).
  */
 const findByUserName = async (userName) => {
     const query = `
@@ -27,47 +28,102 @@ const findByUserName = async (userName) => {
             u.user_name, 
             u.contrasena, 
             u.rol_id, 
-            r.nombre AS rol_nombre,
+            r_principal.nombre AS rol_nombre_legacy,
             u.estado_usuario_id,
-            e.nombre AS estado_nombre
+            e.nombre AS estado_nombre,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSONB_BUILD_OBJECT('id', r.id, 'nombre', r.nombre)
+                ) FILTER (WHERE r.id IS NOT NULL), '[]'
+            ) AS roles_detalles,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSONB_BUILD_OBJECT('ciudad_id', us.ciudad_id, 'unidad_medica_id', us.unidad_medica_id)
+                ) FILTER (WHERE us.id IS NOT NULL), '[]'
+            ) AS sedes
         FROM usuarios u
-        INNER JOIN roles r ON u.rol_id = r.id
-        INNER JOIN estado_usuario e ON u.estado_usuario_id = e.id
+        LEFT JOIN roles r_principal ON u.rol_id = r_principal.id
+        LEFT JOIN estado_usuario e ON u.estado_usuario_id = e.id
+        LEFT JOIN usuario_roles ur ON u.id = ur.usuario_id
+        LEFT JOIN roles r ON ur.rol_id = r.id
+        LEFT JOIN usuario_sedes us ON u.id = us.usuario_id
         WHERE u.user_name = $1
+        GROUP BY u.id, r_principal.nombre, e.nombre
     `;
     
     const { rows } = await pool.query(query, [userName]);
-    
     const usuario = rows[0];
     
-    // Si encontramos al usuario, le limpiamos el nombre del rol ANTES de mandarlo al Controller
     if (usuario) {
-        usuario.rol_nombre = limpiarRol(usuario.rol_nombre);
+        // Limpiamos los nombres de roles para prevenir fallos de codificación
+        const rolesLimpios = (usuario.roles_detalles || []).map(r => ({
+            id: r.id,
+            nombre: limpiarRol(r.nombre)
+        }));
+
+        // Arreglo plano de nombres de roles para fácil comprobación con checkRole
+        usuario.roles = rolesLimpios.map(r => r.nombre);
+        usuario.roles_detalles = rolesLimpios;
+
+        // Mantenemos rol_nombre para compatibilidad previa (toma el primer rol asignado o el legacy)
+        usuario.rol_nombre = usuario.roles[0] || limpiarRol(usuario.rol_nombre_legacy) || '';
     }
     
     return usuario;
 };
 
 /**
- * Crea un nuevo usuario en la base de datos
+ * Crea un nuevo usuario en la base de datos y asigna sus múltiples roles.
  */
 const createUser = async (usuarioData) => {
-    const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id } = usuarioData;
-    
-    const query = `
-        INSERT INTO usuarios 
-        (nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, nombre, user_name;
-    `;
-    
-    const values = [nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id];
-    const { rows } = await pool.query(query, values);
-    return rows[0];
+    const client = await pool.connect();
+    try {
+        const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, roles, estado_usuario_id } = usuarioData;
+        
+        await client.query('BEGIN');
+
+        // Rol principal por defecto si viene sólo rol_id
+        const rolPrincipal = rol_id || (roles && roles.length > 0 ? roles[0] : null);
+
+        const queryUsuario = `
+            INSERT INTO usuarios 
+            (nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING id, nombre, user_name;
+        `;
+        
+        const valuesUsuario = [nombre, apellido_p, apellido_m, user_name, contrasena, rolPrincipal, estado_usuario_id];
+        const { rows } = await client.query(queryUsuario, valuesUsuario);
+        const nuevoUsuario = rows[0];
+
+        // Determinar todos los IDs de roles a insertar en la tabla intermedia usuario_roles
+        let rolesAInsertar = [];
+        if (Array.isArray(roles) && roles.length > 0) {
+            rolesAInsertar = roles;
+        } else if (rolPrincipal) {
+            rolesAInsertar = [rolPrincipal];
+        }
+
+        for (let rId of rolesAInsertar) {
+            await client.query(
+                `INSERT INTO usuario_roles (usuario_id, rol_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                [nuevoUsuario.id, rId]
+            );
+        }
+
+        await client.query('COMMIT');
+        return nuevoUsuario;
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 /**
- * Obtiene la lista de todos los usuarios (Ideal para el panel de Sistemas)
+ * Obtiene la lista de todos los usuarios con sus roles mapeados.
  */
 const getAllUsers = async () => {
     const query = `
@@ -78,22 +134,38 @@ const getAllUsers = async () => {
             u.apellido_m, 
             u.user_name, 
             u.rol_id,
-            r.nombre AS rol_nombre,
+            r_principal.nombre AS rol_nombre_legacy,
             u.estado_usuario_id,
-            e.nombre AS estado_nombre
+            e.nombre AS estado_nombre,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSONB_BUILD_OBJECT('id', r.id, 'nombre', r.nombre)
+                ) FILTER (WHERE r.id IS NOT NULL), '[]'
+            ) AS roles_detalles
         FROM usuarios u
-        INNER JOIN roles r ON u.rol_id = r.id
-        INNER JOIN estado_usuario e ON u.estado_usuario_id = e.id
+        LEFT JOIN roles r_principal ON u.rol_id = r_principal.id
+        LEFT JOIN estado_usuario e ON u.estado_usuario_id = e.id
+        LEFT JOIN usuario_roles ur ON u.id = ur.usuario_id
+        LEFT JOIN roles r ON ur.rol_id = r.id
+        GROUP BY u.id, r_principal.nombre, e.nombre
         ORDER BY u.id ASC
     `;
     
     const { rows } = await pool.query(query);
 
-    // Limpiamos el rol de todos los usuarios de la lista antes de mandarlos al Frontend
     const usuariosLimpios = rows.map(user => {
+        const rolesLimpios = (user.roles_detalles || []).map(r => ({
+            id: r.id,
+            nombre: limpiarRol(r.nombre)
+        }));
+
+        const nombresRoles = rolesLimpios.map(r => r.nombre);
+
         return {
             ...user,
-            rol_nombre: limpiarRol(user.rol_nombre)
+            roles: nombresRoles,
+            roles_detalles: rolesLimpios,
+            rol_nombre: nombresRoles[0] || limpiarRol(user.rol_nombre_legacy) || ''
         };
     });
 
@@ -101,21 +173,57 @@ const getAllUsers = async () => {
 };
 
 /**
- * Actualiza los datos generales de un usuario (sin tocar contraseña ni estado)
+ * Actualiza los datos generales de un usuario y sincroniza su lista de roles.
  */
 const updateUser = async (id, usuarioData) => {
-    const { nombre, apellido_p, apellido_m, user_name, rol_id } = usuarioData;
-    
-    const query = `
-        UPDATE usuarios 
-        SET nombre = $1, apellido_p = $2, apellido_m = $3, user_name = $4, rol_id = $5
-        WHERE id = $6
-        RETURNING id, nombre, user_name;
-    `;
-    
-    const values = [nombre, apellido_p, apellido_m, user_name, rol_id, id];
-    const { rows } = await pool.query(query, values);
-    return rows[0];
+    const client = await pool.connect();
+    try {
+        const { nombre, apellido_p, apellido_m, user_name, rol_id, roles } = usuarioData;
+        
+        await client.query('BEGIN');
+
+        const rolPrincipal = rol_id || (roles && roles.length > 0 ? roles[0] : null);
+
+        const queryUsuario = `
+            UPDATE usuarios 
+            SET nombre = $1, apellido_p = $2, apellido_m = $3, user_name = $4, rol_id = $5
+            WHERE id = $6
+            RETURNING id, nombre, user_name;
+        `;
+        
+        const valuesUsuario = [nombre, apellido_p, apellido_m, user_name, rolPrincipal, id];
+        const { rows } = await client.query(queryUsuario, valuesUsuario);
+        const usuarioActualizado = rows[0];
+
+        if (usuarioActualizado) {
+            // Sincronizar roles en la tabla intermedia usuario_roles
+            let rolesAInsertar = [];
+            if (Array.isArray(roles) && roles.length > 0) {
+                rolesAInsertar = roles;
+            } else if (rolPrincipal) {
+                rolesAInsertar = [rolPrincipal];
+            }
+
+            if (rolesAInsertar.length > 0) {
+                await client.query(`DELETE FROM usuario_roles WHERE usuario_id = $1`, [id]);
+                for (let rId of rolesAInsertar) {
+                    await client.query(
+                        `INSERT INTO usuario_roles (usuario_id, rol_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+                        [id, rId]
+                    );
+                }
+            }
+        }
+
+        await client.query('COMMIT');
+        return usuarioActualizado;
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 /**

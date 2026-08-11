@@ -1,4 +1,4 @@
-//almacen-oltech-backend/src/controllers/authController.js
+// almacen-oltech-backend/src/controllers/authController.js
 const jwt = require('jsonwebtoken');
 const { comparePassword } = require('../utils/encrypter');
 const usuarioModel = require('../models/usuarioModel');
@@ -35,11 +35,13 @@ const login = async (req, res) => {
         }
 
         // 5. Crear el Token JWT (El "Gafete Digital")
-        // Aquí guardamos quién es y qué rol tiene, para que las siguientes peticiones sepan si dejarlo pasar o no.
+        // AHORA incluimos los múltiples roles y las sedes para el soporte multi-hospital
         const payload = {
             id: usuario.id,
             user_name: usuario.user_name,
-            rol: usuario.rol_nombre
+            rol: usuario.rol_nombre, // Mantenido por retrocompatibilidad con el sistema actual
+            roles: usuario.roles,    // Arreglo de roles (Ej. ['Técnico', 'Coordinador'])
+            sedes: usuario.sedes     // Arreglo de sedes asignadas (Ej. [{ciudad_id: 1, unidad_medica_id: 2}])
         };
 
         // Firmamos el token. Le ponemos una caducidad de 8 horas (un turno laboral estándar)
@@ -57,7 +59,9 @@ const login = async (req, res) => {
                 id: usuario.id,
                 nombre: usuario.nombre,
                 apellido_p: usuario.apellido_p,
-                rol: usuario.rol_nombre
+                rol: usuario.rol_nombre,
+                roles: usuario.roles,
+                sedes: usuario.sedes
             }
         });
 

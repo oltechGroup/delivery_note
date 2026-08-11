@@ -12,18 +12,27 @@ import Remisiones from './pages/Remisiones';
 import HistorialRemisiones from './pages/HistorialRemisiones'; 
 import NuevaRemision from './pages/NuevaRemision';
 
-// NUEVAS PÁGINAS (Módulo Efectivo)
+// PÁGINAS (Módulo Efectivo)
 import ReportarEfectivo from './pages/ReportarEfectivo';
 import AuditoriaEfectivo from './pages/AuditoriaEfectivo';
 
-// NUEVAS PÁGINAS (Módulo Cotizaciones)
+// PÁGINAS (Módulo Cotizaciones)
 import Cotizaciones from './pages/Cotizaciones';
 import NuevaCotizacion from './pages/NuevaCotizacion';
-import Firmas from './pages/Firmas'; // <-- Importamos la nueva página de firmas
+import Firmas from './pages/Firmas'; 
 
-// NUEVAS PÁGINAS (Módulo Tickets / Help Desk)
+// PÁGINAS (Módulo Tickets / Help Desk)
 import TicketsUsuario from './pages/TicketsUsuario';
 import DashboardTickets from './pages/DashboardTickets';
+
+// ==========================================
+// NUEVAS PÁGINAS (Módulo Red de Hospitales / Licitaciones)
+// ==========================================
+import InventarioCiudad from './pages/InventarioCiudad';
+import BandejaRemisionesCiudad from './pages/BandejaRemisionesCiudad';
+import HojasConsumo from './pages/HojasConsumo';
+import NuevaHojaConsumo from './pages/NuevaHojaConsumo';
+import NuevaRemisionCiudad from './pages/NuevaRemisionCiudad';
 
 // Componentes de Estructura
 import Layout from './components/layout/Layout';
@@ -34,7 +43,7 @@ const limpiarRol = (texto) => {
   return texto.replace(/‚/g, 'é');
 };
 
-// 🛡️ COMPONENTE GUARDIÁN REFORZADO
+// 🛡️ COMPONENTE GUARDIÁN REFORZADO (Soporte Multi-Rol)
 const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
   const { estaAutenticado, usuario } = useAuth();
 
@@ -45,15 +54,23 @@ const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
 
   // 2. Si la ruta exige roles específicos, revisamos si el usuario tiene permiso
   if (rolesPermitidos.length > 0) {
-    const rolActual = limpiarRol(usuario?.rol); 
+    // Normalizamos: Si el usuario tiene el array 'roles', lo usamos. Si no, usamos 'rol' como array de 1.
+    const rolesUsuario = Array.isArray(usuario?.roles) 
+      ? usuario.roles.map(limpiarRol) 
+      : [limpiarRol(usuario?.rol)].filter(Boolean);
     
-    // Si el rol del usuario no está en la lista de invitados a esta ruta...
-    if (!rolesPermitidos.includes(rolActual)) {
-      // REDIRECCIÓN INTELIGENTE
-      if (rolActual === 'Ventas') {
+    // Verificamos si TIENE AL MENOS UN ROL dentro de los permitidos
+    const tienePermiso = rolesUsuario.some(rol => rolesPermitidos.includes(rol));
+
+    if (!tienePermiso) {
+      // REDIRECCIÓN INTELIGENTE BASADA EN EL ROL
+      if (rolesUsuario.includes('Técnico') || rolesUsuario.includes('Coordinador')) {
+        return <Navigate to="/red-hospitales/inventario" replace />;
+      }
+      if (rolesUsuario.includes('Ventas')) {
         return <Navigate to="/auditoria-efectivo" replace />;
       }
-      if (rolActual === 'Cotizaciones') {
+      if (rolesUsuario.includes('Cotizaciones')) {
         return <Navigate to="/cotizaciones" replace />;
       }
       return <Navigate to="/dashboard" replace />;
@@ -67,14 +84,22 @@ const RutaProtegida = ({ children, rolesPermitidos = [] }) => {
 // COMPONENTE DE REDIRECCIÓN INICIAL
 const RedireccionInicial = () => {
   const { usuario } = useAuth();
-  const rolActual = limpiarRol(usuario?.rol);
   
-  if (rolActual === 'Ventas') {
+  const rolesUsuario = Array.isArray(usuario?.roles) 
+    ? usuario.roles.map(limpiarRol) 
+    : [limpiarRol(usuario?.rol)].filter(Boolean);
+  
+  // Prioridad de redirección según el rol fuerte del usuario
+  if (rolesUsuario.includes('Técnico') || rolesUsuario.includes('Coordinador')) {
+    return <Navigate to="/red-hospitales/inventario" replace />;
+  }
+  if (rolesUsuario.includes('Ventas')) {
     return <Navigate to="/auditoria-efectivo" replace />;
   }
-  if (rolActual === 'Cotizaciones') {
+  if (rolesUsuario.includes('Cotizaciones')) {
     return <Navigate to="/cotizaciones" replace />;
   }
+  
   return <Navigate to="/dashboard" replace />;
 };
 
@@ -96,14 +121,14 @@ function App() {
           </RutaProtegida>
         } />
         
-        {/* Nivel 2: Acceso de Almacén */}
+        {/* Nivel 2: Acceso de Almacén General */}
         <Route path="almacen" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén']}>
             <Almacen />
           </RutaProtegida>
         } />
 
-        {/* Nivel 3: Acceso de Remisiones */}
+        {/* Nivel 3: Acceso de Remisiones Centrales */}
         <Route path="remisiones" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén']}>
             <Remisiones />
@@ -151,7 +176,7 @@ function App() {
         } />
 
         {/* ========================================== */}
-        {/* NUEVO NIVEL 6: MÓDULO DE COTIZACIONES      */}
+        {/* NIVEL 6: MÓDULO DE COTIZACIONES            */}
         {/* ========================================== */}
         <Route path="cotizaciones" element={
           <RutaProtegida rolesPermitidos={['Sistemas', 'Biomédicos', 'Cotizaciones']}>
@@ -172,22 +197,52 @@ function App() {
         } />
 
         {/* ========================================== */}
-        {/* NUEVO NIVEL 7: SISTEMA DE TICKETS (Help Desk) */}
+        {/* NIVEL 7: SISTEMA DE TICKETS (Help Desk)    */}
         {/* ========================================== */}
-        
-        {/* Vista para cualquier usuario logueado */}
         <Route path="mis-tickets" element={
-          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén', 'Cotizaciones', 'Ventas']}>
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Biomédicos', 'Encargado de almacén', 'Almacén', 'Cotizaciones', 'Ventas', 'Técnico', 'Coordinador']}>
             <TicketsUsuario />
           </RutaProtegida>
         } />
 
-        {/* Vista exclusiva para el rol de Sistemas */}
         <Route path="panel-tickets" element={
           <RutaProtegida rolesPermitidos={['Sistemas']}>
             <DashboardTickets />
           </RutaProtegida>
         } />
+
+        {/* ========================================== */}
+        {/* NUEVO NIVEL 8: RED HOSPITALES (Licitaciones)*/}
+        {/* ========================================== */}
+        <Route path="red-hospitales/inventario" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Coordinador', 'Técnico', 'Encargado de almacén']}>
+            <InventarioCiudad />
+          </RutaProtegida>
+        } />
+        
+        <Route path="red-hospitales/remisiones" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Coordinador', 'Técnico', 'Encargado de almacén']}>
+            <BandejaRemisionesCiudad />
+          </RutaProtegida>
+        } />
+
+        <Route path="hojas-consumo" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Coordinador', 'Técnico', 'Encargado de almacén', 'Biomédicos']}>
+            <HojasConsumo />
+          </RutaProtegida>
+        } />
+
+        <Route path="hojas-consumo/nueva" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Biomédicos', 'Técnico']}>
+            <NuevaHojaConsumo />
+          </RutaProtegida>
+        } />
+
+        <Route path="red-hospitales/remisiones/nueva" element={
+          <RutaProtegida rolesPermitidos={['Sistemas', 'Operaciones', 'Coordinador', 'Técnico', 'Biomédicos']}>
+             <NuevaRemisionCiudad />
+          </RutaProtegida>
+} />
 
       </Route>
 

@@ -65,5 +65,12 @@ app.use('/api/cotizaciones', require('./routes/cotizacionesRoutes'));
 // Todas las rutas dentro de ticketsRoutes tendrán el prefijo /api/tickets
 app.use('/api/tickets', require('./routes/ticketsRoutes'));
 
+// NUEVO MÓDULO: Licitaciones y Hojas de Consumo (7 Hospitales)
+// Todas las rutas dentro de licitacionRoutes tendrán el prefijo /api/licitaciones
+app.use('/api/licitaciones', require('./routes/licitacionRoutes'));
+
+// NUEVO MÓDULO: Remisiones exclusivas de Hospitales/Sedes
+app.use('/api/remisiones-ciudad', require('./routes/remisionCiudadRoutes'));
+
 // Exportamos la app configurada para que server.js la pueda encender
 module.exports = app;

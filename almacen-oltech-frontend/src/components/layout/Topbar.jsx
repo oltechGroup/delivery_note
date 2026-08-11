@@ -27,25 +27,28 @@ function Topbar({ abrirMenu }) {
         return 'bg-emerald-100 text-emerald-700 border-emerald-200';
       case 'Almacén':
         return 'bg-gray-100 text-gray-700 border-gray-200';
-      // NUEVO: Color específico para el rol de Cotizaciones
       case 'Cotizaciones':
         return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+      case 'Técnico':
+        return 'bg-indigo-100 text-indigo-700 border-indigo-200'; // Color nuevo
+      case 'Coordinador':
+        return 'bg-rose-100 text-rose-700 border-rose-200';       // Color nuevo
       default:
         return 'bg-oltech-pink/10 text-oltech-pink border-oltech-pink/20'; 
     }
   };
 
-  const rolMostrado = limpiarTexto(usuario?.rol || 'Sistemas');
-  const badgeClasses = obtenerColorRol(usuario?.rol);
+  // Normalizamos: Si hay varios roles los iteramos, si no, tomamos el rol heredado
+  const rolesUsuario = Array.isArray(usuario?.roles) && usuario.roles.length > 0
+    ? usuario.roles.map(limpiarTexto)
+    : [limpiarTexto(usuario?.rol || 'Sin Rol')];
 
   return (
     <>
-      {/* NUEVO: Ajustamos el padding horizontal en móviles (px-4) y escritorio (sm:px-8) */}
       <header className="bg-white h-20 px-4 sm:px-8 flex items-center justify-between shadow-sm border-b border-gray-200 z-10 w-full relative">
         
         {/* Agrupamos el botón hamburguesa y el título */}
         <div className="flex items-center space-x-3">
-          {/* NUEVO: Botón de menú hamburguesa visible solo en móviles */}
           <button
             onClick={abrirMenu}
             className="md:hidden p-2 -ml-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-oltech-pink transition-colors"
@@ -56,13 +59,11 @@ function Topbar({ abrirMenu }) {
             </svg>
           </button>
 
-          {/* NUEVO: Ocultamos el texto en pantallas muy pequeñas para evitar que se encime */}
           <div className="text-gray-500 font-medium tracking-wide hidden sm:block">
             Panel de Administración
           </div>
         </div>
 
-        {/* NUEVO: Ajustamos el espaciado entre los elementos de la derecha en móviles */}
         <div className="flex items-center space-x-3 sm:space-x-6">
           
           <div className="flex items-center space-x-3 text-right">
@@ -70,11 +71,19 @@ function Topbar({ abrirMenu }) {
               <p className="text-sm font-bold text-gray-800">
                 {usuario?.nombre} {usuario?.apellido_p}
               </p>
-              <div className="mt-1 flex justify-end">
-                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide border shadow-sm ${badgeClasses}`}>
-                  {rolMostrado}
-                </span>
+              
+              {/* Contenedor Flex para mostrar todos los roles como etiquetas */}
+              <div className="mt-1 flex justify-end gap-1 flex-wrap">
+                {rolesUsuario.map((rol, index) => (
+                  <span 
+                    key={index} 
+                    className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide border shadow-sm ${obtenerColorRol(rol)}`}
+                  >
+                    {rol}
+                  </span>
+                ))}
               </div>
+
             </div>
             
             <div 
