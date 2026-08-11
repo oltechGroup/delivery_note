@@ -1,6 +1,6 @@
 // almacen-oltech-backend/src/controllers/usuariosController.js
 const usuarioModel = require('../models/usuarioModel');
-const { hashPassword, comparePassword } = require('../utils/encrypter'); // NUEVO: Importamos comparePassword
+const { hashPassword, comparePassword } = require('../utils/encrypter');
 
 /**
  * Obtiene la lista de todos los usuarios para llenar la tabla en React
@@ -17,10 +17,11 @@ const obtenerUsuarios = async (req, res) => {
 
 /**
  * Crea un nuevo usuario desde el formulario del Frontend
+ * (Actualizado para soportar Múltiples Roles y Sedes)
  */
 const crearUsuario = async (req, res) => {
     try {
-        const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id } = req.body;
+        const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id, roles, sedes } = req.body;
 
         if (!nombre || !apellido_p || !user_name || !contrasena || !rol_id || !estado_usuario_id) {
             return res.status(400).json({ mensaje: 'Todos los campos obligatorios deben estar llenos.' });
@@ -34,11 +35,12 @@ const crearUsuario = async (req, res) => {
             apellido_m,
             user_name,
             contrasena: contrasenaHash,
-            rol_id,
+            rol_id, // Se mantiene el rol_id principal para retrocompatibilidad
             estado_usuario_id
         };
 
-        const usuarioCreado = await usuarioModel.createUser(nuevoUsuarioData);
+        // Pasamos los arrays 'roles' y 'sedes' al modelo para que los guarde en las tablas intermedias
+        const usuarioCreado = await usuarioModel.createUser(nuevoUsuarioData, roles, sedes);
 
         res.status(201).json({
             mensaje: 'Usuario creado exitosamente',
@@ -56,18 +58,21 @@ const crearUsuario = async (req, res) => {
 
 /**
  * Actualiza los datos generales de un usuario (nombre, username, rol)
+ * (Actualizado para soportar actualización de Múltiples Roles y Sedes)
  */
 const actualizarUsuario = async (req, res) => {
     try {
         const { id } = req.params;
-        const { nombre, apellido_p, apellido_m, user_name, rol_id } = req.body;
+        const { nombre, apellido_p, apellido_m, user_name, rol_id, roles, sedes } = req.body;
 
         if (!nombre || !apellido_p || !user_name || !rol_id) {
             return res.status(400).json({ mensaje: 'Faltan campos obligatorios por llenar.' });
         }
 
         const data = { nombre, apellido_p, apellido_m, user_name, rol_id };
-        const usuarioActualizado = await usuarioModel.updateUser(id, data);
+        
+        // Pasamos los arrays 'roles' y 'sedes' al modelo
+        const usuarioActualizado = await usuarioModel.updateUser(id, data, roles, sedes);
 
         if (!usuarioActualizado) {
             return res.status(404).json({ mensaje: 'Usuario no encontrado.' });
@@ -144,7 +149,7 @@ const restablecerContrasena = async (req, res) => {
 };
 
 /**
- * NUEVO: Permite a un usuario cambiar su propia contraseña verificando la actual
+ * Permite a un usuario cambiar su propia contraseña verificando la actual
  */
 const cambiarMiContrasena = async (req, res) => {
     try {
@@ -162,7 +167,6 @@ const cambiarMiContrasena = async (req, res) => {
         }
 
         // 2. Buscar al usuario en la BD para obtener su contraseña encriptada actual
-        // Reutilizamos el user_name que viene en el token (req.usuario.user_name)
         const usuarioBd = await usuarioModel.findByUserName(req.usuario.user_name);
         
         if (!usuarioBd) {
@@ -190,12 +194,11 @@ const cambiarMiContrasena = async (req, res) => {
     }
 };
 
-
 module.exports = {
     obtenerUsuarios,
     crearUsuario,
     actualizarUsuario,
     cambiarEstado,
     restablecerContrasena,
-    cambiarMiContrasena // Exportamos la nueva función
+    cambiarMiContrasena
 };

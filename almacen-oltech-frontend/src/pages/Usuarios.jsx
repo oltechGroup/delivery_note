@@ -42,20 +42,17 @@ function Usuarios() {
 
   return (
     // RESPONSIVO: Ajustamos el margen vertical (space-y-4 en móvil, space-y-6 en PC)
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
       {/* 1. Encabezado */}
-      {/* RESPONSIVO: Reducción de padding en móviles (p-4) */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
         <div className="w-full sm:w-auto">
-          {/* RESPONSIVO: Ajuste del tamaño del título */}
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Gestión de Usuarios</h1>
-          <p className="text-gray-500 text-xs sm:text-sm mt-1">Administra los accesos y roles del personal de OLTECH.</p>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Administra los accesos, roles y sedes del personal de OLTECH.</p>
         </div>
         
-        {/* RESPONSIVO: Botón w-full en móviles para mejor toque, centrado de contenido */}
         <button 
-          className="mt-4 sm:mt-0 w-full sm:w-auto bg-oltech-black text-white px-6 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2"
+          className="mt-4 sm:mt-0 w-full sm:w-auto bg-oltech-black text-white px-6 py-2.5 rounded-lg font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center justify-center space-x-2"
           onClick={() => setModalCrearAbierto(true)}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,60 +63,91 @@ function Usuarios() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 text-sm sm:text-base">
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg border border-red-100 text-sm sm:text-base font-medium">
           {error}
         </div>
       )}
 
       {/* 2. La Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[400px] flex flex-col">
+        <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead>
-              {/* RESPONSIVO: whitespace-nowrap evita que las columnas se aplasten en móvil */}
-              <tr className="bg-gray-50 border-b border-gray-200 text-gray-600 text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap">
-                <th className="p-3 sm:p-4 font-semibold">Nombre Completo</th>
-                <th className="p-3 sm:p-4 font-semibold">Usuario</th>
-                <th className="p-3 sm:p-4 font-semibold">Rol</th>
-                <th className="p-3 sm:p-4 font-semibold">Estado</th>
-                <th className="p-3 sm:p-4 font-semibold text-center">Acciones</th>
+              <tr className="bg-gray-50 border-b-2 border-gray-200 text-gray-700 text-xs sm:text-sm uppercase tracking-wider whitespace-nowrap">
+                <th className="p-3 sm:p-4 font-bold border-r border-gray-100">Nombre Completo</th>
+                <th className="p-3 sm:p-4 font-bold border-r border-gray-100">Usuario</th>
+                <th className="p-3 sm:p-4 font-bold border-r border-gray-100 w-48">Roles</th>
+                <th className="p-3 sm:p-4 font-bold border-r border-gray-100 w-32">Sede(s)</th>
+                <th className="p-3 sm:p-4 font-bold border-r border-gray-100 text-center w-28">Estado</th>
+                <th className="p-3 sm:p-4 font-bold text-center w-24">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {cargando ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500">
+                  <td colSpan="6" className="p-10 text-center text-gray-500">
                     <svg className="animate-spin h-8 w-8 mx-auto text-oltech-pink mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span className="text-sm sm:text-base">Cargando usuarios...</span>
+                    <span className="text-sm sm:text-base font-medium">Cargando usuarios...</span>
                   </td>
                 </tr>
               ) : usuarios.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="p-8 text-center text-gray-500 text-sm sm:text-base">
+                  <td colSpan="6" className="p-10 text-center text-gray-500 text-sm sm:text-base bg-gray-50/50 font-medium">
                     No hay usuarios registrados en el sistema.
                   </td>
                 </tr>
               ) : (
                 usuarios.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    {/* RESPONSIVO: p-3 en móvil, p-4 en PC, y whitespace-nowrap */}
-                    <td className="p-3 sm:p-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900 text-sm sm:text-base">{user.nombre} {user.apellido_p} {user.apellido_m || ''}</div>
+                  <tr key={user.id} className="hover:bg-blue-50/30 transition-colors">
+                    <td className="p-3 sm:p-4 whitespace-nowrap border-r border-gray-100">
+                      <div className="font-bold text-gray-900 text-sm sm:text-base">{user.nombre} {user.apellido_p} {user.apellido_m || ''}</div>
                     </td>
-                    <td className="p-3 sm:p-4 text-gray-600 text-sm sm:text-base whitespace-nowrap">{user.user_name}</td>
-                    <td className="p-3 sm:p-4 whitespace-nowrap">
-                      <span className="bg-blue-50 text-blue-700 px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide border border-blue-100">
-                        {user.rol_nombre}
-                      </span>
+                    <td className="p-3 sm:p-4 text-gray-600 text-sm sm:text-base whitespace-nowrap border-r border-gray-100 font-medium">
+                      {user.user_name}
                     </td>
-                    <td className="p-3 sm:p-4 whitespace-nowrap">
-                      <span className={`px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold tracking-wide border ${
+                    
+                    {/* NUEVO: Mapeo de múltiples roles */}
+                    <td className="p-3 sm:p-4 border-r border-gray-100">
+                      <div className="flex flex-wrap gap-1">
+                        {user.roles && user.roles.length > 0 ? (
+                          user.roles.map((rol, idx) => (
+                            <span key={idx} className="bg-oltech-blue/10 text-oltech-blue px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold tracking-wide border border-oltech-blue/20 uppercase shadow-sm">
+                              {rol}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold tracking-wide border border-gray-200 uppercase shadow-sm">
+                            {user.rol_nombre || 'Sin Rol'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* NUEVO: Mapeo de múltiples sedes */}
+                    <td className="p-3 sm:p-4 border-r border-gray-100">
+                      <div className="flex flex-wrap gap-1">
+                        {user.sedes && user.sedes.length > 0 ? (
+                          user.sedes.map((sede, idx) => (
+                            <span key={idx} className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold tracking-wide border border-purple-200 uppercase shadow-sm">
+                              Unidad {sede.unidad_medica_id}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold tracking-wide border border-gray-200 uppercase shadow-sm">
+                            Nacional
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="p-3 sm:p-4 whitespace-nowrap border-r border-gray-100 text-center">
+                      <span className={`px-2.5 py-1 rounded text-[10px] sm:text-[11px] font-bold uppercase tracking-wider border shadow-sm ${
                         user.estado_nombre === 'Activo' 
-                          ? 'bg-green-50 text-green-700 border-green-100' 
-                          : 'bg-red-50 text-red-700 border-red-100'
+                          ? 'bg-green-50 text-green-700 border-green-200' 
+                          : 'bg-red-50 text-red-700 border-red-200'
                       }`}>
                         {user.estado_nombre}
                       </span>
@@ -127,7 +155,7 @@ function Usuarios() {
                     <td className="p-3 sm:p-4 text-center">
                       <button 
                         onClick={() => handleAbrirEdicion(user)}
-                        className="text-gray-400 hover:text-oltech-pink transition-colors p-2 rounded-full hover:bg-red-50"
+                        className="text-gray-400 hover:text-oltech-pink transition-colors p-2 rounded-lg hover:bg-pink-50 border border-transparent hover:border-pink-100"
                         title="Editar Usuario"
                       >
                         <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

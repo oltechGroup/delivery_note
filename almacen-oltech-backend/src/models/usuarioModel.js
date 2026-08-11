@@ -1,23 +1,11 @@
 // almacen-oltech-backend/src/models/usuarioModel.js
 const pool = require('../config/database');
 
-/**
- * Función de limpieza interna para corregir errores de codificación
- * que vienen desde la base de datos de PostgreSQL en Windows.
- */
 const limpiarRol = (nombreRol) => {
     if (!nombreRol) return '';
-    return nombreRol
-        .replace(/‚/g, 'é') // Corrige Biom‚dicos -> Biomédicos
-        .replace(/ß/g, 'á') // Corrige AlmacÚn o similares si aparecen
-        .trim();
+    return nombreRol.replace(/‚/g, 'é').replace(/ß/g, 'á').trim();
 };
 
-/**
- * Busca un usuario por su nombre de usuario (user_name)
- * Incluye la lista completa de sus roles asignados (Multi-rol)
- * y las sedes/ciudades asignadas (Multi-tenant).
- */
 const findByUserName = async (userName) => {
     const query = `
         SELECT 
@@ -55,34 +43,27 @@ const findByUserName = async (userName) => {
     const usuario = rows[0];
     
     if (usuario) {
-        // Limpiamos los nombres de roles para prevenir fallos de codificación
         const rolesLimpios = (usuario.roles_detalles || []).map(r => ({
             id: r.id,
             nombre: limpiarRol(r.nombre)
         }));
 
-        // Arreglo plano de nombres de roles para fácil comprobación con checkRole
         usuario.roles = rolesLimpios.map(r => r.nombre);
         usuario.roles_detalles = rolesLimpios;
-
-        // Mantenemos rol_nombre para compatibilidad previa (toma el primer rol asignado o el legacy)
         usuario.rol_nombre = usuario.roles[0] || limpiarRol(usuario.rol_nombre_legacy) || '';
     }
     
     return usuario;
 };
 
-/**
- * Crea un nuevo usuario en la base de datos y asigna sus múltiples roles.
- */
-const createUser = async (usuarioData) => {
+// NUEVO: Agregamos roles y sedes como parámetros separados
+const createUser = async (usuarioData, roles, sedes) => {
     const client = await pool.connect();
     try {
-        const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, roles, estado_usuario_id } = usuarioData;
+        const { nombre, apellido_p, apellido_m, user_name, contrasena, rol_id, estado_usuario_id } = usuarioData;
         
         await client.query('BEGIN');
 
-        // Rol principal por defecto si viene sólo rol_id
         const rolPrincipal = rol_id || (roles && roles.length > 0 ? roles[0] : null);
 
         const queryUsuario = `
@@ -96,19 +77,23 @@ const createUser = async (usuarioData) => {
         const { rows } = await client.query(queryUsuario, valuesUsuario);
         const nuevoUsuario = rows[0];
 
-        // Determinar todos los IDs de roles a insertar en la tabla intermedia usuario_roles
-        let rolesAInsertar = [];
-        if (Array.isArray(roles) && roles.length > 0) {
-            rolesAInsertar = roles;
-        } else if (rolPrincipal) {
-            rolesAInsertar = [rolPrincipal];
-        }
-
+        // Guardar Roles
+        let rolesAInsertar = Array.isArray(roles) && roles.length > 0 ? roles : (rolPrincipal ? [rolPrincipal] : []);
         for (let rId of rolesAInsertar) {
             await client.query(
                 `INSERT INTO usuario_roles (usuario_id, rol_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
                 [nuevoUsuario.id, rId]
             );
+        }
+
+        // Guardar Sedes (Aislamiento Geográfico)
+        if (Array.isArray(sedes) && sedes.length > 0) {
+            for (let s of sedes) {
+                await client.query(
+                    `INSERT INTO usuario_sedes (usuario_id, ciudad_id, unidad_medica_id) VALUES ($1, $2, $3)`,
+                    [nuevoUsuario.id, s.ciudad_id, s.unidad_medica_id]
+                );
+            }
         }
 
         await client.query('COMMIT');
@@ -122,9 +107,6 @@ const createUser = async (usuarioData) => {
     }
 };
 
-/**
- * Obtiene la lista de todos los usuarios con sus roles mapeados.
- */
 const getAllUsers = async () => {
     const query = `
         SELECT 
@@ -141,24 +123,28 @@ const getAllUsers = async () => {
                 JSON_AGG(
                     DISTINCT JSONB_BUILD_OBJECT('id', r.id, 'nombre', r.nombre)
                 ) FILTER (WHERE r.id IS NOT NULL), '[]'
-            ) AS roles_detalles
+            ) AS roles_detalles,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSONB_BUILD_OBJECT('ciudad_id', us.ciudad_id, 'unidad_medica_id', us.unidad_medica_id)
+                ) FILTER (WHERE us.id IS NOT NULL), '[]'
+            ) AS sedes
         FROM usuarios u
         LEFT JOIN roles r_principal ON u.rol_id = r_principal.id
         LEFT JOIN estado_usuario e ON u.estado_usuario_id = e.id
         LEFT JOIN usuario_roles ur ON u.id = ur.usuario_id
         LEFT JOIN roles r ON ur.rol_id = r.id
+        LEFT JOIN usuario_sedes us ON u.id = us.usuario_id
         GROUP BY u.id, r_principal.nombre, e.nombre
         ORDER BY u.id ASC
     `;
     
     const { rows } = await pool.query(query);
 
-    const usuariosLimpios = rows.map(user => {
+    return rows.map(user => {
         const rolesLimpios = (user.roles_detalles || []).map(r => ({
-            id: r.id,
-            nombre: limpiarRol(r.nombre)
+            id: r.id, nombre: limpiarRol(r.nombre)
         }));
-
         const nombresRoles = rolesLimpios.map(r => r.nombre);
 
         return {
@@ -168,18 +154,13 @@ const getAllUsers = async () => {
             rol_nombre: nombresRoles[0] || limpiarRol(user.rol_nombre_legacy) || ''
         };
     });
-
-    return usuariosLimpios;
 };
 
-/**
- * Actualiza los datos generales de un usuario y sincroniza su lista de roles.
- */
-const updateUser = async (id, usuarioData) => {
+// NUEVO: Agregamos roles y sedes
+const updateUser = async (id, usuarioData, roles, sedes) => {
     const client = await pool.connect();
     try {
-        const { nombre, apellido_p, apellido_m, user_name, rol_id, roles } = usuarioData;
-        
+        const { nombre, apellido_p, apellido_m, user_name, rol_id } = usuarioData;
         await client.query('BEGIN');
 
         const rolPrincipal = rol_id || (roles && roles.length > 0 ? roles[0] : null);
@@ -191,25 +172,24 @@ const updateUser = async (id, usuarioData) => {
             RETURNING id, nombre, user_name;
         `;
         
-        const valuesUsuario = [nombre, apellido_p, apellido_m, user_name, rolPrincipal, id];
-        const { rows } = await client.query(queryUsuario, valuesUsuario);
+        const { rows } = await client.query(queryUsuario, [nombre, apellido_p, apellido_m, user_name, rolPrincipal, id]);
         const usuarioActualizado = rows[0];
 
         if (usuarioActualizado) {
-            // Sincronizar roles en la tabla intermedia usuario_roles
-            let rolesAInsertar = [];
-            if (Array.isArray(roles) && roles.length > 0) {
-                rolesAInsertar = roles;
-            } else if (rolPrincipal) {
-                rolesAInsertar = [rolPrincipal];
+            // Actualizar roles
+            let rolesAInsertar = Array.isArray(roles) && roles.length > 0 ? roles : (rolPrincipal ? [rolPrincipal] : []);
+            await client.query(`DELETE FROM usuario_roles WHERE usuario_id = $1`, [id]);
+            for (let rId of rolesAInsertar) {
+                await client.query(`INSERT INTO usuario_roles (usuario_id, rol_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, rId]);
             }
 
-            if (rolesAInsertar.length > 0) {
-                await client.query(`DELETE FROM usuario_roles WHERE usuario_id = $1`, [id]);
-                for (let rId of rolesAInsertar) {
+            // Actualizar Sedes
+            if (Array.isArray(sedes)) {
+                await client.query(`DELETE FROM usuario_sedes WHERE usuario_id = $1`, [id]);
+                for (let s of sedes) {
                     await client.query(
-                        `INSERT INTO usuario_roles (usuario_id, rol_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-                        [id, rId]
+                        `INSERT INTO usuario_sedes (usuario_id, ciudad_id, unidad_medica_id) VALUES ($1, $2, $3)`,
+                        [id, s.ciudad_id, s.unidad_medica_id]
                     );
                 }
             }
@@ -217,7 +197,6 @@ const updateUser = async (id, usuarioData) => {
 
         await client.query('COMMIT');
         return usuarioActualizado;
-
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -226,41 +205,14 @@ const updateUser = async (id, usuarioData) => {
     }
 };
 
-/**
- * Activa o Inactiva a un usuario
- */
 const updateStatus = async (id, estado_usuario_id) => {
-    const query = `
-        UPDATE usuarios 
-        SET estado_usuario_id = $1
-        WHERE id = $2
-        RETURNING id, estado_usuario_id;
-    `;
-    
-    const { rows } = await pool.query(query, [estado_usuario_id, id]);
+    const { rows } = await pool.query(`UPDATE usuarios SET estado_usuario_id = $1 WHERE id = $2 RETURNING id, estado_usuario_id;`, [estado_usuario_id, id]);
     return rows[0];
 };
 
-/**
- * Restablece la contraseña de un usuario
- */
 const updatePassword = async (id, nuevaContrasenaHash) => {
-    const query = `
-        UPDATE usuarios 
-        SET contrasena = $1
-        WHERE id = $2
-        RETURNING id, user_name;
-    `;
-    
-    const { rows } = await pool.query(query, [nuevaContrasenaHash, id]);
+    const { rows } = await pool.query(`UPDATE usuarios SET contrasena = $1 WHERE id = $2 RETURNING id, user_name;`, [nuevaContrasenaHash, id]);
     return rows[0];
 };
 
-module.exports = {
-    findByUserName,
-    createUser,
-    getAllUsers,
-    updateUser,
-    updateStatus,
-    updatePassword
-};
+module.exports = { findByUserName, createUser, getAllUsers, updateUser, updateStatus, updatePassword };

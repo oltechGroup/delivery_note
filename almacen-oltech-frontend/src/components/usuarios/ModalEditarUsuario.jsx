@@ -9,31 +9,66 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
   const [mensaje, setMensaje] = useState({ texto: '', tipo: '' }); // tipo puede ser 'error' o 'exito'
   const [pestanaActiva, setPestanaActiva] = useState('generales'); // pestañas: generales, estado, contrasena
 
+  // Catálogos
+  const [catalogoRoles, setCatalogoRoles] = useState([]);
+  const [catalogoHospitales, setCatalogoHospitales] = useState([]);
+
   // Estados para los formularios
   const [formData, setFormData] = useState({
-    nombre: '', apellido_p: '', apellido_m: '', user_name: '', rol_id: '1'
+    nombre: '', apellido_p: '', apellido_m: '', user_name: '', rol_id: '1', roles: [], sedes: []
   });
   const [nuevoEstado, setNuevoEstado] = useState('1');
   const [nuevaContrasena, setNuevaContrasena] = useState('');
 
-  // Efecto mágico: Cuando abres el modal y le pasas un usuario, rellenamos los campos automáticamente
+  const cargarCatalogos = async () => {
+    try {
+      const rolesBD = [
+        { id: 1, nombre: 'Almacén' },
+        { id: 5, nombre: 'Encargado de almacén' },
+        { id: 2, nombre: 'Biomédicos' },
+        { id: 7, nombre: 'Cotizaciones' },
+        { id: 3, nombre: 'Operaciones' },
+        { id: 4, nombre: 'Sistemas' },
+        { id: 6, nombre: 'Ventas' },
+        { id: 8, nombre: 'Técnico' },
+        { id: 9, nombre: 'Coordinador' }
+      ];
+      setCatalogoRoles(rolesBD);
+
+      const resHospitales = await axios.get('http://localhost:4000/api/remisiones/unidades-medicas', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCatalogoHospitales(resHospitales.data);
+    } catch (err) {
+      console.error('Error al cargar catálogos:', err);
+    }
+  };
+
+  // Efecto mágico: Rellenar los campos y cargar catálogos al abrir el modal
   useEffect(() => {
     if (usuarioEditando && isOpen) {
+      cargarCatalogos();
+
+      // Mapeamos los roles actuales del usuario (Vienen como objetos {id, nombre})
+      const rolesAsignados = usuarioEditando.roles_detalles ? usuarioEditando.roles_detalles.map(r => r.id) : [usuarioEditando.rol_id];
+
       setFormData({
         nombre: usuarioEditando.nombre,
         apellido_p: usuarioEditando.apellido_p,
         apellido_m: usuarioEditando.apellido_m || '',
         user_name: usuarioEditando.user_name,
-        rol_id: usuarioEditando.rol_id.toString()
+        rol_id: usuarioEditando.rol_id ? usuarioEditando.rol_id.toString() : '1',
+        roles: rolesAsignados,
+        sedes: usuarioEditando.sedes || []
       });
+      
       setNuevoEstado(usuarioEditando.estado_usuario_id.toString());
       setNuevaContrasena('');
       setMensaje({ texto: '', tipo: '' });
-      setPestanaActiva('generales'); // Siempre empezamos en la primera pestaña
+      setPestanaActiva('generales'); 
     }
-  }, [usuarioEditando, isOpen]);
+  }, [usuarioEditando, isOpen, token]);
 
-  // Si el modal está cerrado o no hay usuario seleccionado, no dibujamos nada
   if (!isOpen || !usuarioEditando) return null;
 
   const handleCerrar = () => {
@@ -41,15 +76,45 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
     onClose();
   };
 
+  const handleRolToggle = (rolId) => {
+    setFormData((prev) => {
+      const rolesSeleccionados = prev.roles.includes(rolId)
+        ? prev.roles.filter((id) => id !== rolId)
+        : [...prev.roles, rolId];
+      return { ...prev, roles: rolesSeleccionados };
+    });
+  };
+
+  const handleSedeChange = (e) => {
+    const unidadId = e.target.value;
+    if (!unidadId) {
+      setFormData({ ...formData, sedes: [] }); 
+      return;
+    }
+    const hospitalSeleccionado = catalogoHospitales.find(h => h.id === parseInt(unidadId));
+    if (hospitalSeleccionado) {
+      setFormData({
+        ...formData,
+        sedes: [{ unidad_medica_id: hospitalSeleccionado.id, ciudad_id: hospitalSeleccionado.ciudad_id }]
+      });
+    }
+  };
+
   // --- 1. Guardar Datos Generales ---
   const handleGuardarGenerales = async (e) => {
     e.preventDefault();
     setMensaje({ texto: '', tipo: '' });
+
+    if (formData.roles.length === 0) {
+        setMensaje({ texto: 'Debes seleccionar al menos un Rol en el Sistema.', tipo: 'error' });
+        return;
+    }
+
     setCargando(true);
     try {
       await axios.put(`http://localhost:4000/api/usuarios/${usuarioEditando.id}`, {
         ...formData,
-        rol_id: parseInt(formData.rol_id)
+        rol_id: formData.roles[0] // El primero como principal para legacy
       }, { headers: { Authorization: `Bearer ${token}` } });
       
       setMensaje({ texto: 'Datos actualizados correctamente.', tipo: 'exito' });
@@ -95,7 +160,7 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
       }, { headers: { Authorization: `Bearer ${token}` } });
       
       setMensaje({ texto: 'Contraseña restablecida exitosamente.', tipo: 'exito' });
-      setNuevaContrasena(''); // Limpiamos el campo por seguridad
+      setNuevaContrasena(''); 
     } catch (err) {
       setMensaje({ texto: err.response?.data?.mensaje || 'Error al cambiar contraseña.', tipo: 'error' });
     } finally {
@@ -105,11 +170,9 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      {/* RESPONSIVO: flex-col, max-h-[90vh] para que la estructura base respete la altura de la pantalla */}
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         
         {/* Encabezado del Modal */}
-        {/* RESPONSIVO: shrink-0 para que el header nunca se aplaste y reduccion de paddings */}
         <div className="bg-oltech-black px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2 min-w-0">
             <svg className="w-5 h-5 text-oltech-pink shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,29 +188,28 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
         </div>
 
         {/* Las Pestañas (Tabs) */}
-        {/* RESPONSIVO: overflow-x-auto y whitespace-nowrap para scroll horizontal fluido en moviles */}
         <div className="flex border-b border-gray-200 bg-gray-50 px-4 sm:px-6 pt-2 space-x-4 overflow-x-auto whitespace-nowrap shrink-0">
           <button 
             onClick={() => { setPestanaActiva('generales'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'generales' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-bold text-sm transition-colors border-b-2 ${pestanaActiva === 'generales' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
           >
-            Datos Generales
+            Datos y Permisos
           </button>
           <button 
             onClick={() => { setPestanaActiva('estado'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'estado' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-bold text-sm transition-colors border-b-2 ${pestanaActiva === 'estado' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
           >
             Estado de Acceso
           </button>
           <button 
             onClick={() => { setPestanaActiva('contrasena'); setMensaje({ texto: '', tipo: '' }); }}
-            className={`py-3 px-2 sm:px-4 font-medium text-sm transition-colors border-b-2 ${pestanaActiva === 'contrasena' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+            className={`py-3 px-2 sm:px-4 font-bold text-sm transition-colors border-b-2 ${pestanaActiva === 'contrasena' ? 'border-oltech-pink text-oltech-pink' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
           >
             Contraseña
           </button>
         </div>
 
-        {/* Área de Mensajes (Éxito o Error) */}
+        {/* Área de Mensajes */}
         {mensaje.texto && (
           <div className="px-4 sm:px-6 pt-4 shrink-0">
             <div className={`p-3 sm:p-4 rounded-md border-l-4 text-xs sm:text-sm font-medium ${mensaje.tipo === 'error' ? 'bg-red-50 border-red-500 text-red-700' : 'bg-green-50 border-green-500 text-green-700'}`}>
@@ -156,51 +218,75 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
           </div>
         )}
 
-        {/* Contenido de las pestañas */}
-        {/* RESPONSIVO: overflow-y-auto asegura que el contenido de los forms sea el que scrollee si falta espacio */}
-        <div className="p-4 sm:p-6 overflow-y-auto">
+        <div className="p-4 sm:p-6 overflow-y-auto bg-white">
           
           {/* PESTAÑA 1: Datos Generales */}
           {pestanaActiva === 'generales' && (
             <form onSubmit={handleGuardarGenerales} className="space-y-4 sm:space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                  <input type="text" name="nombre" required value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Nombre *</label>
+                  <input type="text" name="nombre" required value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none font-medium" />
                 </div>
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Apellido Paterno *</label>
-                  <input type="text" name="apellido_p" required value={formData.apellido_p} onChange={(e) => setFormData({...formData, apellido_p: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Apellido Paterno *</label>
+                  <input type="text" name="apellido_p" required value={formData.apellido_p} onChange={(e) => setFormData({...formData, apellido_p: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none font-medium" />
                 </div>
                 <div className="col-span-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Apellido Materno</label>
-                  <input type="text" name="apellido_m" value={formData.apellido_m} onChange={(e) => setFormData({...formData, apellido_m: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Apellido Materno</label>
+                  <input type="text" name="apellido_m" value={formData.apellido_m} onChange={(e) => setFormData({...formData, apellido_m: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none font-medium" />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de Usuario *</label>
-                  <input type="text" name="user_name" required value={formData.user_name} onChange={(e) => setFormData({...formData, user_name: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rol en el Sistema *</label>
-                  <select name="rol_id" value={formData.rol_id} onChange={(e) => setFormData({...formData, rol_id: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none bg-white">
-                    <option value="1">Almacén (Operativo básico)</option>
-                    <option value="5">Encargado de almacén (Supervisión y Remisiones)</option>
-                    <option value="2">Biomédicos (Crear Remisiones)</option>
-                    {/* NUEVO ROL AÑADIDO AQUÍ TAMBIÉN */}
-                    <option value="7">Cotizaciones (Creación y gestión de cotizaciones)</option>
-                    <option value="3">Operaciones (Auditoría Total)</option>
-                    <option value="4">Sistemas (Administración IT)</option>
-                    <option value="6">Ventas (Auditoría de Efectivo)</option>
-                  </select>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nombre de Usuario *</label>
+                <input type="text" name="user_name" required value={formData.user_name} onChange={(e) => setFormData({...formData, user_name: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none font-mono text-sm" />
+              </div>
+
+              <div className="border-t border-gray-200 pt-4">
+                <label className="block text-sm font-black text-oltech-blue mb-3 uppercase tracking-wide">Permisos y Ubicación</label>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* CHECKBOXES DE ROLES */}
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <label className="block text-xs font-bold text-gray-500 mb-3 uppercase">Múltiples Roles del Sistema *</label>
+                        <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-2">
+                            {catalogoRoles.map(rol => (
+                                <label key={rol.id} className="flex items-center space-x-2 cursor-pointer group">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={formData.roles.includes(rol.id)}
+                                        onChange={() => handleRolToggle(rol.id)}
+                                        className="w-4 h-4 text-oltech-pink bg-white border-gray-300 rounded focus:ring-oltech-pink"
+                                    />
+                                    <span className="text-xs font-semibold text-gray-700 group-hover:text-oltech-pink transition-colors">{rol.nombre}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* SELECTOR DE SEDE / HOSPITAL */}
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                        <label className="block text-xs font-bold text-blue-500 mb-3 uppercase">Asignación Geográfica</label>
+                        <p className="text-[10px] text-gray-500 mb-3 font-medium leading-tight">
+                            Si seleccionas un hospital, el usuario <strong>solo podrá ver el inventario y remisiones de esa sede.</strong> Déjalo en "Acceso Nacional" para personal administrativo.
+                        </p>
+                        <select 
+                            onChange={handleSedeChange}
+                            value={formData.sedes.length > 0 ? formData.sedes[0].unidad_medica_id : ''}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-blue outline-none bg-white text-xs font-bold text-gray-800"
+                        >
+                            <option value="">🌎 Acceso Nacional (Ver todo)</option>
+                            {catalogoHospitales.map(h => (
+                                <option key={h.id} value={h.id}>🏥 {h.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
-                {/* RESPONSIVO: w-full en móvil, w-auto en escritorio */}
-                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
+                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold hover:bg-gray-800 transition-colors disabled:opacity-70 shadow-md">
                   {cargando ? 'Guardando...' : 'Actualizar Datos'}
                 </button>
               </div>
@@ -212,19 +298,18 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
             <form onSubmit={handleGuardarEstado} className="space-y-4 sm:space-y-6">
               <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-100">
                 <p className="text-xs sm:text-sm text-blue-800">
-                  <strong>Nota:</strong> Si cambias el estado a "Inactivo", el usuario no podrá iniciar sesión en el sistema, pero su historial de remisiones se mantendrá intacto por temas de auditoría.
+                  <strong>Nota:</strong> Si cambias el estado a "Inactivo", el usuario no podrá iniciar sesión, pero su historial se mantendrá intacto.
                 </p>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Estado de la cuenta</label>
-                {/* RESPONSIVO: flex-col en móvil y flex-row en escritorio para no aplastar las tarjetas */}
+                <label className="block text-sm font-bold text-gray-700 mb-2">Estado de la cuenta</label>
                 <div className="flex flex-col sm:flex-row gap-4 sm:gap-0 sm:space-x-4">
                   <label className={`flex-1 border rounded-lg p-3 sm:p-4 cursor-pointer transition-all ${nuevoEstado === '1' ? 'border-green-500 bg-green-50 shadow-sm' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
                     <input type="radio" name="estado" value="1" checked={nuevoEstado === '1'} onChange={(e) => setNuevoEstado(e.target.value)} className="sr-only" />
                     <div className="flex items-center space-x-2">
                       <div className={`w-4 h-4 rounded-full border-2 ${nuevoEstado === '1' ? 'border-green-500 bg-green-500' : 'border-gray-300'}`}></div>
-                      <span className="font-semibold text-green-700 text-sm sm:text-base">Cuenta Activa</span>
+                      <span className="font-bold text-green-700 text-sm sm:text-base">Cuenta Activa</span>
                     </div>
                   </label>
                   
@@ -232,15 +317,14 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
                     <input type="radio" name="estado" value="2" checked={nuevoEstado === '2'} onChange={(e) => setNuevoEstado(e.target.value)} className="sr-only" />
                     <div className="flex items-center space-x-2">
                       <div className={`w-4 h-4 rounded-full border-2 ${nuevoEstado === '2' ? 'border-red-500 bg-red-500' : 'border-gray-300'}`}></div>
-                      <span className="font-semibold text-red-700 text-sm sm:text-base">Cuenta Inactiva</span>
+                      <span className="font-bold text-red-700 text-sm sm:text-base">Cuenta Inactiva</span>
                     </div>
                   </label>
                 </div>
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
-                {/* RESPONSIVO: w-full en móvil */}
-                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-70">
+                <button type="submit" disabled={cargando} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-black text-white rounded-lg font-bold hover:bg-gray-800 transition-colors disabled:opacity-70 shadow-md">
                   {cargando ? 'Guardando...' : 'Actualizar Estado'}
                 </button>
               </div>
@@ -251,26 +335,22 @@ function ModalEditarUsuario({ isOpen, onClose, onUsuarioActualizado, usuarioEdit
           {pestanaActiva === 'contrasena' && (
             <form onSubmit={handleGuardarContrasena} className="space-y-4 sm:space-y-6">
               <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-100">
-                <p className="text-xs sm:text-sm text-yellow-800">
-                  Al restablecer la contraseña, el usuario deberá usar la nueva clave inmediatamente. Te recomendamos asignarle una contraseña temporal.
+                <p className="text-xs sm:text-sm text-yellow-800 font-medium">
+                  Al restablecer la contraseña, el usuario deberá usar la nueva clave inmediatamente. Te recomendamos asignarle una contraseña temporal segura.
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nueva Contraseña</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Nueva Contraseña</label>
                 <input 
-                  type="password" 
-                  required 
-                  value={nuevaContrasena} 
-                  onChange={(e) => setNuevaContrasena(e.target.value)} 
-                  className="w-full px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none" 
+                  type="password" required value={nuevaContrasena} onChange={(e) => setNuevaContrasena(e.target.value)} 
+                  className="w-full px-4 py-2.5 sm:py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-oltech-pink outline-none font-mono" 
                   placeholder="Escribe la nueva clave..." 
                 />
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex sm:justify-end">
-                {/* RESPONSIVO: w-full en móvil */}
-                <button type="submit" disabled={cargando || !nuevaContrasena} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-70">
+                <button type="submit" disabled={cargando || !nuevaContrasena} className="w-full sm:w-auto px-6 py-2.5 bg-oltech-pink text-white rounded-lg font-bold hover:bg-red-600 transition-colors disabled:opacity-70 shadow-md">
                   {cargando ? 'Procesando...' : 'Restablecer Contraseña'}
                 </button>
               </div>

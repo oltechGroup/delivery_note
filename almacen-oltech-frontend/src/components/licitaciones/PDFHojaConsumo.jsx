@@ -3,7 +3,11 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useReactToPrint } from 'react-to-print';
 import { useAuth } from '../../hooks/useAuth';
-import LogoOltech from '../../assets/Logo acostado.png';
+
+// IMPORTAMOS TUS NUEVAS IMÁGENES OFICIALES
+import LogoOltech from '../../assets/logo.svg';
+import FranjaLateral from '../../assets/franja-lateral.png';
+import FooterImg from '../../assets/footer.png'; // Si al final es .jpg, solo cámbialo aquí
 
 function PDFHojaConsumo({ hojaId, onClose }) {
   const { token } = useAuth();
@@ -65,10 +69,10 @@ function PDFHojaConsumo({ hojaId, onClose }) {
   // Formateador de moneda
   const formatoMoneda = (monto) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto || 0);
 
-  // Formateador de fecha
+  // Formateador de fecha (Formato: DD/MM/YYYY para que coincida visualmente)
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return '';
-    return new Date(fechaStr).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+    return new Date(fechaStr).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
   const totalCalculado = insumosOficiales.reduce((acc, curr) => acc + (parseFloat(curr.precio_unitario) * curr.cantidad_utilizada || 0), 0);
@@ -82,14 +86,20 @@ function PDFHojaConsumo({ hojaId, onClose }) {
           background: white;
           width: 21.59cm;
           min-height: 27.94cm;
-          padding: 1.5cm;
           margin: 2rem auto;
-          box-shadow: 0 0 40px rgba(0,0,0,0.6);
           position: relative;
-          flex-shrink: 0;
           box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
+          font-family: Arial, Helvetica, sans-serif;
+          overflow: hidden;
+        }
+
+        .contenido-hoja { 
+          padding: 1.5cm 2.5cm 1.5cm 1.5cm; 
+          height: 100%; 
+          display: flex; 
+          flex-direction: column; 
+          position: relative;
+          z-index: 10;
         }
 
         @media print {
@@ -97,13 +107,9 @@ function PDFHojaConsumo({ hojaId, onClose }) {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .hoja-impresion {
             margin: 0 !important;
-            padding: 1.2cm 1.5cm !important;
-            width: 21.59cm !important;
-            height: 27.94cm !important;
             box-shadow: none !important;
             page-break-after: always !important;
           }
-          .hoja-impresion:last-child { page-break-after: auto !important; }
           .print\\:hidden { display: none !important; }
         }
         `}
@@ -124,136 +130,101 @@ function PDFHojaConsumo({ hojaId, onClose }) {
 
       {/* LIENZO DEL DOCUMENTO */}
       <div ref={componentRef} className="w-full flex flex-col items-center bg-gray-900 sm:bg-transparent overflow-x-auto">
-        <div className="hoja-impresion text-black text-xs font-sans">
+        <div className="hoja-impresion text-black">
           
-          {/* ENCABEZADO OFICIAL */}
-          <div className="flex justify-between items-start border-b-2 border-black pb-4 mb-4">
-            <img src={LogoOltech} alt="OLTECH" className="w-40 object-contain" />
-            <div className="text-right">
-              <h1 className="text-[13px] font-black uppercase tracking-wide">Reporte de Consumo Quirúrgico</h1>
-              <h2 className="text-[10px] font-bold text-gray-600 uppercase">Sistemas de Osteosíntesis y Endoprótesis</h2>
-              <p className="text-[11px] font-bold mt-2">FOLIO: <span className="text-red-600 font-mono text-sm">{hoja.folio}</span></p>
-              <p className="text-[9px] mt-1">Fecha de Emisión: {formatearFecha(hoja.fecha_creacion)}</p>
-            </div>
-          </div>
+          {/* BARRA LATERAL DE COLORES (USANDO TU IMAGEN) */}
+          <img 
+            src={FranjaLateral} 
+            alt="Diseño Lateral" 
+            className="absolute right-0 top-0 bottom-0 h-full w-[35px] object-cover z-0" 
+          />
 
-          {/* DATOS CLÍNICOS Y NORMATIVOS */}
-          <div className="border border-black rounded-lg p-3 mb-4 bg-gray-50/50">
-            <div className="grid grid-cols-12 gap-x-2 gap-y-3 text-[10px]">
-              <div className="col-span-8">
-                <span className="font-bold uppercase text-gray-600">Nombre del Paciente:</span>
-                <div className="font-black uppercase text-xs border-b border-gray-400">{hoja.paciente}</div>
-              </div>
-              <div className="col-span-4">
-                <span className="font-bold uppercase text-gray-600">CURP:</span>
-                <div className="font-black uppercase text-xs border-b border-gray-400 font-mono">{hoja.curp}</div>
-              </div>
-
-              <div className="col-span-6">
-                <span className="font-bold uppercase text-gray-600">Hospital / Sede:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.hospital_nombre}</div>
-              </div>
-              <div className="col-span-6">
-                <span className="font-bold uppercase text-gray-600">No. de Contrato / Convenio:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.numero_contrato}</div>
-              </div>
-
-              <div className="col-span-4">
-                <span className="font-bold uppercase text-gray-600">Clave HRAEI:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.clave_hraei}</div>
-              </div>
-              <div className="col-span-4">
-                <span className="font-bold uppercase text-gray-600">Clave CIE-10:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.clave_cie_10}</div>
-              </div>
-              <div className="col-span-4">
-                <span className="font-bold uppercase text-gray-600">No. de Renglón:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.numero_renglon || 'N/A'}</div>
-              </div>
-
-              <div className="col-span-12">
-                <span className="font-bold uppercase text-gray-600">Tipo de Cirugía Realizada:</span>
-                <div className="font-bold uppercase border-b border-gray-400">{hoja.tipo_cirugia || 'NO ESPECIFICADA'}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* TABLA DE MATERIALES EMPLEADOS */}
-          <div className="flex-1">
-            <h3 className="text-[10px] font-black uppercase mb-1 bg-black text-white px-2 py-1 inline-block">Material Empleado</h3>
-            <table className="w-full border-collapse border border-black text-[9px] text-center">
-              <thead className="bg-gray-200 font-bold uppercase">
-                <tr>
-                  <th className="border border-black p-1 w-8">Cant.</th>
-                  <th className="border border-black p-1 w-12">Und.</th>
-                  <th className="border border-black p-1">Descripción del Bien / Servicio</th>
-                  <th className="border border-black p-1 w-20">Lote</th>
-                  <th className="border border-black p-1 w-16">Caduc.</th>
-                  <th className="border border-black p-1 w-20">C. Unitario</th>
-                  <th className="border border-black p-1 w-20">Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {insumosOficiales.map((item, idx) => (
-                  <tr key={idx}>
-                    <td className="border border-black p-1.5 font-bold">{item.cantidad_utilizada}</td>
-                    <td className="border border-black p-1.5">{item.unidad_medida}</td>
-                    <td className="border border-black p-1.5 text-left uppercase font-bold">
-                      {item.pieza_descripcion || item.nombre_catalogo || item.set_descripcion}
-                      {item.marca && <div className="text-[8px] font-normal italic text-gray-600">Marca: {item.marca}</div>}
-                    </td>
-                    <td className="border border-black p-1.5 font-mono">{item.lote || 'N/A'}</td>
-                    <td className="border border-black p-1.5">{item.fecha_caducidad || 'N/A'}</td>
-                    <td className="border border-black p-1.5">{formatoMoneda(item.precio_unitario)}</td>
-                    <td className="border border-black p-1.5 font-bold bg-gray-50">{formatoMoneda(item.cantidad_utilizada * item.precio_unitario)}</td>
-                  </tr>
-                ))}
-                {/* Fila de Total */}
-                <tr className="bg-gray-200">
-                  <td colSpan="6" className="border border-black p-1.5 text-right font-black uppercase">Subtotal / Monto Total de los Sistemas:</td>
-                  <td className="border border-black p-1.5 font-black text-[11px]">{formatoMoneda(totalCalculado)}</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="contenido-hoja">
             
-            {/* ÁREA DE ETIQUETAS */}
-            <div className="mt-4 border-2 border-dashed border-gray-400 p-2 min-h-[100px] flex items-center justify-center rounded bg-gray-50/50">
-              <span className="text-gray-400 font-bold uppercase text-[10px] tracking-widest text-center">
-                [ Espacio reservado para adherir las etiquetas físicas de los productos utilizados ]<br/>
-                <span className="font-normal text-[8px] lowercase">(Requerido para la validación de uso y comprobación para pago)</span>
-              </span>
+            {/* ENCABEZADO: Logos y Códigos */}
+            <div className="flex justify-between items-start mb-8">
+              <div className="flex items-center space-x-4">
+                <img src={LogoOltech} alt="OLTECH" className="h-16 object-contain" />
+                
+                {/* LOGO DEL HOSPITAL DINÁMICO */}
+                {/* Oculta la imagen automáticamente si no encuentra el archivo en la carpeta public */}
+                <img 
+                  src={`/logos-hospitales/hospital-${hoja.unidad_medica_id}.png`} 
+                  alt="" 
+                  className="h-14 object-contain"
+                  onError={(e) => e.target.style.display = 'none'} 
+                />
+              </div>
+              <div className="text-right text-[12px] text-gray-800 leading-snug font-medium">
+                <p className="font-bold">MPM-01-R04</p>
+                <p>Versión 04</p>
+                <p>Folio: {hoja.folio}</p>
+              </div>
             </div>
-          </div>
 
-          {/* SECCIÓN DE FIRMAS Y VALIDACIÓN */}
-          <div className="mt-auto pt-6">
-            <p className="text-[8px] text-justify font-medium mb-8 leading-tight">
-              Bajo protesta de decir verdad, los firmantes certifican que los materiales descritos en este documento fueron suministrados y utilizados en su totalidad en el procedimiento quirúrgico del paciente mencionado. Este formato se expide para los fines administrativos y legales correspondientes, conforme a lo dispuesto en la normativa de Compras MX.
-            </p>
+            <h2 className="text-xl font-normal mb-4 tracking-wide">INFORMACIÓN</h2>
 
-            <div className="grid grid-cols-3 gap-6 text-center text-[10px] font-bold">
-              
-              <div className="flex flex-col items-center justify-end">
-                <div className="w-full border-b border-black mb-1 h-12"></div>
-                <p className="uppercase">{hoja.nombre_medico_adscrito || 'MÉDICO ADSCRITO'}</p>
-                <p className="text-[8px] font-normal">Médico Adscrito / Tratante</p>
-              </div>
-
-              <div className="flex flex-col items-center justify-end">
-                <div className="w-full border-b border-black mb-1 h-12"></div>
-                <p className="uppercase">{hoja.jefe_servicio || 'JEFE DE SERVICIO'}</p>
-                <p className="text-[8px] font-normal">Jefe de Servicio de Traumatología y Ortopedia</p>
-              </div>
-
-              <div className="flex flex-col items-center justify-end">
-                <div className="w-full border-b border-black mb-1 h-12"></div>
-                <p className="uppercase">{hoja.encargado_nombre || '__________________________'}</p>
-                <p className="text-[8px] font-normal">Validación OLTECH S.A. de C.V.</p>
-              </div>
-
+            {/* DATOS GENERALES */}
+            <div className="grid grid-cols-1 gap-y-2 text-sm mb-8">
+              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Hospital:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.hospital_nombre}</span></div>
+              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Fecha de CX:</span><span className="col-span-10 border-b border-gray-300 font-bold">{formatearFecha(hoja.fecha_creacion)}</span></div>
+              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Doctor:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.nombre_medico_adscrito || hoja.medico_tratante_nombre}</span></div>
+              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Técnicos:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.tecnico_nombre}</span></div>
+              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Paciente:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.paciente}</span></div>
             </div>
-          </div>
 
+            <h2 className="text-xl font-normal mb-3 tracking-wide">CONSUMO</h2>
+
+            {/* TABLA DE MATERIALES */}
+            <div className="mb-6">
+              <table className="w-full text-xs border border-gray-300">
+                <thead className="bg-gray-100 border-b border-gray-300 text-left">
+                  <tr>
+                    <th className="p-2 border-r border-gray-300 font-normal w-24">Código</th>
+                    <th className="p-2 border-r border-gray-300 font-normal">Descripción</th>
+                    <th className="p-2 border-r border-gray-300 font-normal text-center w-12">Qty</th>
+                    <th className="p-2 border-r border-gray-300 font-normal text-right w-20">P.U</th>
+                    <th className="p-2 font-normal text-right w-24">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {insumosOficiales.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-300">
+                      <td className="p-2 border-r border-gray-300 text-gray-600">{item.pieza_codigo || item.codigo_catalogo || item.set_codigo}</td>
+                      <td className="p-2 border-r border-gray-300 uppercase text-gray-800">{item.pieza_descripcion || item.nombre_catalogo || item.set_descripcion}</td>
+                      <td className="p-2 border-r border-gray-300 text-center">{item.cantidad_utilizada}</td>
+                      <td className="p-2 border-r border-gray-300 text-right">{formatoMoneda(item.precio_unitario)}</td>
+                      <td className="p-2 text-right text-gray-800">{formatoMoneda(item.cantidad_utilizada * item.precio_unitario)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td colSpan="3" className="p-2 border-r border-gray-300 bg-gray-50"></td>
+                    <td className="p-2 border-r border-gray-300 text-right font-normal bg-gray-50">Total</td>
+                    <td className="p-2 text-right font-bold bg-gray-50 text-gray-900">{formatoMoneda(totalCalculado)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h2 className="text-xl font-normal mb-2 tracking-wide">NOTAS:</h2>
+            <div className="border-b-2 border-gray-800 mb-6 mt-6 w-full"></div>
+            <div className="border-b-2 border-gray-800 mb-6 mt-6 w-full"></div>
+
+            {/* SECCIÓN DE FIRMAS */}
+            <div className="mt-16 flex justify-center text-center text-sm">
+              <div className="w-80">
+                <div className="border-b border-black mb-2 h-10"></div>
+                <p className="font-medium mt-2">Dr. {hoja.nombre_medico_adscrito || '_________________________'}</p>
+                <p className="text-gray-700">MÉDICO ADSCRITO</p>
+              </div>
+            </div>
+
+            {/* FOOTER: Imagen de Contacto (QR) */}
+            <div className="mt-auto pt-6 flex items-end">
+               <img src={FooterImg} alt="Contacto y QR" className="h-12 object-contain" />
+            </div>
+
+          </div>
         </div>
       </div>
     </div>
