@@ -5,11 +5,10 @@ import { useReactToPrint } from 'react-to-print';
 import { useAuth } from '../../hooks/useAuth';
 
 // IMPORTACIONES ESTÁTICAS DE IMÁGENES
-import LogoOltech from '../../assets/logo.svg';
+import LogoOltech from '../../assets/logo-name.png';
 import FranjaLateral from '../../assets/franja-lateral.png';
 import FooterImg from '../../assets/footer.png';
 
-// Importamos los logos de los hospitales uno por uno para que Vite los detecte
 import Hosp1 from '../../assets/hospital-1.png';
 import Hosp2 from '../../assets/hospital-2.png';
 import Hosp3 from '../../assets/hospital-3.png';
@@ -72,27 +71,25 @@ function PDFHojaConsumo({ hojaId, onClose }) {
     );
   }
 
-  // Filtrar insumos externos
-  const insumosOficiales = hoja.detalles.filter(d => !d.es_insumo_externo);
+  // Ahora permitimos todos los insumos, para mostrar los agregados manualmente
+  const insumosMostrar = hoja.detalles;
 
-  // Formateadores
   const formatoMoneda = (monto) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(monto || 0);
   const formatearFecha = (fechaStr) => {
     if (!fechaStr) return '';
     return new Date(fechaStr).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  const totalCalculado = insumosOficiales.reduce((acc, curr) => acc + (parseFloat(curr.precio_unitario) * curr.cantidad_utilizada || 0), 0);
+  const totalCalculado = insumosMostrar.reduce((acc, curr) => acc + (parseFloat(curr.precio_unitario) * curr.cantidad_utilizada || 0), 0);
 
-  // Diccionario para asignar el logo correcto según el ID de la ciudad o unidad médica
   const diccionarioLogos = {
-    1: Hosp1, 6: Hosp1, // Tapachula
-    2: Hosp2, 7: Hosp2, // Tuxtla
-    3: Hosp3, 8: Hosp3, // León
-    4: Hosp4, 9: Hosp4, // Ixtapaluca
-    5: Hosp5, 10: Hosp5, // Oaxaca
-    6: Hosp6, 11: Hosp6, // Victoria
-    7: Hosp7, 12: Hosp7  // Mérida
+    1: Hosp1, 6: Hosp1, 
+    2: Hosp2, 7: Hosp2, 
+    3: Hosp3, 8: Hosp3, 
+    4: Hosp4, 9: Hosp4, 
+    5: Hosp5, 10: Hosp5,
+    6: Hosp6, 11: Hosp6,
+    7: Hosp7, 12: Hosp7 
   };
   const logoHospital = diccionarioLogos[hoja.ciudad_id] || diccionarioLogos[hoja.unidad_medica_id] || null;
 
@@ -165,15 +162,24 @@ function PDFHojaConsumo({ hojaId, onClose }) {
 
           <div className="contenido-hoja">
             
-            {/* ENCABEZADO: Logos y Códigos */}
-            <div className="flex justify-between items-start mb-8">
-              <div className="flex items-center space-x-4">
+            {/* ENCABEZADO: 3 Columnas (Oltech - Hospital Centro - Códigos) */}
+            <div className="flex justify-between items-center mb-8 w-full">
+              <div className="w-1/3 flex justify-start">
                 <img src={LogoOltech} alt="OLTECH" className="h-16 object-contain" />
+              </div>
+              
+              <div className="w-1/3 flex justify-center">
                 {logoHospital && (
-                  <img src={logoHospital} alt="Hospital" className="h-14 object-contain" />
+                  <img 
+                    src={logoHospital} 
+                    alt="Hospital" 
+                    className="h-16 object-contain"
+                    onError={(e) => e.target.style.display = 'none'} 
+                  />
                 )}
               </div>
-              <div className="text-right text-[12px] text-gray-800 leading-snug font-medium">
+
+              <div className="w-1/3 text-right text-[12px] text-gray-800 leading-snug font-medium">
                 <p className="font-bold">MPM-01-R04</p>
                 <p>Versión 04</p>
                 <p>Folio: {hoja.folio}</p>
@@ -206,10 +212,14 @@ function PDFHojaConsumo({ hojaId, onClose }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {insumosOficiales.map((item, idx) => (
+                  {insumosMostrar.map((item, idx) => (
                     <tr key={idx} className="border-b border-gray-300">
-                      <td className="p-2 border-r border-gray-300 text-gray-600">{item.pieza_codigo || item.codigo_catalogo || item.set_codigo}</td>
-                      <td className="p-2 border-r border-gray-300 uppercase text-gray-800">{item.pieza_descripcion || item.nombre_catalogo || item.set_descripcion}</td>
+                      <td className="p-2 border-r border-gray-300 text-gray-600">
+                        {item.pieza_codigo || item.codigo_catalogo || item.set_codigo || '-'}
+                      </td>
+                      <td className="p-2 border-r border-gray-300 uppercase text-gray-800 font-medium">
+                        {item.pieza_descripcion || item.nombre_catalogo || item.set_descripcion || item.descripcion_externa || item.descripcion_custom}
+                      </td>
                       <td className="p-2 border-r border-gray-300 text-center">{item.cantidad_utilizada}</td>
                       <td className="p-2 border-r border-gray-300 text-right">{formatoMoneda(item.precio_unitario)}</td>
                       <td className="p-2 text-right text-gray-800">{formatoMoneda(item.cantidad_utilizada * item.precio_unitario)}</td>
@@ -237,10 +247,7 @@ function PDFHojaConsumo({ hojaId, onClose }) {
               </div>
             </div>
 
-            {/* El espacio para el footer ya está reservado por padding-bottom si es necesario, 
-                pero al ser absoluto no empuja el contenido. Simplemente dejamos el final aquí. */}
             <div className="pb-16"></div> 
-
           </div>
         </div>
       </div>
