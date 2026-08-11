@@ -20,6 +20,7 @@ const rolesAprobacion = ['Sistemas', 'Operaciones', 'Encargado de almacén', 'Co
 
 // Roles que pueden consultar el historial (La suma de todos los anteriores)
 const rolesLectura = [...new Set([...rolesCreacion, ...rolesAprobacion])];
+const fileUpload = require('express-fileupload');
 
 // ==========================================
 // RUTAS: INVENTARIO LOCAL (Sedes/Hospitales)
@@ -43,5 +44,6 @@ router.post('/hojas-consumo', verificarToken, checkRole(rolesCreacion), licitaci
 // RUTAS: AUDITORÍA Y CIERRE (Aprobación)
 // ==========================================
 router.patch('/hojas-consumo/:id/autorizar', verificarToken, checkRole(rolesAprobacion), licitacionController.autorizarHojaConsumo);
+router.post('/:id/subir-firma', verificarToken, fileUpload(), licitacionController.subirArchivoFirmado);
 
 module.exports = router;

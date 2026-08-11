@@ -234,6 +234,29 @@ const updateEstadoHoja = async (id, estado, usuario_encargado_id, observaciones_
     return rows[0];
 };
 
+/**
+ * Registra la ruta del archivo firmado en la hoja de consumo
+ */
+const updateArchivoFirmado = async (id, nombreArchivo) => {
+    const query = `
+        UPDATE hoja_consumo 
+        SET archivo_firmado = $1 
+        WHERE id = $2 
+        RETURNING id, archivo_firmado;
+    `;
+    const { rows } = await pool.query(query, [nombreArchivo, id]);
+    return rows[0];
+};
+
+module.exports = {
+    getInventarioLocal,
+    getHojasConsumo,
+    getHojaConsumoById,
+    createHojaConsumo,
+    updateEstadoHoja,
+    updateArchivoFirmado // <--- Agregada
+};
+
 module.exports = {
     getInventarioLocal,
     getHojasConsumo,

@@ -132,10 +132,38 @@ const autorizarHojaConsumo = async (req, res) => {
     }
 };
 
+const fs = require('fs');
+const path = require('path');
+
+const subirArchivoFirmado = async (req, res) => {
+    try {
+        if (!req.files || !req.files.archivo) {
+            return res.status(400).json({ mensaje: 'No se ha adjuntado ningún archivo.' });
+        }
+
+        const { id } = req.params;
+        const archivo = req.files.archivo;
+        const nombreArchivo = `firma_${id}_${Date.now()}${path.extname(archivo.name)}`;
+        const rutaDestino = path.join(__dirname, '../../uploads/firmas', nombreArchivo);
+
+        // Mover archivo a la carpeta /uploads/firmas
+        await archivo.mv(rutaDestino);
+
+        // Actualizar en base de datos
+        await licitacionModel.updateArchivoFirmado(id, nombreArchivo);
+
+        res.json({ mensaje: 'Archivo subido y vinculado correctamente.', archivo: nombreArchivo });
+    } catch (error) {
+        console.error('Error al subir archivo:', error);
+        res.status(500).json({ mensaje: 'Error al subir el archivo.' });
+    }
+};
+
 module.exports = {
     obtenerInventarioLocal,
     obtenerHojasConsumo,
     obtenerHojaPorId,
     crearHojaConsumo,
-    autorizarHojaConsumo
+    autorizarHojaConsumo,
+    subirArchivoFirmado
 };
