@@ -1,4 +1,3 @@
-// almacen-oltech-backend/src/models/licitacionModel.js
 const pool = require('../config/database');
 
 /**
@@ -67,6 +66,7 @@ const getHojasConsumo = async (filtros = {}) => {
             hc.tipo_cirugia,
             hc.estado,
             hc.fecha_validacion,
+            hc.archivo_firmado,
             CONCAT_WS(' ', ut.nombre, ut.apellido_p) AS tecnico_nombre,
             CONCAT_WS(' ', ue.nombre, ue.apellido_p) AS encargado_nombre
         FROM hoja_consumo hc
@@ -161,12 +161,12 @@ const createHojaConsumo = async (hojaData, detalles) => {
                 folio, ciudad_id, unidad_medica_id, paciente, curp, 
                 numero_contrato, clave_cie_10, clave_hraei, numero_renglon, tipo_cirugia, 
                 medico_tratante_id, nombre_medico_adscrito, jefe_servicio, 
-                usuario_tecnico_id, estado, observaciones
+                usuario_tecnico_id, tecnico_nombre_manual, estado, observaciones
             ) VALUES (
                 $1, $2, $3, $4, $5, 
                 $6, $7, $8, $9, $10, 
                 $11, $12, $13, 
-                $14, $15, $16
+                $14, $15, $16, $17
             ) RETURNING id;
         `;
         
@@ -174,7 +174,7 @@ const createHojaConsumo = async (hojaData, detalles) => {
             hojaData.folio, hojaData.ciudad_id, hojaData.unidad_medica_id, hojaData.paciente, hojaData.curp,
             hojaData.numero_contrato, hojaData.clave_cie_10, hojaData.clave_hraei, hojaData.numero_renglon, hojaData.tipo_cirugia,
             hojaData.medico_tratante_id || null, hojaData.nombre_medico_adscrito, hojaData.jefe_servicio,
-            hojaData.usuario_tecnico_id, 'Pendiente Autorización', hojaData.observaciones || null
+            hojaData.usuario_tecnico_id, hojaData.tecnico_nombre_manual || null, 'Pendiente Autorización', hojaData.observaciones || null
         ];
 
         const { rows } = await client.query(queryInsertHoja, valuesHoja);
@@ -254,13 +254,5 @@ module.exports = {
     getHojaConsumoById,
     createHojaConsumo,
     updateEstadoHoja,
-    updateArchivoFirmado // <--- Agregada
-};
-
-module.exports = {
-    getInventarioLocal,
-    getHojasConsumo,
-    getHojaConsumoById,
-    createHojaConsumo,
-    updateEstadoHoja
+    updateArchivoFirmado
 };

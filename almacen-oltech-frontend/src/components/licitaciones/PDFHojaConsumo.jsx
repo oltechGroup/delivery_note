@@ -162,7 +162,7 @@ function PDFHojaConsumo({ hojaId, onClose }) {
 
           <div className="contenido-hoja">
             
-            {/* ENCABEZADO: 3 Columnas (Oltech - Hospital Centro - Códigos) */}
+            {/* ENCABEZADO: 3 Columnas */}
             <div className="flex justify-between items-center mb-8 w-full">
               <div className="w-1/3 flex justify-start">
                 <img src={LogoOltech} alt="OLTECH" className="h-16 object-contain" />
@@ -170,31 +170,79 @@ function PDFHojaConsumo({ hojaId, onClose }) {
               
               <div className="w-1/3 flex justify-center">
                 {logoHospital && (
+                  /* ============================================================================== */
+                  /* AJUSTAR TAMAÑO DEL LOGO AQUÍ                                                   */
+                  /* className="h-24" es el actual (Grande).                                        */
+                  /* Cámbialo a "h-32" para extra grande o "h-16" para normal.                      */
+                  /* ============================================================================== */
                   <img 
                     src={logoHospital} 
                     alt="Hospital" 
-                    className="h-16 object-contain"
+                    className="h-24 object-contain"
                     onError={(e) => e.target.style.display = 'none'} 
                   />
                 )}
               </div>
 
               <div className="w-1/3 text-right text-[12px] text-gray-800 leading-snug font-medium">
-                <p className="font-bold">MPM-01-R04</p>
-                <p>Versión 04</p>
-                <p>Folio: {hoja.folio}</p>
+                <p className="font-bold text-sm mb-1">Folio: <span className="text-red-600">{hoja.folio}</span></p>
+                <p className="font-bold">No. Contrato: {hoja.numero_contrato || 'IB/570/2026'}</p>
               </div>
             </div>
 
             <h2 className="text-xl font-normal mb-4 tracking-wide">INFORMACIÓN</h2>
 
-            {/* DATOS GENERALES */}
-            <div className="grid grid-cols-1 gap-y-2 text-sm mb-8">
-              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Hospital:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.hospital_nombre}</span></div>
-              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Fecha de CX:</span><span className="col-span-10 border-b border-gray-300 font-bold">{formatearFecha(hoja.fecha_creacion)}</span></div>
-              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Doctor:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.nombre_medico_adscrito || hoja.medico_tratante_nombre}</span></div>
-              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Técnicos:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.tecnico_nombre}</span></div>
-              <div className="grid grid-cols-12"><span className="col-span-2 font-normal">Paciente:</span><span className="col-span-10 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.paciente}</span></div>
+            {/* DATOS GENERALES (NUEVA REESTRUCTURACIÓN) */}
+            <div className="flex flex-col gap-y-2 text-sm mb-8">
+              
+              {/* LÍNEA 1 */}
+              <div className="flex w-full">
+                <span className="w-32 font-normal text-gray-600">Clave CIE-10:</span>
+                <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.clave_cie_10}</span>
+              </div>
+
+              {/* LÍNEA 2 */}
+              <div className="flex w-full gap-4">
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">Hospital:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.hospital_nombre}</span>
+                </div>
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">Clave HRAEI:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.clave_hraei}</span>
+                </div>
+              </div>
+
+              {/* LÍNEA 3 */}
+              <div className="flex w-full">
+                <span className="w-32 font-normal text-gray-600">Fecha de CX:</span>
+                <span className="flex-1 border-b border-gray-300 font-bold text-gray-700">{formatearFecha(hoja.fecha_creacion)}</span>
+              </div>
+
+              {/* LÍNEA 4 */}
+              <div className="flex w-full gap-4">
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">Doctor:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.nombre_medico_adscrito || hoja.medico_tratante_nombre}</span>
+                </div>
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">Técnico:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.tecnico_nombre_manual || hoja.tecnico_nombre || 'N/A'}</span>
+                </div>
+              </div>
+
+              {/* LÍNEA 5 */}
+              <div className="flex w-full gap-4">
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">Paciente:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700">{hoja.paciente}</span>
+                </div>
+                <div className="flex flex-1">
+                  <span className="w-24 font-normal text-gray-600">CURP:</span>
+                  <span className="flex-1 border-b border-gray-300 font-bold uppercase text-gray-700 font-mono tracking-widest">{hoja.curp}</span>
+                </div>
+              </div>
+
             </div>
 
             <h2 className="text-xl font-normal mb-3 tracking-wide">CONSUMO</h2>

@@ -15,7 +15,7 @@ function NuevaHojaConsumo() {
   const [folio, setFolio] = useState('');
   const [paciente, setPaciente] = useState('');
   const [curp, setCurp] = useState('');
-  const [numeroContrato, setNumeroContrato] = useState('');
+  const [numeroContrato, setNumeroContrato] = useState('IB/570/2026'); // Pre-cargado por defecto
   const [claveCie10, setClaveCie10] = useState('');
   const [claveHraei, setClaveHraei] = useState('');
   const [numeroRenglon, setNumeroRenglon] = useState('');
@@ -23,6 +23,7 @@ function NuevaHojaConsumo() {
   const [nombreMedicoAdscrito, setNombreMedicoAdscrito] = useState('');
   const [jefeServicio, setJefeServicio] = useState('');
   const [medicoTratanteId, setMedicoTratanteId] = useState('');
+  const [tecnicoNombreManual, setTecnicoNombreManual] = useState(''); // NUEVO: Técnico Manual
   const [observaciones, setObservaciones] = useState('');
 
   // Catálogos auxiliares
@@ -34,20 +35,6 @@ function NuevaHojaConsumo() {
   const [busquedaTexto, setBusquedaTexto] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   
-  // Estado para Insumos Externos (Fuera de catálogo)
-  const [modalExternoAbierto, setModalExternoAbierto] = useState(false);
-  const [insumoExterno, setInsumoExterno] = useState({
-    descripcion_externa: '',
-    proveedor_externo: '',
-    cantidad_utilizada: 1,
-    unidad_medida: 'PIEZA',
-    lote: '',
-    fecha_caducidad: '',
-    marca: '',
-    modelo: '',
-    precio_unitario: ''
-  });
-
   const inputBusquedaRef = useRef(null);
 
   useEffect(() => {
@@ -111,57 +98,29 @@ function NuevaHojaConsumo() {
       unidad_medida: item.unidad_medida || 'PIEZA',
       lote: item.lote || '',
       fecha_caducidad: item.fecha_caducidad || '',
-      marca: item.nombre_comercial || '',
-      modelo: '',
-      pais_origen: '',
-      fecha_fabricacion: '',
       precio_unitario: item.precio || 0
     };
 
     setDetalles(prev => [...prev, nuevoDetalle]);
   };
 
-  const agregarInsumoExternoAlTicket = (e) => {
-    e.preventDefault();
-    if (!insumoExterno.descripcion_externa || !insumoExterno.proveedor_externo) {
-      setError('La descripción y el proveedor son obligatorios para insumos externos.');
-      return;
-    }
-
-    const nuevoExterno = {
+  // NUEVA FUNCIÓN: Agregar fila totalmente en blanco (Manual)
+  const agregarFilaManual = () => {
+    const nuevaFila = {
       id_temp: Date.now() + Math.random(),
-      es_insumo_externo: true,
+      es_insumo_externo: true, // Esto le dice al PDF y BD que es texto libre
       consumible_id: null,
       set_id: null,
       pieza_id: null,
-      codigo: 'EXTERNO',
-      descripcion: insumoExterno.descripcion_externa.toUpperCase(),
-      proveedor_externo: insumoExterno.proveedor_externo.toUpperCase(),
-      cantidad_utilizada: parseInt(insumoExterno.cantidad_utilizada) || 1,
-      unidad_medida: insumoExterno.unidad_medida.toUpperCase(),
-      lote: insumoExterno.lote.toUpperCase(),
-      fecha_caducidad: insumoExterno.fecha_caducidad.toUpperCase(),
-      marca: insumoExterno.marca.toUpperCase(),
-      modelo: insumoExterno.modelo.toUpperCase(),
-      pais_origen: '',
-      fecha_fabricacion: '',
-      precio_unitario: parseFloat(insumoExterno.precio_unitario) || 0
-    };
-
-    setDetalles(prev => [...prev, nuevoExterno]);
-    setModalExternoAbierto(false);
-    setInsumoExterno({
-      descripcion_externa: '',
-      proveedor_externo: '',
+      codigo: '',
+      descripcion: '',
       cantidad_utilizada: 1,
       unidad_medida: 'PIEZA',
       lote: '',
       fecha_caducidad: '',
-      marca: '',
-      modelo: '',
-      precio_unitario: ''
-    });
-    setError('');
+      precio_unitario: 0
+    };
+    setDetalles(prev => [...prev, nuevaFila]);
   };
 
   const actualizarCampoDetalle = (id_temp, campo, valor) => {
@@ -185,6 +144,14 @@ function NuevaHojaConsumo() {
       return;
     }
 
+    // Validación extra: Si hay filas manuales, no pueden ir vacías
+    const hayFilaVacia = detalles.some(d => d.es_insumo_externo && (!d.codigo.trim() || !d.descripcion.trim()));
+    if (hayFilaVacia) {
+      setError('Tienes filas manuales sin código o descripción. Llénalas o elimínalas.');
+      window.scrollTo(0, 0);
+      return;
+    }
+
     setCargando(true);
     setError('');
 
@@ -204,6 +171,7 @@ function NuevaHojaConsumo() {
       medico_tratante_id: medicoTratanteId ? parseInt(medicoTratanteId) : null,
       nombre_medico_adscrito: nombreMedicoAdscrito.toUpperCase(),
       jefe_servicio: jefeServicio.toUpperCase(),
+      tecnico_nombre_manual: tecnicoNombreManual.toUpperCase(), // Se manda el técnico manual
       observaciones
     };
 
@@ -264,7 +232,7 @@ function NuevaHojaConsumo() {
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">No. Contrato / Convenio *</label>
-            <input type="text" placeholder="Ej. DC/045/2026" value={numeroContrato} onChange={e => setNumeroContrato(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase" />
+            <input type="text" placeholder="Ej. IB/570/2026" value={numeroContrato} onChange={e => setNumeroContrato(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase" />
           </div>
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Clave HRAEI *</label>
@@ -298,7 +266,7 @@ function NuevaHojaConsumo() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">Médico Tratante (Catálogo)</label>
             <select value={medicoTratanteId} onChange={e => setMedicoTratanteId(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase bg-white">
@@ -307,12 +275,16 @@ function NuevaHojaConsumo() {
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Nombre y Cargo del Médico Adscrito *</label>
-            <input type="text" placeholder="Ej. Dr. Pérez / Ortopedista" value={nombreMedicoAdscrito} onChange={e => setNombreMedicoAdscrito(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase" />
+            <label className="block text-xs font-bold text-gray-700 mb-1">Nombre Médico Adscrito *</label>
+            <input type="text" placeholder="Ej. Dr. Pérez" value={nombreMedicoAdscrito} onChange={e => setNombreMedicoAdscrito(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1">Jefe de Servicio de Traumatología *</label>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Jefe Traumatología *</label>
             <input type="text" placeholder="Nombre del jefe" value={jefeServicio} onChange={e => setJefeServicio(e.target.value)} className="w-full p-2 border rounded text-xs font-bold uppercase" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-oltech-blue mb-1">Técnico (Manual / Opcional)</label>
+            <input type="text" placeholder="Nombre del Técnico" value={tecnicoNombreManual} onChange={e => setTecnicoNombreManual(e.target.value)} className="w-full p-2 border border-oltech-blue/30 bg-blue-50 rounded text-xs font-bold uppercase" />
           </div>
         </div>
       </div>
@@ -321,9 +293,12 @@ function NuevaHojaConsumo() {
       <div className="max-w-[22cm] mx-auto bg-oltech-black p-4 rounded-xl shadow-lg mb-6 relative">
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-white text-xs font-bold uppercase tracking-wide">Añadir Material Empleado</h3>
-          <button onClick={() => setModalExternoAbierto(true)} className="bg-oltech-pink text-white px-3 py-1 rounded text-xs font-bold hover:bg-pink-700">
-            + Agregar Insumo Externo (Proveedor)
+          
+          {/* BOTÓN NUEVO PARA AGREGAR FILA EN BLANCO */}
+          <button onClick={agregarFilaManual} className="bg-blue-600 text-white px-4 py-1.5 rounded text-xs font-bold hover:bg-blue-500 shadow-md transition-colors flex items-center">
+            <span className="mr-1">+</span> Añadir Fila Manual
           </button>
+
         </div>
 
         <div className="relative">
@@ -380,31 +355,43 @@ function NuevaHojaConsumo() {
               </tr>
             ) : (
               detalles.map((d) => (
-                <tr key={d.id_temp} className="border-b hover:bg-gray-50">
-                  <td className="p-2 border font-mono font-bold text-oltech-blue">
-                    {d.codigo} {d.es_insumo_externo && <span className="text-[9px] bg-amber-100 text-amber-800 px-1 rounded ml-1">EXTERNO</span>}
+                <tr key={d.id_temp} className={`border-b transition-colors ${d.es_insumo_externo ? 'bg-blue-50/20' : 'hover:bg-gray-50'}`}>
+                  
+                  {/* CÓDIGO (Editable si es manual) */}
+                  <td className="p-1 border font-mono font-bold text-oltech-blue">
+                    {d.es_insumo_externo ? (
+                      <input type="text" value={d.codigo} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'codigo', e.target.value.toUpperCase())} className="w-full p-1 border border-blue-200 rounded outline-none focus:ring-1 focus:ring-oltech-blue" placeholder="CÓDIGO" />
+                    ) : (
+                      <span className="p-1 block">{d.codigo}</span>
+                    )}
                   </td>
-                  <td className="p-2 border font-medium uppercase">
-                    {d.descripcion}
-                    {d.proveedor_externo && <div className="text-[9px] text-gray-500 italic">Prov: {d.proveedor_externo}</div>}
+                  
+                  {/* DESCRIPCIÓN (Editable si es manual) */}
+                  <td className="p-1 border font-medium uppercase">
+                    {d.es_insumo_externo ? (
+                      <input type="text" value={d.descripcion} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'descripcion', e.target.value.toUpperCase())} className="w-full p-1 border border-blue-200 rounded outline-none focus:ring-1 focus:ring-oltech-blue" placeholder="DESCRIPCIÓN DEL MATERIAL" />
+                    ) : (
+                      <span className="p-1 block">{d.descripcion}</span>
+                    )}
                   </td>
-                  <td className="p-2 border text-center">
+
+                  <td className="p-1 border text-center">
                     <input 
                       type="number" min="1" value={d.cantidad_utilizada} 
                       onChange={(e) => actualizarCampoDetalle(d.id_temp, 'cantidad_utilizada', parseInt(e.target.value) || 1)}
-                      className="w-16 text-center border rounded p-1 font-bold" 
+                      className="w-16 text-center border rounded p-1 font-bold outline-none focus:border-oltech-pink" 
                     />
                   </td>
-                  <td className="p-2 border text-center">
-                    <input type="text" value={d.lote} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'lote', e.target.value.toUpperCase())} className="w-full text-center border rounded p-1 font-mono uppercase" placeholder="Lote" />
+                  <td className="p-1 border text-center">
+                    <input type="text" value={d.lote} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'lote', e.target.value.toUpperCase())} className="w-full text-center border rounded p-1 font-mono uppercase outline-none focus:border-oltech-pink" placeholder="Lote" />
                   </td>
-                  <td className="p-2 border text-center">
-                    <input type="text" value={d.fecha_caducidad} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'fecha_caducidad', e.target.value.toUpperCase())} className="w-full text-center border rounded p-1 uppercase" placeholder="Cad." />
+                  <td className="p-1 border text-center">
+                    <input type="text" value={d.fecha_caducidad} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'fecha_caducidad', e.target.value.toUpperCase())} className="w-full text-center border rounded p-1 uppercase outline-none focus:border-oltech-pink" placeholder="Cad." />
                   </td>
-                  <td className="p-2 border text-center">
-                    <input type="number" step="0.01" value={d.precio_unitario} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'precio_unitario', parseFloat(e.target.value) || 0)} className="w-full text-center border rounded p-1 font-bold" placeholder="0.00" />
+                  <td className="p-1 border text-center">
+                    <input type="number" step="0.01" value={d.precio_unitario} onChange={(e) => actualizarCampoDetalle(d.id_temp, 'precio_unitario', parseFloat(e.target.value) || 0)} className="w-full text-center border rounded p-1 font-bold outline-none focus:border-oltech-pink" placeholder="0.00" />
                   </td>
-                  <td className="p-2 border text-center">
+                  <td className="p-1 border text-center">
                     <button type="button" onClick={() => quitarFila(d.id_temp)} className="text-red-500 font-bold hover:bg-red-50 p-1 rounded">✖</button>
                   </td>
                 </tr>
@@ -413,52 +400,6 @@ function NuevaHojaConsumo() {
           </tbody>
         </table>
       </div>
-
-      {/* MODAL PARA INSUMOS EXTERNOS */}
-      {modalExternoAbierto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
-            <h2 className="text-lg font-bold text-gray-800">Registrar Insumo Externo (Fuera de Catálogo)</h2>
-            <p className="text-xs text-gray-500">Este insumo se guardará para métricas internas, pero no afectará el inventario central.</p>
-            
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Descripción del Insumo *</label>
-              <input type="text" value={insumoExterno.descripcion_externa} onChange={e => setInsumoExterno({...insumoExterno, descripcion_externa: e.target.value})} className="w-full p-2 border rounded text-xs uppercase" placeholder="Nombre o referencia" />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Proveedor *</label>
-                <input type="text" value={insumoExterno.proveedor_externo} onChange={e => setInsumoExterno({...insumoExterno, proveedor_externo: e.target.value})} className="w-full p-2 border rounded text-xs uppercase" placeholder="Empresa externa" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Cantidad *</label>
-                <input type="number" min="1" value={insumoExterno.cantidad_utilizada} onChange={e => setInsumoExterno({...insumoExterno, cantidad_utilizada: e.target.value})} className="w-full p-2 border rounded text-xs font-bold" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Lote</label>
-                <input type="text" value={insumoExterno.lote} onChange={e => setInsumoExterno({...insumoExterno, lote: e.target.value})} className="w-full p-2 border rounded text-xs uppercase font-mono" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Caducidad</label>
-                <input type="text" value={insumoExterno.fecha_caducidad} onChange={e => setInsumoExterno({...insumoExterno, fecha_caducidad: e.target.value})} className="w-full p-2 border rounded text-xs uppercase" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Precio Unitario</label>
-                <input type="number" step="0.01" value={insumoExterno.precio_unitario} onChange={e => setInsumoExterno({...insumoExterno, precio_unitario: e.target.value})} className="w-full p-2 border rounded text-xs font-bold" />
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end space-x-3">
-              <button onClick={() => setModalExternoAbierto(false)} className="px-4 py-2 border rounded text-xs font-medium">Cancelar</button>
-              <button onClick={insumoExternoAlTicket => agregarInsumoExternoAlTicket(insumoExternoAlTicket)} className="px-4 py-2 bg-oltech-black text-white rounded text-xs font-bold">Añadir al Ticket</button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
